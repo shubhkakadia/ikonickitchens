@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
+import { publishUpdate, formatAdelaide } from "@/lib/updates";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -120,6 +121,14 @@ export async function PATCH(request, { params }) {
       "UPDATE",
       `Meeting updated: ${updatedMeeting.title}`,
     );
+
+    await publishUpdate({
+      req: request,
+      type: "CALENDAR_EVENT_UPDATED",
+      title: "Calendar event updated",
+      message: `"${updatedMeeting.title}" on ${formatAdelaide(updatedMeeting.date_time)}`,
+      url: `/admin/calendar?event=${updatedMeeting.id}`,
+    });
 
     // Send meeting notifications to participants
     try {

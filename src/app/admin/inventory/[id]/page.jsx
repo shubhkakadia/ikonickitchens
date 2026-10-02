@@ -1,127 +1,496 @@
 "use client";
-import React from "react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   AlertTriangle,
-  ChevronLeft,
-  Edit,
-  Trash2,
-  Package,
-  Layers,
-  Box,
-  Hash,
-  FileText,
-  Tag,
-  SwatchBook,
-  X,
-  Download,
-  ChevronDown,
-  ChevronUp,
   Building2,
-  Ruler,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronUp,
+  Edit,
   ExternalLink,
+  MoreVertical,
+  Package,
   Plus,
+  Trash2,
+  X,
 } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import TabsController from "@/components/tabscontroller";
 import Image from "next/image";
-import { CiMenuKebab } from "react-icons/ci";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
+import CustomDropdown from "@/components/CustomDropdown";
+import PaginationFooter from "@/components/PaginationFooter";
 import AdminShell from "@/components/AdminShell";
 import { useUploadProgress } from "@/hooks/useUploadProgress";
+import useModalFocus from "@/hooks/useModalFocus";
+import {
+  BADGE,
+  BADGE_TONES,
+  formatQty,
+} from "@/app/admin/dashboard/lib/format";
+import { formatLabel } from "@/app/admin/employees/punches/lib/punchStyles";
 
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import { v4 as uuidv4 } from "uuid";
 
-function SearchableBrandDropdown({
+const EMPTY = "—";
+const SESSION_ERROR = "Your session has expired. Sign in again to continue.";
+const LOAD_ERROR =
+  "Couldn't load this item. Check your connection and try again.";
+const STOCK_TX_PER_PAGE = 10;
+
+// DESIGN.md 9.2 form field recipe. `hasError` flips the border/ring to red.
+const INPUT_BASE =
+  "w-full text-sm text-slate-800 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-colors duration-200";
+const inputClass = (hasError, extra = "px-4 py-3") =>
+  `${INPUT_BASE} ${extra} ${
+    hasError
+      ? "border-red-500 focus:ring-red-500"
+      : "border-slate-300 focus:ring-primary"
+  }`;
+
+const LABEL = "block text-sm font-medium text-slate-700 mb-1.5";
+const CHECKBOX =
+  "h-4 w-4 accent-primary border-slate-300 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer";
+
+// DESIGN.md 9.1 button recipes. Only one primary button per view or modal.
+const BTN_PRIMARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY_COMPACT =
+  "cursor-pointer flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_ICON =
+  "cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const MENU_ITEM =
+  "cursor-pointer w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 transition-colors flex items-center gap-2";
+const TH =
+  "px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider";
+const SPINNER =
+  "w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin";
+
+// Currency is AUD and prices carry cents, so this stays local rather than
+// using the whole-dollar shared formatCurrency (DESIGN.md 15.7).
+const PRICE = new Intl.NumberFormat("en-AU", {
+  style: "currency",
+  currency: "AUD",
+});
+
+const DATE_TIME = new Intl.DateTimeFormat("en-AU", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+// Stock movements are categories of direction: added is green, wasted is red,
+// used is neutral. The label text always carries the meaning.
+const TX_TONES = {
+  ADDED: BADGE_TONES.success,
+  USED: BADGE_TONES.neutral,
+  WASTED: BADGE_TONES.danger,
+};
+
+// Enter in a combobox's text field must not submit the whole edit form.
+const blockEnterSubmit = (e) => {
+  if (e.key === "Enter" && e.target?.getAttribute?.("role") === "combobox") {
+    e.preventDefault();
+  }
+};
+
+const faceOptions = ["single side", "double side"];
+
+// Plain text inputs per category. A string entry is a combobox field
+// (brand, finish, face, sub_category) rendered by renderCombo below.
+const textField = (name, label, placeholder, mono = false) => ({
+  name,
+  label,
+  placeholder,
+  mono,
+});
+const CATEGORY_FIELDS = {
+  sheet: [
+    "brand",
+    textField("color", "Colour", "e.g. Natural oak"),
+    "finish",
+    "face",
+    textField("dimensions", "Dimensions", "e.g. 2400 x 1200 x 18 mm", true),
+  ],
+  handle: [
+    "brand",
+    textField("color", "Colour", "e.g. Brushed nickel"),
+    textField("type", "Type", "e.g. Bar handle"),
+    textField("material", "Material", "e.g. Aluminium"),
+    textField("dimensions", "Dimensions", "e.g. 160 mm", true),
+  ],
+  hardware: [
+    "sub_category",
+    textField("brand", "Brand", "e.g. Blum"),
+    textField("name", "Name", "e.g. Soft-close hinge"),
+    textField("type", "Type", "e.g. Concealed"),
+    textField("dimensions", "Dimensions", "e.g. 35 mm", true),
+  ],
+  accessory: [textField("name", "Item name", "e.g. Marker pen")],
+  edging_tape: [
+    "brand",
+    textField("color", "Colour", "e.g. Natural oak"),
+    "finish",
+    textField("dimensions", "Dimensions", "e.g. 22 x 1 mm", true),
+  ],
+};
+
+// On-screen labels for the combobox fields (the keys are the API field names).
+const COMBO_LABELS = {
+  brand: "Brand",
+  finish: "Finish",
+  face: "Face",
+  sub_category: "Sub-category",
+};
+
+// The config lists behind the creatable comboboxes. `category` is the config
+// API category (hardware sub-categories live under "hardware"); `field` is the
+// form field the new value is selected into.
+const CONFIG_KINDS = {
+  finish: {
+    category: "finish",
+    field: "finish",
+    comboId: "item-finish",
+    title: "Create new finish",
+    label: "Finish name",
+    placeholder: "e.g. Matt",
+    required: "Enter a finish name.",
+    submit: "Create finish",
+    created: "Finish created.",
+    failed: "Couldn't create the finish. Check your connection and try again.",
+  },
+  brand: {
+    category: "brand",
+    field: "brand",
+    comboId: "item-brand",
+    title: "Create new brand",
+    label: "Brand name",
+    placeholder: "e.g. Polytec",
+    required: "Enter a brand name.",
+    submit: "Create brand",
+    created: "Brand created.",
+    failed: "Couldn't create the brand. Check your connection and try again.",
+  },
+  measuring_unit: {
+    category: "measuring_unit",
+    field: "measurement_unit",
+    comboId: "item-measurement-unit",
+    title: "Create new measuring unit",
+    label: "Measuring unit name",
+    placeholder: "e.g. each",
+    required: "Enter a measuring unit name.",
+    submit: "Create measuring unit",
+    created: "Measuring unit created.",
+    failed:
+      "Couldn't create the measuring unit. Check your connection and try again.",
+  },
+  sub_category: {
+    category: "hardware",
+    field: "sub_category",
+    comboId: "item-sub-category",
+    title: "Create new hardware sub-category",
+    label: "Sub-category name",
+    placeholder: "e.g. Hinges",
+    required: "Enter a sub-category name.",
+    submit: "Create sub-category",
+    created: "Hardware sub-category created.",
+    failed:
+      "Couldn't create the sub-category. Check your connection and try again.",
+  },
+};
+
+// Config values (finishes, brands, measuring units, sub-categories) live
+// behind one API.
+const readConfigValues = async (sessionToken, category) => {
+  const response = await axios.request({
+    method: "post",
+    maxBodyLength: Infinity,
+    url: `/api/v1/config/read_all_by_category`,
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+      "Content-Type": "application/json",
+    },
+    data: { category },
+  });
+  if (response.data.status && response.data.data) {
+    // Extract the value field from each config item
+    return response.data.data.map((entry) => entry.value);
+  }
+  return null;
+};
+
+const createConfigValue = (sessionToken, category, value) =>
+  axios.request({
+    method: "post",
+    maxBodyLength: Infinity,
+    url: `/api/v1/config/create`,
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+      "Content-Type": "application/json",
+    },
+    data: { category, value },
+  });
+
+const formatValue = (value) => {
+  if (
+    value === null ||
+    value === undefined ||
+    value === "" ||
+    value === "null"
+  ) {
+    return EMPTY;
+  }
+  if (typeof value === "string" && value.trim() === "") {
+    return EMPTY;
+  }
+  return value;
+};
+
+const emptySupplierRow = () => ({
+  id: uuidv4(),
+  supplier_id: "",
+  supplier_reference: "",
+  supplier_product_link: "",
+  price: "",
+});
+
+// Form rows for the item's suppliers, each with a temporary id.
+const buildSupplierRows = (data) =>
+  data?.itemSuppliers && data.itemSuppliers.length > 0
+    ? data.itemSuppliers.map((is) => ({
+        id: uuidv4(),
+        supplier_id: is.supplier_id,
+        supplier_reference: is.supplier_reference || "",
+        supplier_product_link: is.supplier_product_link || "",
+        price: is.price || "",
+      }))
+    : [emptySupplierRow()];
+
+// Stock level as coloured text plus a label, so colour is never the only
+// signal (DESIGN.md 13.4). Same thresholds as the inventory list.
+function StockLevel({ stock, unit }) {
+  const tone =
+    stock <= 0
+      ? "text-red-700"
+      : stock < 10
+        ? "text-amber-700"
+        : "text-green-700";
+  const label = stock <= 0 ? "Out of stock" : stock < 10 ? "Low stock" : null;
+  return (
+    <div>
+      <div className={`text-2xl font-mono font-semibold ${tone}`}>
+        {formatQty(stock, unit)}
+      </div>
+      {label && <div className="text-xs text-slate-500">{label}</div>}
+    </div>
+  );
+}
+
+// Labelled text input with inline error (DESIGN.md 9.2, 15.3).
+function TextField({
+  id,
+  label,
   value,
-  searchTerm,
-  onSearchChange,
-  onSelect,
-  isOpen,
-  setIsOpen,
-  dropdownRef,
+  onChange,
+  placeholder,
+  type = "text",
+  mono = false,
+  prefix,
+  step,
+  error,
+}) {
+  const errorId = `${id}-error`;
+  return (
+    <div>
+      <label htmlFor={id} className={LABEL}>
+        {label}
+      </label>
+      <div className="relative">
+        {prefix && (
+          <span
+            className="absolute inset-y-0 left-4 flex items-center text-sm text-slate-500"
+            aria-hidden="true"
+          >
+            {prefix}
+          </span>
+        )}
+        <input
+          id={id}
+          type={type}
+          value={value}
+          onChange={onChange}
+          step={step}
+          placeholder={placeholder}
+          aria-invalid={!!error || undefined}
+          aria-describedby={error ? errorId : undefined}
+          className={`${inputClass(!!error, prefix ? "pl-8 pr-4 py-3" : "px-4 py-3")} ${
+            mono ? "font-mono" : ""
+          }`}
+        />
+      </div>
+      {error && (
+        <p id={errorId} className="text-xs text-red-600 mt-1">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Free-text combobox: the user can pick a suggestion or type their own value,
+// and (when onCreate is given) save a typed value as a new option.
+function FreeformCombobox({
+  id,
+  label,
+  noun,
+  value,
+  onChange,
   options,
-  loading,
+  placeholder,
+  disabled = false,
+  loading = false,
+  loadingText = "Loading...",
+  emptyText = "No matching options found",
   onCreate,
 }) {
-  const filteredBrands = options.filter((brand) =>
-    brand.toLowerCase().includes(searchTerm.toLowerCase()),
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+  const listId = `${id}-list`;
+
+  useEffect(() => {
+    const onMouseDown = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, []);
+
+  useEffect(() => {
+    if (disabled) setOpen(false);
+  }, [disabled]);
+
+  const filtered = options.filter((option) =>
+    option.toLowerCase().includes(value.toLowerCase()),
   );
+  const typed = value.trim();
   const canCreate =
-    searchTerm &&
-    !options.some((brand) => brand.toLowerCase() === searchTerm.toLowerCase());
+    !!onCreate &&
+    typed !== "" &&
+    !filtered.some((option) => option.toLowerCase() === typed.toLowerCase());
+  const isOpen = open && !disabled;
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative" ref={containerRef}>
+      <label htmlFor={id} className={LABEL}>
+        {label}
+      </label>
       <div className="relative">
         <input
+          id={id}
           type="text"
-          value={searchTerm || value || ""}
-          onChange={onSearchChange}
-          onFocus={() => setIsOpen(true)}
-          placeholder="Search or type a brand..."
-          className="w-full text-sm text-slate-800 px-2 py-1 pr-8 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+          value={value}
+          disabled={disabled}
+          placeholder={placeholder}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setOpen(true);
+          }}
+          onClick={() => !disabled && setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              setOpen(false);
+            } else if (e.key === "Escape") {
+              setOpen(false);
+            } else if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setOpen(true);
+            }
+          }}
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+          aria-autocomplete="list"
+          aria-controls={isOpen && filtered.length > 0 ? listId : undefined}
+          autoComplete="off"
+          className={`${inputClass(false, "px-4 py-3 pr-10")} disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed`}
         />
         <button
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+          onClick={() => setOpen((previous) => !previous)}
+          disabled={disabled}
+          tabIndex={-1}
+          aria-label={isOpen ? `Close ${noun} options` : `Open ${noun} options`}
+          className="cursor-pointer absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700 transition-colors duration-200 disabled:cursor-not-allowed"
         >
-          <ChevronDown
-            className={`w-4 h-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-          />
+          {isOpen ? (
+            <ChevronUp className="w-4 h-4" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="w-4 h-4" aria-hidden="true" />
+          )}
         </button>
       </div>
+
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
+        <div className="absolute z-40 w-full mt-1 bg-white border border-slate-300 rounded-lg max-h-60 overflow-auto">
           {loading ? (
-            <div className="px-3 py-2 text-xs text-slate-500 text-center">
-              Loading brands...
+            <div className="px-4 py-3 text-sm text-slate-500 text-center">
+              {loadingText}
             </div>
-          ) : filteredBrands.length > 0 ? (
+          ) : (
             <>
-              {filteredBrands.map((brand) => (
-                <button
-                  key={brand}
-                  type="button"
-                  onClick={() => onSelect(brand)}
-                  className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors"
-                >
-                  {brand}
-                </button>
-              ))}
+              {filtered.length > 0 ? (
+                <div role="listbox" id={listId} aria-label={label}>
+                  {filtered.map((option, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      role="option"
+                      aria-selected={option === value}
+                      onClick={() => {
+                        onChange(option);
+                        setOpen(false);
+                      }}
+                      className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-100 transition-colors duration-200"
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                  {emptyText}
+                </div>
+              )}
               {canCreate && (
                 <div className="border-t border-slate-200">
                   <button
                     type="button"
-                    onClick={onCreate}
-                    className="cursor-pointer w-full text-left px-3 py-2 text-xs text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
+                    onClick={() => {
+                      setOpen(false);
+                      onCreate(value);
+                    }}
+                    className="cursor-pointer w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-slate-100 transition-colors duration-200"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Create "{searchTerm}"
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                    Create &quot;{typed}&quot;
                   </button>
                 </div>
               )}
             </>
-          ) : (
-            <div className="px-3 py-2">
-              <div className="text-xs text-slate-500 mb-2">
-                No matching brands found
-              </div>
-              {searchTerm && (
-                <button
-                  type="button"
-                  onClick={onCreate}
-                  className="cursor-pointer w-full px-3 py-2 text-xs text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Create "{searchTerm}"
-                </button>
-              )}
-            </div>
           )}
         </div>
       )}
@@ -129,43 +498,153 @@ function SearchableBrandDropdown({
   );
 }
 
-// InfoField component - defined outside to prevent recreation and focus loss
-const InfoField = ({
+// Small modal used to save a new finish / brand / measuring unit /
+// sub-category to the config list.
+function ConfigValueModal({
+  idPrefix,
+  title,
   label,
-  value,
-  field,
-  icon,
-  fullWidth = false,
-  isEditing,
-  formData,
-  handleInputChange,
-  formatValue,
-  editor,
-}) => (
-  <div className={fullWidth ? "col-span-2" : ""}>
-    <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-      {icon}
-      {label}
-    </label>
-    {isEditing && editor ? (
-      editor
-    ) : isEditing ? (
-      <input
-        type="text"
-        value={formData[field] || ""}
-        onChange={(e) => handleInputChange(field, e.target.value)}
-        placeholder={formatValue(value)}
-        className="w-full text-sm text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-      />
-    ) : (
-      <p className="text-sm text-slate-800">{formatValue(value)}</p>
-    )}
-  </div>
-);
+  placeholder,
+  requiredMessage,
+  initialValue,
+  saving,
+  submitLabel,
+  onSubmit,
+  onClose,
+  returnFocusId,
+}) {
+  const [value, setValue] = useState(initialValue);
+  const [error, setError] = useState("");
+  const panelRef = useRef(null);
+  useModalFocus(panelRef, true);
 
-export default function page() {
+  // The "Create" row that opened this modal unmounts with the list, so hand
+  // focus back to the field itself when the modal goes away.
+  useEffect(
+    () => () => {
+      document.getElementById(returnFocusId)?.focus({ preventScroll: true });
+    },
+    [returnFocusId],
+  );
+
+  // Modals close on Escape (DESIGN.md 9.4); not while saving.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape" || saving) return;
+      onClose();
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [saving, onClose]);
+
+  const inputId = `${idPrefix}-input`;
+  const errorId = `${idPrefix}-error`;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (saving) return;
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setError(requiredMessage);
+      document.getElementById(inputId)?.focus();
+      return;
+    }
+    onSubmit(trimmed);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!saving && value === initialValue) onClose();
+      }}
+    >
+      <div
+        ref={panelRef}
+        className="bg-white w-full max-w-lg rounded-xl border border-slate-200 max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`${idPrefix}-title`}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+          <h2
+            id={`${idPrefix}-title`}
+            className="text-lg font-semibold text-slate-800"
+          >
+            {title}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" aria-hidden="true" />
+          </button>
+        </div>
+
+        <form
+          noValidate
+          onSubmit={handleSubmit}
+          className="flex flex-col min-h-0 flex-1"
+        >
+          <div className="flex-1 overflow-y-auto p-6">
+            <label htmlFor={inputId} className={LABEL}>
+              {label}{" "}
+              <span className="text-red-600" aria-hidden="true">
+                *
+              </span>
+            </label>
+            <input
+              id={inputId}
+              data-autofocus
+              type="text"
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value);
+                setError("");
+              }}
+              placeholder={placeholder}
+              aria-invalid={!!error || undefined}
+              aria-describedby={error ? errorId : undefined}
+              className={inputClass(!!error, "px-3 py-2")}
+            />
+            {error && (
+              <p id={errorId} className="text-xs text-red-600 mt-1">
+                {error}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className={BTN_SECONDARY}
+            >
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className={BTN_PRIMARY}>
+              {saving ? (
+                <span className={SPINNER} aria-hidden="true" />
+              ) : (
+                <Plus className="w-4 h-4" aria-hidden="true" />
+              )}
+              {submitLabel}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default function InventoryItemDetailPage() {
   const { id } = useParams();
-  const router = useRouter();
   const { getToken } = useAuth();
   const {
     showProgressToast,
@@ -178,6 +657,8 @@ export default function page() {
   const [item, setItem] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  // Validate on submit, then on change: errors only exist once a save was tried.
+  const [submitted, setSubmitted] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -188,58 +669,26 @@ export default function page() {
   const [newImage, setNewImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [deleteImage, setDeleteImage] = useState(false);
-  const [isSubCategoryDropdownOpen, setIsSubCategoryDropdownOpen] =
-    useState(false);
-  const [subCategorySearchTerm, setSubCategorySearchTerm] = useState("");
-  const subCategoryDropdownRef = React.useRef(null);
-  const [hardwareSubCategories, setHardwareSubCategories] = useState([]);
-  const [loadingSubCategories, setLoadingSubCategories] = useState(false);
-  const [showCreateSubCategoryModal, setShowCreateSubCategoryModal] =
-    useState(false);
-  const [newSubCategoryValue, setNewSubCategoryValue] = useState("");
-  const [isCreatingSubCategory, setIsCreatingSubCategory] = useState(false);
-  const [suppliers, setSuppliers] = useState([]);
-  const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
-  const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
-  const supplierDropdownRef = React.useRef(null);
-  const [selectedSupplier, setSelectedSupplier] = useState(null);
-  const [isMeasuringUnitDropdownOpen, setIsMeasuringUnitDropdownOpen] =
-    useState(false);
-  const [measuringUnitSearchTerm, setMeasuringUnitSearchTerm] = useState("");
-  const measuringUnitDropdownRef = React.useRef(null);
-  const [measuringUnitOptions, setMeasuringUnitOptions] = useState([]);
-  const [loadingMeasuringUnits, setLoadingMeasuringUnits] = useState(false);
-  const [showCreateMeasuringUnitModal, setShowCreateMeasuringUnitModal] =
-    useState(false);
-  const [newMeasuringUnitValue, setNewMeasuringUnitValue] = useState("");
-  const [isCreatingMeasuringUnit, setIsCreatingMeasuringUnit] = useState(false);
-  const [isFinishDropdownOpen, setIsFinishDropdownOpen] = useState(false);
-  const [finishSearchTerm, setFinishSearchTerm] = useState("");
-  const finishDropdownRef = React.useRef(null);
-  const [isFaceDropdownOpen, setIsFaceDropdownOpen] = useState(false);
-  const [faceSearchTerm, setFaceSearchTerm] = useState("");
-  const faceDropdownRef = React.useRef(null);
-  const [finishOptions, setFinishOptions] = useState([]);
-  const [loadingFinishes, setLoadingFinishes] = useState(false);
-  const [brandOptions, setBrandOptions] = useState([]);
-  const [loadingBrands, setLoadingBrands] = useState(false);
-  const [isBrandDropdownOpen, setIsBrandDropdownOpen] = useState(false);
-  const [brandSearchTerm, setBrandSearchTerm] = useState("");
-  const brandDropdownRef = React.useRef(null);
-  const [showCreateBrandModal, setShowCreateBrandModal] = useState(false);
-  const [newBrandValue, setNewBrandValue] = useState("");
-  const [isCreatingBrand, setIsCreatingBrand] = useState(false);
-  const [showCreateFinishModal, setShowCreateFinishModal] = useState(false);
-  const [newFinishValue, setNewFinishValue] = useState("");
-  const [isCreatingFinish, setIsCreatingFinish] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [configOptions, setConfigOptions] = useState({
+    finish: [],
+    brand: [],
+    measuring_unit: [],
+    sub_category: [],
+  });
+  const [loadingConfig, setLoadingConfig] = useState(false);
+  // { kind, seed } while the "create new ..." modal is open
+  const [configModal, setConfigModal] = useState(null);
+  const [isCreatingConfig, setIsCreatingConfig] = useState(false);
   const [expandedNotes, setExpandedNotes] = useState(new Set());
-  const stock_tx_item_per_page = 10;
   const [stockTxCurrentPage, setStockTxCurrentPage] = useState(1);
-
-  // Multi-supplier support - array of supplier objects for this item
+  const [suppliers, setSuppliers] = useState([]);
+  // Multi-supplier support - array of supplier rows for this item
   const [itemSuppliers, setItemSuppliers] = useState([]);
+  const dropdownRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  const sortedStockTransactions = React.useMemo(() => {
+  const sortedStockTransactions = useMemo(() => {
     const transactions = item?.stock_transactions ?? [];
     return [...transactions].sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
@@ -247,181 +696,45 @@ export default function page() {
   }, [item?.stock_transactions]);
 
   const stockTxTotalPages = Math.ceil(
-    sortedStockTransactions.length / stock_tx_item_per_page,
+    sortedStockTransactions.length / STOCK_TX_PER_PAGE,
   );
-  const stockTxStartIndex = (stockTxCurrentPage - 1) * stock_tx_item_per_page;
-  const stockTxEndIndex = stockTxStartIndex + stock_tx_item_per_page;
+  const stockTxStartIndex = (stockTxCurrentPage - 1) * STOCK_TX_PER_PAGE;
   const currentStockTransactions = sortedStockTransactions.slice(
     stockTxStartIndex,
-    stockTxEndIndex,
+    stockTxStartIndex + STOCK_TX_PER_PAGE,
   );
 
-  const handleStockTxPageChange = (page) => {
-    const safePage = Math.max(1, Math.min(page, stockTxTotalPages || 1));
-    setStockTxCurrentPage(safePage);
-  };
-
-  const filteredSubCategories = hardwareSubCategories.filter((subCategory) =>
-    subCategory.toLowerCase().includes(subCategorySearchTerm.toLowerCase()),
-  );
-
-  // Face options
-  const faceOptions = ["single side", "double side"];
-  const filteredFaces = faceOptions.filter((face) =>
-    face.toLowerCase().includes(faceSearchTerm.toLowerCase()),
-  );
-
-  // Fetch hardware sub categories from config API
+  // Fetch the config lists behind the creatable comboboxes. Brands are shared
+  // by sheets, handles, and edging tape.
   useEffect(() => {
-    const fetchHardwareSubCategories = async () => {
-      try {
-        setLoadingSubCategories(true);
-        const sessionToken = getToken();
-        if (!sessionToken) {
-          console.error("No valid session found");
-          return;
-        }
-
-        const config = {
-          method: "post",
-          maxBodyLength: Infinity,
-          url: `/api/v1/config/read_all_by_category`,
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
-          data: { category: "hardware" },
-        };
-
-        const response = await axios.request(config);
-        if (response.data.status && response.data.data) {
-          // Extract the value field from each config item
-          const subCategories = response.data.data.map((item) => item.value);
-          setHardwareSubCategories(subCategories);
-        }
-      } catch (error) {
-        console.error("Error fetching hardware sub categories:", error);
-        // Fallback to empty array if API fails
-        setHardwareSubCategories([]);
-      } finally {
-        setLoadingSubCategories(false);
+    const fetchConfigOptions = async () => {
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        console.error("No valid session found");
+        return;
       }
+      setLoadingConfig(true);
+      await Promise.all(
+        Object.entries(CONFIG_KINDS).map(async ([kind, config]) => {
+          try {
+            const values = await readConfigValues(
+              sessionToken,
+              config.category,
+            );
+            if (values) {
+              setConfigOptions((prev) => ({ ...prev, [kind]: values }));
+            }
+          } catch (err) {
+            console.error(`Error fetching ${kind} options:`, err);
+            // Fallback to empty array if API fails
+            setConfigOptions((prev) => ({ ...prev, [kind]: [] }));
+          }
+        }),
+      );
+      setLoadingConfig(false);
     };
 
-    fetchHardwareSubCategories();
-  }, [getToken]);
-
-  // Fetch measuring units from config API
-  useEffect(() => {
-    const fetchMeasuringUnits = async () => {
-      try {
-        setLoadingMeasuringUnits(true);
-        const sessionToken = getToken();
-        if (!sessionToken) {
-          console.error("No valid session found");
-          return;
-        }
-
-        const config = {
-          method: "post",
-          maxBodyLength: Infinity,
-          url: `/api/v1/config/read_all_by_category`,
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
-          data: { category: "measuring_unit" },
-        };
-
-        const response = await axios.request(config);
-        if (response.data.status && response.data.data) {
-          // Extract the value field from each config item
-          const units = response.data.data.map((item) => item.value);
-          setMeasuringUnitOptions(units);
-        }
-      } catch (error) {
-        console.error("Error fetching measuring units:", error);
-        // Fallback to empty array if API fails
-        setMeasuringUnitOptions([]);
-      } finally {
-        setLoadingMeasuringUnits(false);
-      }
-    };
-
-    fetchMeasuringUnits();
-  }, [getToken]);
-
-  // Fetch finishes from config API
-  useEffect(() => {
-    const fetchFinishes = async () => {
-      try {
-        setLoadingFinishes(true);
-        const sessionToken = getToken();
-        if (!sessionToken) {
-          console.error("No valid session found");
-          return;
-        }
-
-        const config = {
-          method: "post",
-          maxBodyLength: Infinity,
-          url: `/api/v1/config/read_all_by_category`,
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
-          data: { category: "finish" },
-        };
-
-        const response = await axios.request(config);
-        if (response.data.status && response.data.data) {
-          // Extract the value field from each config item
-          const finishes = response.data.data.map((item) => item.value);
-          setFinishOptions(finishes);
-        }
-      } catch (error) {
-        console.error("Error fetching finishes:", error);
-        // Fallback to empty array if API fails
-        setFinishOptions([]);
-      } finally {
-        setLoadingFinishes(false);
-      }
-    };
-
-    fetchFinishes();
-  }, [getToken]);
-
-  // Brands are shared by sheets, handles, and edging tape.
-  useEffect(() => {
-    const fetchBrands = async () => {
-      try {
-        setLoadingBrands(true);
-        const sessionToken = getToken();
-        if (!sessionToken) return;
-
-        const response = await axios.post(
-          "/api/v1/config/read_all_by_category",
-          { category: "brand" },
-          {
-            headers: {
-              Authorization: `Bearer ${sessionToken}`,
-              "Content-Type": "application/json",
-            },
-          },
-        );
-
-        if (response.data.status && response.data.data) {
-          setBrandOptions(response.data.data.map((config) => config.value));
-        }
-      } catch (error) {
-        console.error("Error fetching brands:", error);
-        setBrandOptions([]);
-      } finally {
-        setLoadingBrands(false);
-      }
-    };
-
-    fetchBrands();
+    fetchConfigOptions();
   }, [getToken]);
 
   useEffect(() => {
@@ -447,47 +760,15 @@ export default function page() {
     };
   }, [imagePreview]);
 
-  // Close dropdown when clicking outside
+  // Close the actions menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (showDropdown && !event.target.closest(".dropdown-container")) {
+      if (
+        showDropdown &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
         setShowDropdown(false);
-      }
-      if (
-        subCategoryDropdownRef.current &&
-        !subCategoryDropdownRef.current.contains(event.target)
-      ) {
-        setIsSubCategoryDropdownOpen(false);
-      }
-      if (
-        supplierDropdownRef.current &&
-        !supplierDropdownRef.current.contains(event.target)
-      ) {
-        setIsSupplierDropdownOpen(false);
-      }
-      if (
-        measuringUnitDropdownRef.current &&
-        !measuringUnitDropdownRef.current.contains(event.target)
-      ) {
-        setIsMeasuringUnitDropdownOpen(false);
-      }
-      if (
-        finishDropdownRef.current &&
-        !finishDropdownRef.current.contains(event.target)
-      ) {
-        setIsFinishDropdownOpen(false);
-      }
-      if (
-        brandDropdownRef.current &&
-        !brandDropdownRef.current.contains(event.target)
-      ) {
-        setIsBrandDropdownOpen(false);
-      }
-      if (
-        faceDropdownRef.current &&
-        !faceDropdownRef.current.contains(event.target)
-      ) {
-        setIsFaceDropdownOpen(false);
       }
     };
 
@@ -495,25 +776,25 @@ export default function page() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [
-    showDropdown,
-    isSubCategoryDropdownOpen,
-    isSupplierDropdownOpen,
-    isMeasuringUnitDropdownOpen,
-    isFinishDropdownOpen,
-    isFaceDropdownOpen,
-  ]);
+  }, [showDropdown]);
+
+  // The actions menu closes on Escape (DESIGN.md 9.4, 13). The delete
+  // confirmation is destructive and needs an explicit button.
+  useEffect(() => {
+    if (!showDropdown) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setShowDropdown(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [showDropdown]);
 
   const fetchItem = async () => {
     try {
       setLoading(true);
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error(SESSION_ERROR);
         return;
       }
       const response = await axios.get(`/api/v1/item/${id}`, {
@@ -523,47 +804,15 @@ export default function page() {
       });
       if (response.data.status) {
         setItem(response.data.data);
-
         // Load multi-supplier data
-        if (
-          response.data.data.itemSuppliers &&
-          response.data.data.itemSuppliers.length > 0
-        ) {
-          // Map API data to form state with temporary IDs
-          const suppliersData = response.data.data.itemSuppliers.map((is) => ({
-            id: uuidv4(),
-            supplier_id: is.supplier_id,
-            supplier_reference: is.supplier_reference || "",
-            supplier_product_link: is.supplier_product_link || "",
-            price: is.price || "",
-            supplier_search_term: is.supplier?.name || "",
-            _dropdownOpen: false,
-          }));
-          setItemSuppliers(suppliersData);
-        } else {
-          // Initialize with empty supplier entry if no itemSuppliers
-          setItemSuppliers([
-            {
-              id: uuidv4(),
-              supplier_id: "",
-              supplier_reference: "",
-              supplier_product_link: "",
-              price: "",
-              supplier_search_term: "",
-              _dropdownOpen: false,
-            },
-          ]);
-        }
+        setItemSuppliers(buildSupplierRows(response.data.data));
       } else {
-        setError(response.data.message || "Failed to fetch item data");
+        setError(response.data.message || LOAD_ERROR);
       }
     } catch (err) {
       console.error("API Error:", err);
       console.error("Error Response:", err.response?.data);
-      setError(
-        err.response?.data?.message ||
-          "An error occurred while fetching item data",
-      );
+      setError(err.response?.data?.message || LOAD_ERROR);
     } finally {
       setLoading(false);
     }
@@ -588,502 +837,172 @@ export default function page() {
     }
   };
 
-  const handleSubCategorySelect = (subCategory) => {
-    setFormData({
-      ...formData,
-      sub_category: subCategory,
-    });
-    setSubCategorySearchTerm(subCategory);
-    setIsSubCategoryDropdownOpen(false);
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
   };
 
-  const handleSubCategorySearchChange = (e) => {
-    setSubCategorySearchTerm(e.target.value);
-    setIsSubCategoryDropdownOpen(true);
-    // Update form data with user input
-    setFormData({
-      ...formData,
-      sub_category: e.target.value,
-    });
+  const openConfigModal = (kind, seed) => {
+    setConfigModal({ kind, seed: seed.trim() });
   };
 
-  // Handle create new hardware sub category
-  const handleCreateNewSubCategory = async () => {
-    if (!newSubCategoryValue || !newSubCategoryValue.trim()) {
-      toast.error("Sub category value is required");
-      return;
-    }
-
+  // Handle create new finish / brand / measuring unit / sub-category
+  const handleCreateConfig = async (value) => {
+    if (!configModal) return;
+    const { kind } = configModal;
+    const config = CONFIG_KINDS[kind];
     try {
-      setIsCreatingSubCategory(true);
+      setIsCreatingConfig(true);
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
+        toast.error(SESSION_ERROR);
         return;
       }
 
-      const config = {
-        method: "post",
-        maxBodyLength: Infinity,
-        url: `/api/v1/config/create`,
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-          "Content-Type": "application/json",
-        },
-        data: {
-          category: "hardware",
-          value: newSubCategoryValue.trim(),
-        },
-      };
-
-      const response = await axios.request(config);
-      if (response.data.status) {
-        toast.success("Hardware sub category created successfully");
-        // Refresh sub categories list
-        const fetchHardwareSubCategories = async () => {
-          try {
-            const config = {
-              method: "post",
-              maxBodyLength: Infinity,
-              url: `/api/v1/config/read_all_by_category`,
-              headers: {
-                Authorization: `Bearer ${sessionToken}`,
-                "Content-Type": "application/json",
-              },
-              data: { category: "hardware" },
-            };
-            const response = await axios.request(config);
-            if (response.data.status && response.data.data) {
-              const subCategories = response.data.data.map(
-                (item) => item.value,
-              );
-              setHardwareSubCategories(subCategories);
-            }
-          } catch (error) {
-            console.error("Error fetching hardware sub categories:", error);
-          }
-        };
-        await fetchHardwareSubCategories();
-        // Set the new sub category as selected
-        setFormData({
-          ...formData,
-          sub_category: newSubCategoryValue.trim(),
-        });
-        setSubCategorySearchTerm(newSubCategoryValue.trim());
-        setShowCreateSubCategoryModal(false);
-        setNewSubCategoryValue("");
-        setIsSubCategoryDropdownOpen(false);
-      } else {
-        toast.error(response.data.message || "Failed to create sub category");
-      }
-    } catch (error) {
-      console.error("Error creating sub category:", error);
-      const errorMessage =
-        error.response?.data?.message || "Failed to create sub category";
-      toast.error(errorMessage);
-    } finally {
-      setIsCreatingSubCategory(false);
-    }
-  };
-
-  const filteredSuppliers = suppliers.filter((supplier) =>
-    supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase()),
-  );
-
-  const handleSupplierSelect = (supplier) => {
-    setSelectedSupplier(supplier);
-    setSupplierSearchTerm(supplier.name);
-    setFormData({
-      ...formData,
-      supplier_id: supplier.supplier_id,
-    });
-    setIsSupplierDropdownOpen(false);
-  };
-
-  // Measuring unit handlers
-  const filteredMeasuringUnits = measuringUnitOptions.filter((unit) =>
-    unit.toLowerCase().includes(measuringUnitSearchTerm.toLowerCase()),
-  );
-
-  const handleMeasuringUnitSelect = (unit) => {
-    handleInputChange("measurement_unit", unit);
-    setMeasuringUnitSearchTerm(unit);
-    setIsMeasuringUnitDropdownOpen(false);
-  };
-
-  const handleMeasuringUnitSearchChange = (e) => {
-    const value = e.target.value;
-    setMeasuringUnitSearchTerm(value);
-    setIsMeasuringUnitDropdownOpen(true);
-    handleInputChange("measurement_unit", value);
-  };
-
-  // Finish handlers
-  const filteredFinishes = finishOptions.filter((finish) =>
-    finish.toLowerCase().includes(finishSearchTerm.toLowerCase()),
-  );
-
-  const handleFinishSelect = (finish) => {
-    handleInputChange("finish", finish);
-    setFinishSearchTerm(finish);
-    setIsFinishDropdownOpen(false);
-  };
-
-  const handleFinishSearchChange = (e) => {
-    const value = e.target.value;
-    setFinishSearchTerm(value);
-    setIsFinishDropdownOpen(true);
-    handleInputChange("finish", value);
-  };
-
-  const handleBrandSelect = (brand) => {
-    handleInputChange("brand", brand);
-    setBrandSearchTerm(brand);
-    setIsBrandDropdownOpen(false);
-  };
-
-  const handleBrandSearchChange = (e) => {
-    const value = e.target.value;
-    setBrandSearchTerm(value);
-    setIsBrandDropdownOpen(true);
-    handleInputChange("brand", value);
-  };
-
-  const openCreateBrandModal = () => {
-    setNewBrandValue(brandSearchTerm);
-    setShowCreateBrandModal(true);
-  };
-
-  const handleCreateNewBrand = async () => {
-    const value = newBrandValue.trim();
-    if (!value) {
-      toast.error("Brand value is required");
-      return;
-    }
-
-    try {
-      setIsCreatingBrand(true);
-      const sessionToken = getToken();
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        return;
-      }
-
-      const response = await axios.post(
-        "/api/v1/config/create",
-        { category: "brand", value },
-        { headers: { Authorization: `Bearer ${sessionToken}` } },
+      const response = await createConfigValue(
+        sessionToken,
+        config.category,
+        value,
       );
       if (!response.data.status) {
-        toast.error(response.data.message || "Failed to create brand");
+        toast.error(response.data.message || config.failed);
         return;
       }
 
-      setBrandOptions((current) => [...current, value]);
-      handleInputChange("brand", value);
-      setBrandSearchTerm(value);
-      setShowCreateBrandModal(false);
-      setNewBrandValue("");
-      setIsBrandDropdownOpen(false);
-      toast.success("Brand created successfully");
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to create brand");
-    } finally {
-      setIsCreatingBrand(false);
-    }
-  };
-
-  // Face handlers
-  const handleFaceSelect = (face) => {
-    handleInputChange("face", face);
-    setFaceSearchTerm(face);
-    setIsFaceDropdownOpen(false);
-  };
-
-  const handleFaceSearchChange = (e) => {
-    const value = e.target.value;
-    setFaceSearchTerm(value);
-    setIsFaceDropdownOpen(true);
-    handleInputChange("face", value);
-  };
-
-  // Handle create new finish
-  const handleCreateNewFinish = async () => {
-    if (!newFinishValue || !newFinishValue.trim()) {
-      toast.error("Finish value is required");
-      return;
-    }
-
-    try {
-      setIsCreatingFinish(true);
-      const sessionToken = getToken();
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        return;
-      }
-
-      const config = {
-        method: "post",
-        maxBodyLength: Infinity,
-        url: `/api/v1/config/create`,
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-          "Content-Type": "application/json",
-        },
-        data: {
-          category: "finish",
-          value: newFinishValue.trim(),
-        },
-      };
-
-      const response = await axios.request(config);
-      if (response.data.status) {
-        toast.success("Finish created successfully");
-        // Refresh finishes list
-        const fetchFinishes = async () => {
-          try {
-            const config = {
-              method: "post",
-              maxBodyLength: Infinity,
-              url: `/api/v1/config/read_all_by_category`,
-              headers: {
-                Authorization: `Bearer ${sessionToken}`,
-                "Content-Type": "application/json",
-              },
-              data: { category: "finish" },
-            };
-            const response = await axios.request(config);
-            if (response.data.status && response.data.data) {
-              const finishes = response.data.data.map((item) => item.value);
-              setFinishOptions(finishes);
-            }
-          } catch (error) {
-            console.error("Error fetching finishes:", error);
-          }
-        };
-        await fetchFinishes();
-        // Set the new finish as selected
-        handleInputChange("finish", newFinishValue.trim());
-        setFinishSearchTerm(newFinishValue.trim());
-        setShowCreateFinishModal(false);
-        setNewFinishValue("");
-        setIsFinishDropdownOpen(false);
+      toast.success(config.created);
+      if (kind === "brand") {
+        setConfigOptions((prev) => ({
+          ...prev,
+          brand: [...prev.brand, value],
+        }));
       } else {
-        toast.error(response.data.message || "Failed to create finish");
-      }
-    } catch (error) {
-      console.error("Error creating finish:", error);
-      const errorMessage =
-        error.response?.data?.message || "Failed to create finish";
-      toast.error(errorMessage);
-    } finally {
-      setIsCreatingFinish(false);
-    }
-  };
-
-  // Handle create new measuring unit
-  const handleCreateNewMeasuringUnit = async () => {
-    if (!newMeasuringUnitValue || !newMeasuringUnitValue.trim()) {
-      toast.error("Measuring unit value is required");
-      return;
-    }
-
-    try {
-      setIsCreatingMeasuringUnit(true);
-      const sessionToken = getToken();
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
-        return;
-      }
-
-      const config = {
-        method: "post",
-        maxBodyLength: Infinity,
-        url: `/api/v1/config/create`,
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-          "Content-Type": "application/json",
-        },
-        data: {
-          category: "measuring_unit",
-          value: newMeasuringUnitValue.trim(),
-        },
-      };
-
-      const response = await axios.request(config);
-      if (response.data.status) {
-        toast.success("Measuring unit created successfully");
-        // Refresh measuring units list
-        const fetchMeasuringUnits = async () => {
-          try {
-            const config = {
-              method: "post",
-              maxBodyLength: Infinity,
-              url: `/api/v1/config/read_all_by_category`,
-              headers: {
-                Authorization: `Bearer ${sessionToken}`,
-                "Content-Type": "application/json",
-              },
-              data: { category: "measuring_unit" },
-            };
-            const response = await axios.request(config);
-            if (response.data.status && response.data.data) {
-              const units = response.data.data.map((item) => item.value);
-              setMeasuringUnitOptions(units);
-            }
-          } catch (error) {
-            console.error("Error fetching measuring units:", error);
+        // Refresh the list
+        try {
+          const values = await readConfigValues(sessionToken, config.category);
+          if (values) {
+            setConfigOptions((prev) => ({ ...prev, [kind]: values }));
           }
-        };
-        await fetchMeasuringUnits();
-        // Set the new measuring unit as selected
-        handleInputChange("measurement_unit", newMeasuringUnitValue.trim());
-        setMeasuringUnitSearchTerm(newMeasuringUnitValue.trim());
-        setShowCreateMeasuringUnitModal(false);
-        setNewMeasuringUnitValue("");
-        setIsMeasuringUnitDropdownOpen(false);
-      } else {
-        toast.error(response.data.message || "Failed to create measuring unit");
+        } catch (err) {
+          console.error(`Error fetching ${kind} options:`, err);
+        }
       }
-    } catch (error) {
-      console.error("Error creating measuring unit:", error);
-      const errorMessage =
-        error.response?.data?.message || "Failed to create measuring unit";
-      toast.error(errorMessage);
+      // Set the new value as selected
+      handleInputChange(config.field, value);
+      setConfigModal(null);
+    } catch (err) {
+      console.error(`Error creating ${kind}:`, err);
+      toast.error(err.response?.data?.message || config.failed);
     } finally {
-      setIsCreatingMeasuringUnit(false);
-    }
-  };
-
-  const handleSupplierSearchChange = (e) => {
-    setSupplierSearchTerm(e.target.value);
-    setIsSupplierDropdownOpen(true);
-    // Clear supplier selection if search term is empty
-    if (e.target.value === "") {
-      setSelectedSupplier(null);
-      setFormData({
-        ...formData,
-        supplier_id: null,
-      });
+      setIsCreatingConfig(false);
     }
   };
 
   // Multi-supplier helper functions
   const handleAddSupplier = () => {
-    setItemSuppliers([
-      ...itemSuppliers,
-      {
-        id: uuidv4(),
-        supplier_id: "",
-        supplier_reference: "",
-        supplier_product_link: "",
-        price: "",
-        supplier_search_term: "",
-        _dropdownOpen: false,
-      },
-    ]);
+    setItemSuppliers((rows) => [...rows, emptySupplierRow()]);
   };
 
-  const handleRemoveSupplier = (id) => {
+  const handleRemoveSupplier = (rowId) => {
     // Keep at least one supplier
     if (itemSuppliers.length === 1) return;
-    setItemSuppliers(itemSuppliers.filter((s) => s.id !== id));
+    setItemSuppliers(itemSuppliers.filter((s) => s.id !== rowId));
   };
 
-  const handleSupplierFieldChange = (id, field, value) => {
-    setItemSuppliers(
-      itemSuppliers.map((s) => (s.id === id ? { ...s, [field]: value } : s)),
-    );
-  };
-
-  const handleMultiSupplierSelect = (id, supplierId, supplierName) => {
-    setItemSuppliers(
-      itemSuppliers.map((s) =>
-        s.id === id
-          ? {
-              ...s,
-              supplier_id: supplierId,
-              supplier_search_term: supplierName,
-            }
-          : s,
-      ),
+  const handleSupplierFieldChange = (rowId, field, value) => {
+    setItemSuppliers((rows) =>
+      rows.map((s) => (s.id === rowId ? { ...s, [field]: value } : s)),
     );
   };
 
   // Initialize edit form with current item data
   const handleEdit = () => {
-    if (item) {
-      // Get category first before using it
-      const category = item.category.toLowerCase();
+    if (!item) return;
+    const category = item.category.toLowerCase();
+    const details = item[category];
 
-      const editFormData = {
-        description: item.description || "",
-        measurement_unit: item.measurement_unit || "",
-      };
-      // Initialize measuring unit search term
-      setMeasuringUnitSearchTerm(item.measurement_unit || "");
-      // Initialize finish search term based on category
-      if (category === "sheet" && item.sheet?.finish) {
-        setFinishSearchTerm(item.sheet.finish);
-      } else if (category === "edging_tape" && item.edging_tape?.finish) {
-        setFinishSearchTerm(item.edging_tape.finish);
-      } else {
-        setFinishSearchTerm("");
-      }
+    const editFormData = {
+      description: item.description || "",
+      measurement_unit: item.measurement_unit || "",
+    };
 
-      // Add category-specific fields based on category
-      if (category === "sheet" && item.sheet) {
-        editFormData.brand = item.sheet?.brand || "";
-        editFormData.color = item.sheet?.color || "";
-        editFormData.finish = item.sheet?.finish || "";
+    // Add category-specific fields based on category
+    if (details) {
+      (CATEGORY_FIELDS[category] || []).forEach((field) => {
+        const name = typeof field === "string" ? field : field.name;
+        editFormData[name] = details[name] || "";
+      });
+      if (category === "sheet") {
         // Map "1" to "single side" for backward compatibility
-        const faceValue =
-          item.sheet?.face === "1" ? "single side" : item.sheet?.face || "";
-        editFormData.face = faceValue;
-        editFormData.dimensions = item.sheet?.dimensions || "";
-        editFormData.is_sunmica = item.sheet?.is_sunmica || false;
-        // Initialize face search term
-        setFaceSearchTerm(faceValue);
-      } else if (category === "handle" && item.handle) {
-        editFormData.brand = item.handle?.brand || "";
-        editFormData.color = item.handle?.color || "";
-        editFormData.type = item.handle?.type || "";
-        editFormData.material = item.handle?.material || "";
-        editFormData.dimensions = item.handle?.dimensions || "";
-      } else if (category === "hardware" && item.hardware) {
-        editFormData.brand = item.hardware?.brand || "";
-        editFormData.name = item.hardware?.name || "";
-        editFormData.type = item.hardware?.type || "";
-        editFormData.dimensions = item.hardware?.dimensions || "";
-        editFormData.sub_category = item.hardware?.sub_category || "";
-        // Initialize subcategory search term
-        setSubCategorySearchTerm(item.hardware?.sub_category || "");
-      } else if (category === "accessory" && item.accessory) {
-        editFormData.name = item.accessory?.name || "";
-      } else if (category === "edging_tape" && item.edging_tape) {
-        editFormData.brand = item.edging_tape?.brand || "";
-        editFormData.color = item.edging_tape?.color || "";
-        editFormData.finish = item.edging_tape?.finish || "";
-        editFormData.dimensions = item.edging_tape?.dimensions || "";
+        editFormData.face =
+          details.face === "1" ? "single side" : details.face || "";
+        editFormData.is_sunmica = details.is_sunmica || false;
       }
-
-      setBrandSearchTerm(editFormData.brand || "");
-      setFormData(editFormData);
-      setIsEditing(true);
     }
+
+    setFormData(editFormData);
+    setItemSuppliers(buildSupplierRows(item));
+    setSubmitted(false);
+    setIsEditing(true);
   };
 
+  // Same rules the browser applies to number and url inputs: price in cents,
+  // absolute URL.
+  const validate = () => {
+    const errs = {};
+    itemSuppliers.forEach((row) => {
+      const rowErrors = {};
+      if (row.price !== "" && row.price !== null && row.price !== undefined) {
+        const cents = Number(row.price) * 100;
+        if (
+          !Number.isFinite(cents) ||
+          Math.abs(cents - Math.round(cents)) > 1e-6
+        ) {
+          rowErrors.price =
+            "Enter an amount with up to 2 decimal places, e.g. 49.95.";
+        }
+      }
+      const link = String(row.supplier_product_link || "").trim();
+      if (link !== "") {
+        try {
+          new URL(link);
+        } catch {
+          rowErrors.link =
+            "Enter a full web address, e.g. https://supplier.com/product/123.";
+        }
+      }
+      if (rowErrors.price || rowErrors.link) errs[row.id] = rowErrors;
+    });
+    return errs;
+  };
+
+  const errors = submitted ? validate() : {};
+
   const handleSave = async () => {
+    if (isUpdating) return;
+    setSubmitted(true);
+
+    const currentErrors = validate();
+    const invalidRow = itemSuppliers.find((row) => currentErrors[row.id]);
+    if (invalidRow) {
+      const rowErrors = currentErrors[invalidRow.id];
+      document
+        .getElementById(
+          rowErrors.price
+            ? `item-price-${invalidRow.id}`
+            : `item-link-${invalidRow.id}`,
+        )
+        ?.focus();
+      return;
+    }
+
     try {
       setIsUpdating(true);
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error(SESSION_ERROR);
         return;
       }
 
@@ -1101,7 +1020,7 @@ export default function page() {
       // Add suppliers array as JSON for multi-supplier support
       const suppliersData = itemSuppliers
         .filter((s) => s.supplier_id) // Only include suppliers with ID selected
-        .map(({ id, supplier_search_term, _dropdownOpen, ...rest }) => rest); // Remove temp fields
+        .map(({ id: _rowId, ...rest }) => rest); // Remove temp fields
 
       if (suppliersData.length > 0) {
         formDataToSend.append("suppliers", JSON.stringify(suppliersData));
@@ -1135,41 +1054,31 @@ export default function page() {
         if (newImage) {
           completeUpload(1);
         } else {
-          toast.success("Item updated successfully!", {
-            position: "top-right",
-            autoClose: 3000,
-          });
+          toast.success("Item updated.");
         }
-        setItem(response.data.data);
         setIsEditing(false);
+        setSubmitted(false);
         setNewImage(null);
         setImagePreview(null);
         setDeleteImage(false);
+        setImageFailed(false);
       } else {
         if (newImage) {
           dismissProgressToast();
         }
-        toast.error(response.data.message || "Failed to update item", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(
+          response.data.message ||
+            "Couldn't save the item. Check the details and try again.",
+        );
       }
-    } catch (error) {
-      console.error("Error updating item:", error);
+    } catch (err) {
+      console.error("Error updating item:", err);
       if (newImage) {
         dismissProgressToast();
       }
       toast.error(
-        error.response?.data?.message ||
-          "Failed to update item. Please try again.",
-        {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        },
+        err.response?.data?.message ||
+          "Couldn't save the item. Check your connection and try again.",
       );
     } finally {
       setIsUpdating(false);
@@ -1178,46 +1087,13 @@ export default function page() {
 
   const handleCancel = () => {
     setIsEditing(false);
+    setSubmitted(false);
     setFormData({});
     setNewImage(null);
     setImagePreview(null);
     setDeleteImage(false);
-    setBrandSearchTerm("");
-    setIsBrandDropdownOpen(false);
-    setSubCategorySearchTerm("");
-    setIsSubCategoryDropdownOpen(false);
-    // Reset supplier state
-    if (item && item.supplier) {
-      setSelectedSupplier(item.supplier);
-      setSupplierSearchTerm(item.supplier.name);
-    } else {
-      setSelectedSupplier(null);
-      setSupplierSearchTerm("");
-    }
-    // Reset finish search term
-    const category = item?.category?.toLowerCase();
-    if (category === "sheet" && item?.sheet?.finish) {
-      setFinishSearchTerm(item.sheet.finish);
-    } else if (category === "edging_tape" && item?.edging_tape?.finish) {
-      setFinishSearchTerm(item.edging_tape.finish);
-    } else {
-      setFinishSearchTerm("");
-    }
-    setIsFinishDropdownOpen(false);
-    // Reset face search term
-    if (category === "sheet" && item?.sheet?.face) {
-      setFaceSearchTerm(item.sheet.face);
-    } else {
-      setFaceSearchTerm("");
-    }
-    setIsFaceDropdownOpen(false);
-  };
-
-  const handleInputChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    // Discard any supplier edits
+    setItemSuppliers(buildSupplierRows(item));
   };
 
   const handleImageChange = (e) => {
@@ -1231,6 +1107,8 @@ export default function page() {
       };
       reader.readAsDataURL(file);
     }
+    // Let the same file be chosen again after removing it.
+    e.target.value = "";
   };
 
   const handleDeleteImage = () => {
@@ -1244,7 +1122,7 @@ export default function page() {
       setIsDeleting(true);
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
+        toast.error(SESSION_ERROR);
         return;
       }
 
@@ -1255,34 +1133,24 @@ export default function page() {
       });
 
       if (response.data.status) {
-        toast.success("Item deleted successfully");
+        toast.success("Item deleted.");
         setShowDeleteModal(false);
         // Navigate back to inventory list
         window.location.href = "/admin/inventory";
       } else {
-        toast.error(response.data.message || "Failed to delete item");
+        toast.error(
+          response.data.message || "Couldn't delete the item. Try again.",
+        );
       }
-    } catch (error) {
-      console.error("Error deleting item:", error);
-      toast.error("Failed to delete item. Please try again.");
+    } catch (err) {
+      console.error("Error deleting item:", err);
+      toast.error(
+        err.response?.data?.message ||
+          "Couldn't delete the item. Check your connection and try again.",
+      );
     } finally {
       setIsDeleting(false);
     }
-  };
-
-  const formatValue = (value) => {
-    if (
-      value === null ||
-      value === undefined ||
-      value === "" ||
-      value === "null"
-    ) {
-      return "-";
-    }
-    if (typeof value === "string" && value.trim() === "") {
-      return "-";
-    }
-    return value;
   };
 
   const toggleNotes = (transactionId) => {
@@ -1326,746 +1194,222 @@ export default function page() {
     return "";
   };
 
-  const renderCategorySpecificFields = () => {
-    if (!item) return null;
-
-    const category = item.category.toLowerCase();
-
-    if (category === "sheet") {
-      return (
-        <>
-          <InfoField
-            label="Brand"
-            value={item.sheet.brand}
-            field="brand"
-            icon={<Tag className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-            editor={
-              <SearchableBrandDropdown
-                value={formData.brand}
-                searchTerm={brandSearchTerm}
-                onSearchChange={handleBrandSearchChange}
-                onSelect={handleBrandSelect}
-                isOpen={isBrandDropdownOpen}
-                setIsOpen={setIsBrandDropdownOpen}
-                dropdownRef={brandDropdownRef}
-                options={brandOptions}
-                loading={loadingBrands}
-                onCreate={openCreateBrandModal}
-              />
-            }
-          />
-          <InfoField
-            label="Color"
-            value={item.sheet.color}
-            field="color"
-            icon={<SwatchBook className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-          />
-          {isEditing ? (
-            <div className="relative" ref={finishDropdownRef}>
-              <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5" />
-                Finish
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={finishSearchTerm || formData.finish || ""}
-                  onChange={handleFinishSearchChange}
-                  onFocus={() => setIsFinishDropdownOpen(true)}
-                  placeholder={formatValue(item.sheet.finish)}
-                  className="w-full text-sm text-slate-800 px-2 py-1 pr-8 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsFinishDropdownOpen(!isFinishDropdownOpen)}
-                  className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform ${
-                      isFinishDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {isFinishDropdownOpen && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                  {loadingFinishes ? (
-                    <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                      Loading finishes...
-                    </div>
-                  ) : filteredFinishes.length > 0 ? (
-                    <>
-                      {filteredFinishes.map((finish, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => handleFinishSelect(finish)}
-                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                        >
-                          {finish}
-                        </button>
-                      ))}
-                      {finishSearchTerm &&
-                        !filteredFinishes.some(
-                          (f) =>
-                            f.toLowerCase() === finishSearchTerm.toLowerCase(),
-                        ) && (
-                          <div className="border-t border-slate-200">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNewFinishValue(finishSearchTerm);
-                                setShowCreateFinishModal(true);
-                              }}
-                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                            >
-                              <Plus className="w-4 h-4" />
-                              Create "{finishSearchTerm}"
-                            </button>
-                          </div>
-                        )}
-                    </>
-                  ) : (
-                    <div className="px-4 py-3">
-                      <div className="text-sm text-slate-500 mb-2">
-                        No matching finishes found
-                      </div>
-                      {finishSearchTerm && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewFinishValue(finishSearchTerm);
-                            setShowCreateFinishModal(true);
-                          }}
-                          className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Create "{finishSearchTerm}"
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <InfoField
-              label="Finish"
-              value={item.sheet.finish}
-              field="finish"
-              icon={<Layers className="w-3.5 h-3.5" />}
-              isEditing={isEditing}
-              formData={formData}
-              handleInputChange={handleInputChange}
-              formatValue={formatValue}
-            />
-          )}
-          {isEditing ? (
-            <div className="relative" ref={faceDropdownRef}>
-              <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-                <Box className="w-3.5 h-3.5" />
-                Face
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={faceSearchTerm || formData.face || ""}
-                  onChange={handleFaceSearchChange}
-                  onFocus={() => setIsFaceDropdownOpen(true)}
-                  placeholder={formatValue(item.sheet.face)}
-                  disabled={formData.is_sunmica}
-                  className={`w-full text-sm text-slate-800 px-2 py-1 pr-8 border rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none ${
-                    formData.is_sunmica
-                      ? "bg-slate-100 cursor-not-allowed border-slate-300"
-                      : "border-slate-300"
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsFaceDropdownOpen(!isFaceDropdownOpen)}
-                  disabled={formData.is_sunmica}
-                  className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
-                >
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform ${
-                      isFaceDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {isFaceDropdownOpen && !formData.is_sunmica && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                  {filteredFaces.length > 0 ? (
-                    filteredFaces.map((face, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => handleFaceSelect(face)}
-                        className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                      >
-                        {face}
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-3 py-2 text-xs text-slate-500 text-center">
-                      No matching options found
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-                <Box className="w-3.5 h-3.5" />
-                Face
-              </label>
-              <p className="text-sm text-slate-800">
-                {formatValue(item.sheet.face)}
-              </p>
-            </div>
-          )}
-          <InfoField
-            label="Dimensions"
-            value={item.sheet.dimensions}
-            field="dimensions"
-            icon={<Hash className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-          />
-          {/* Is Sunmica Checkbox */}
-          <div>
-            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-              <Box className="w-3.5 h-3.5" />
-              Is Sunmica
-            </label>
-            {isEditing ? (
-              <label className="flex items-center gap-2 cursor-pointer mt-1">
-                <input
-                  type="checkbox"
-                  checked={formData.is_sunmica || false}
-                  onChange={(e) => {
-                    handleInputChange("is_sunmica", e.target.checked);
-                    // If is_sunmica is checked, set face to "single side" and disable it
-                    if (e.target.checked) {
-                      handleInputChange("face", "single side");
-                      setFaceSearchTerm("single side");
-                    } else if (
-                      formData.face === "single side" ||
-                      item.sheet?.face === "single side" ||
-                      formData.face === "1" ||
-                      item.sheet?.face === "1"
-                    ) {
-                      // If is_sunmica is unchecked and face was "single side" or "1", clear it
-                      handleInputChange("face", "");
-                      setFaceSearchTerm("");
-                    }
-                  }}
-                  className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-2 focus:ring-primary cursor-pointer"
-                />
-                <span className="text-sm text-slate-800">
-                  This is a sunmica item
-                </span>
-              </label>
-            ) : (
-              <p className="text-sm text-slate-800">
-                {item.sheet.is_sunmica ? "Yes" : "No"}
-              </p>
-            )}
-            {isEditing && formData.is_sunmica && (
-              <p className="mt-1 text-xs text-slate-500">
-                Face field is automatically set to "single side" for sunmica
-                items
-              </p>
-            )}
-          </div>
-        </>
-      );
+  // If is_sunmica is checked, face is set to "single side" and disabled.
+  const handleSunmicaChange = (e) => {
+    const checked = e.target.checked;
+    handleInputChange("is_sunmica", checked);
+    if (checked) {
+      handleInputChange("face", "single side");
+    } else if (
+      formData.face === "single side" ||
+      item.sheet?.face === "single side" ||
+      formData.face === "1" ||
+      item.sheet?.face === "1"
+    ) {
+      // If is_sunmica is unchecked and face was "single side" or "1", clear it
+      handleInputChange("face", "");
     }
+  };
 
-    if (category === "handle") {
+  const renderCombo = (key) => {
+    const configKind = CONFIG_KINDS[key];
+    if (key === "face") {
       return (
-        <>
-          <InfoField
-            label="Brand"
-            value={item.handle.brand}
-            field="brand"
-            icon={<Tag className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-            editor={
-              <SearchableBrandDropdown
-                value={formData.brand}
-                searchTerm={brandSearchTerm}
-                onSearchChange={handleBrandSearchChange}
-                onSelect={handleBrandSelect}
-                isOpen={isBrandDropdownOpen}
-                setIsOpen={setIsBrandDropdownOpen}
-                dropdownRef={brandDropdownRef}
-                options={brandOptions}
-                loading={loadingBrands}
-                onCreate={openCreateBrandModal}
-              />
-            }
-          />
-          <InfoField
-            label="Color"
-            value={item.handle.color}
-            field="color"
-            icon={<SwatchBook className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-          />
-          <InfoField
-            label="Type"
-            value={item.handle.type}
-            field="type"
-            icon={<Layers className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-          />
-          <InfoField
-            label="Material"
-            value={item.handle.material}
-            field="material"
-            icon={<Box className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-          />
-          <InfoField
-            label="Dimensions"
-            value={item.handle.dimensions}
-            field="dimensions"
-            icon={<Hash className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-          />
-        </>
-      );
-    }
-
-    if (category === "hardware") {
-      return (
-        <>
-          {/* Sub Category Field with Dropdown */}
-          <div>
-            <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5" />
-              Sub Category
-            </label>
-            {isEditing ? (
-              <div className="relative" ref={subCategoryDropdownRef}>
-                <input
-                  type="text"
-                  value={subCategorySearchTerm}
-                  onChange={handleSubCategorySearchChange}
-                  onFocus={() => setIsSubCategoryDropdownOpen(true)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      setIsSubCategoryDropdownOpen(false);
-                    }
-                  }}
-                  placeholder="Search or enter sub category..."
-                  className="w-full text-sm text-slate-800 px-2 py-1 pr-8 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    setIsSubCategoryDropdownOpen(!isSubCategoryDropdownOpen)
-                  }
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  <ChevronDown
-                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                      isSubCategoryDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                {isSubCategoryDropdownOpen && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                    {loadingSubCategories ? (
-                      <div className="px-3 py-2 text-xs text-slate-500 text-center">
-                        Loading sub categories...
-                      </div>
-                    ) : filteredSubCategories.length > 0 ? (
-                      <>
-                        {filteredSubCategories.map((subCategory, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => handleSubCategorySelect(subCategory)}
-                            className="w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                          >
-                            {subCategory}
-                          </button>
-                        ))}
-                        {subCategorySearchTerm &&
-                          !filteredSubCategories.some(
-                            (sc) =>
-                              sc.toLowerCase() ===
-                              subCategorySearchTerm.toLowerCase(),
-                          ) && (
-                            <div className="border-t border-slate-200">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setNewSubCategoryValue(subCategorySearchTerm);
-                                  setShowCreateSubCategoryModal(true);
-                                }}
-                                className="cursor-pointer w-full text-left px-3 py-2 text-xs text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                                Create "{subCategorySearchTerm}"
-                              </button>
-                            </div>
-                          )}
-                      </>
-                    ) : (
-                      <div className="px-3 py-2">
-                        <div className="text-xs text-slate-500 mb-2 text-center">
-                          No matching sub categories found
-                        </div>
-                        {subCategorySearchTerm && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setNewSubCategoryValue(subCategorySearchTerm);
-                              setShowCreateSubCategoryModal(true);
-                            }}
-                            className="cursor-pointer w-full px-3 py-2 text-xs text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            Create "{subCategorySearchTerm}"
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-slate-800">
-                {formatValue(item.hardware.sub_category)}
-              </p>
-            )}
-          </div>
-
-          <InfoField
-            label="Brand"
-            value={item.hardware.brand}
-            field="brand"
-            icon={<Tag className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-          />
-          <InfoField
-            label="Name"
-            value={item.hardware.name}
-            field="name"
-            icon={<FileText className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-          />
-          <InfoField
-            label="Type"
-            value={item.hardware.type}
-            field="type"
-            icon={<Box className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-          />
-          <InfoField
-            label="Dimensions"
-            value={item.hardware.dimensions}
-            field="dimensions"
-            icon={<Hash className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-          />
-        </>
-      );
-    }
-
-    if (category === "accessory") {
-      return (
-        <InfoField
-          label="Item Name"
-          value={item.accessory.name}
-          field="name"
-          icon={<FileText className="w-3.5 h-3.5" />}
-          fullWidth
-          isEditing={isEditing}
-          formData={formData}
-          handleInputChange={handleInputChange}
-          formatValue={formatValue}
+        <FreeformCombobox
+          key={key}
+          id="item-face"
+          label={COMBO_LABELS.face}
+          noun="face"
+          value={formData.face || ""}
+          onChange={(value) => handleInputChange("face", value)}
+          options={faceOptions}
+          placeholder="e.g. single side"
+          disabled={!!formData.is_sunmica}
         />
       );
     }
-
-    if (category === "edging_tape") {
-      return (
-        <>
-          <InfoField
-            label="Brand"
-            value={item.edging_tape.brand}
-            field="brand"
-            icon={<Tag className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-            editor={
-              <SearchableBrandDropdown
-                value={formData.brand}
-                searchTerm={brandSearchTerm}
-                onSearchChange={handleBrandSearchChange}
-                onSelect={handleBrandSelect}
-                isOpen={isBrandDropdownOpen}
-                setIsOpen={setIsBrandDropdownOpen}
-                dropdownRef={brandDropdownRef}
-                options={brandOptions}
-                loading={loadingBrands}
-                onCreate={openCreateBrandModal}
-              />
-            }
-          />
-          <InfoField
-            label="Color"
-            value={item.edging_tape.color}
-            field="color"
-            icon={<SwatchBook className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-          />
-          {isEditing ? (
-            <div className="relative" ref={finishDropdownRef}>
-              <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5" />
-                Finish
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={finishSearchTerm || formData.finish || ""}
-                  onChange={handleFinishSearchChange}
-                  onFocus={() => setIsFinishDropdownOpen(true)}
-                  placeholder={formatValue(item.edging_tape.finish)}
-                  className="w-full text-sm text-slate-800 px-2 py-1 pr-8 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setIsFinishDropdownOpen(!isFinishDropdownOpen)}
-                  className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  <ChevronDown
-                    className={`w-4 h-4 transition-transform ${
-                      isFinishDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {isFinishDropdownOpen && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                  {loadingFinishes ? (
-                    <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                      Loading finishes...
-                    </div>
-                  ) : filteredFinishes.length > 0 ? (
-                    <>
-                      {filteredFinishes.map((finish, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => handleFinishSelect(finish)}
-                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                        >
-                          {finish}
-                        </button>
-                      ))}
-                      {finishSearchTerm &&
-                        !filteredFinishes.some(
-                          (f) =>
-                            f.toLowerCase() === finishSearchTerm.toLowerCase(),
-                        ) && (
-                          <div className="border-t border-slate-200">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNewFinishValue(finishSearchTerm);
-                                setShowCreateFinishModal(true);
-                              }}
-                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                            >
-                              <Plus className="w-4 h-4" />
-                              Create "{finishSearchTerm}"
-                            </button>
-                          </div>
-                        )}
-                    </>
-                  ) : (
-                    <div className="px-4 py-3">
-                      <div className="text-sm text-slate-500 mb-2">
-                        No matching finishes found
-                      </div>
-                      {finishSearchTerm && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setNewFinishValue(finishSearchTerm);
-                            setShowCreateFinishModal(true);
-                          }}
-                          className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Create "{finishSearchTerm}"
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <InfoField
-              label="Finish"
-              value={item.edging_tape.finish}
-              field="finish"
-              icon={<Layers className="w-3.5 h-3.5" />}
-              isEditing={isEditing}
-              formData={formData}
-              handleInputChange={handleInputChange}
-              formatValue={formatValue}
-            />
-          )}
-          <InfoField
-            label="Dimensions"
-            value={item.edging_tape.dimensions}
-            field="dimensions"
-            icon={<Hash className="w-3.5 h-3.5" />}
-            isEditing={isEditing}
-            formData={formData}
-            handleInputChange={handleInputChange}
-            formatValue={formatValue}
-          />
-        </>
-      );
-    }
-
-    return null;
+    return (
+      <FreeformCombobox
+        key={key}
+        id={configKind.comboId}
+        label={COMBO_LABELS[key]}
+        noun={COMBO_LABELS[key].toLowerCase()}
+        value={formData[key] || ""}
+        onChange={(value) => handleInputChange(key, value)}
+        options={configOptions[key]}
+        placeholder={configKind.placeholder}
+        loading={loadingConfig}
+        loadingText={`Loading ${COMBO_LABELS[key].toLowerCase()} options...`}
+        emptyText={`No matching ${COMBO_LABELS[key].toLowerCase()} options found`}
+        onCreate={(seed) => openConfigModal(key, seed)}
+      />
+    );
   };
+
+  const category = item?.category?.toLowerCase();
+  const categoryDetails = item && category ? item[category] : null;
+  const itemTitle = getItemTitle() || item?.item_id || "";
+  // "Edging Tape" as a badge label, "Edging tape" at the start of a heading.
+  const categoryLabel = item ? formatLabel(item.category) : "";
+  const categoryHeading =
+    categoryLabel.charAt(0) + categoryLabel.slice(1).toLowerCase();
+  const categoryFields = CATEGORY_FIELDS[category] || [];
+
+  const getFieldLabel = (field) =>
+    typeof field === "string" ? COMBO_LABELS[field] : field.label;
+  const getFieldName = (field) =>
+    typeof field === "string" ? field : field.name;
+
+  // The existing image or a newly chosen one, as the viewer should open it.
+  const openImageViewer = () => {
+    if (imagePreview) {
+      // New image preview
+      setSelectedFile({
+        name: item.item_id || "item-image",
+        type: "image",
+        url: imagePreview,
+        isExisting: false,
+      });
+    } else if (item.image?.url) {
+      // Existing image
+      setSelectedFile({
+        name: item.image.filename || item.item_id || "item-image",
+        type: "image",
+        url: item.image.url.startsWith("/")
+          ? item.image.url
+          : `/${item.image.url}`,
+        size: item.image.size || 0,
+        isExisting: true,
+      });
+    }
+    setViewFileModal(true);
+  };
+
+  const hasImage = !!(imagePreview || item?.image?.url);
+
+  const totalReserved = (item?.reserve_item_stock || []).reduce(
+    (sum, reservation) =>
+      sum + (reservation.quantity - reservation.used_quantity),
+    0,
+  );
 
   return (
     <AdminShell>
       <main className="h-full overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center h-full">
+          <div
+            className="flex items-center justify-center h-full"
+            role="status"
+          >
             <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-              <p className="text-slate-600">Loading item details...</p>
+              <div
+                className="animate-spin rounded-full w-8 h-8 border-2 border-primary border-t-transparent mx-auto mb-4"
+                aria-hidden="true"
+              />
+              <p className="text-sm text-slate-600">Loading item details...</p>
             </div>
           </div>
         ) : error ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <p className="text-red-600 mb-4">{error}</p>
+              <AlertTriangle
+                className="w-8 h-8 text-red-500 mx-auto mb-4"
+                aria-hidden="true"
+              />
+              <p className="text-sm text-red-600 mb-4" role="alert">
+                {error}
+              </p>
               <button
+                type="button"
                 onClick={() => window.location.reload()}
-                className="cursor-pointer px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
+                className={`${BTN_PRIMARY} mx-auto`}
               >
-                Try Again
+                Try again
               </button>
             </div>
           </div>
         ) : !item ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
-              <Package className="h-12 w-12 text-slate-400 mx-auto mb-4" />
-              <p className="text-slate-600">Item not found</p>
+              <Package
+                className="w-8 h-8 text-slate-300 mx-auto mb-4"
+                aria-hidden="true"
+              />
+              <p className="text-sm text-slate-600">
+                This item could not be found. It may have been deleted.
+              </p>
             </div>
           </div>
         ) : (
           <div className="p-3">
-            {/* Header */}
+            {/* Header: back, record name with badges, record actions */}
             <div className="flex items-center gap-3 mb-4">
               <TabsController back={true}>
-                <div className="cursor-pointer p-2 hover:bg-slate-200 rounded-lg transition-colors">
-                  <ChevronLeft className="w-6 h-6 text-slate-600" />
-                </div>
+                <span className="cursor-pointer flex p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200">
+                  <ChevronLeft className="w-5 h-5" aria-hidden="true" />
+                  <span className="sr-only">Back</span>
+                </span>
               </TabsController>
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold text-slate-600">
-                  {getItemTitle()}
+              <div className="flex-1 flex flex-wrap items-center gap-3 min-w-0">
+                <h1
+                  className="text-xl font-semibold text-slate-800 truncate"
+                  title={itemTitle}
+                >
+                  {itemTitle}
                 </h1>
+                {/* A category carries no meaning, so its badge is neutral */}
+                <span className={`${BADGE} ${BADGE_TONES.neutral}`}>
+                  {categoryLabel}
+                </span>
+                {category === "sheet" && item.sheet?.is_sunmica && (
+                  <span className={`${BADGE} ${BADGE_TONES.violet}`}>
+                    Sunmica
+                  </span>
+                )}
               </div>
               <div className="flex gap-2">
                 {!isEditing ? (
-                  <div className="relative dropdown-container">
+                  <div ref={dropdownRef} className="relative">
                     <button
+                      type="button"
                       onClick={() => setShowDropdown(!showDropdown)}
-                      className="cursor-pointer flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                      aria-haspopup="menu"
+                      aria-expanded={showDropdown}
+                      className={BTN_SECONDARY}
                     >
-                      <CiMenuKebab className="w-4 h-4 text-slate-600" />
-                      <span className="text-slate-600">More Actions</span>
+                      <MoreVertical className="w-4 h-4" aria-hidden="true" />
+                      <span>More actions</span>
                     </button>
 
                     {showDropdown && (
-                      <div className="absolute right-0 mt-2 w-50 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                      <div
+                        role="menu"
+                        className="absolute right-0 mt-1 w-56 bg-white border border-slate-300 rounded-lg z-40"
+                      >
                         <div className="py-1">
                           <button
+                            type="button"
+                            role="menuitem"
                             onClick={() => {
                               handleEdit();
                               setShowDropdown(false);
                             }}
-                            className="cursor-pointer w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3"
+                            className={`${MENU_ITEM} text-slate-700`}
                           >
-                            <Edit className="w-4 h-4" />
-                            Edit Item Details
+                            <Edit className="w-4 h-4" aria-hidden="true" />
+                            Edit item details
                           </button>
                           <button
+                            type="button"
+                            role="menuitem"
                             onClick={() => {
                               setShowDeleteModal(true);
                               setShowDropdown(false);
                             }}
-                            className="cursor-pointer w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50 flex items-center gap-3"
+                            className={`${MENU_ITEM} text-red-700 hover:bg-red-50`}
                           >
-                            <Trash2 className="w-4 h-4" />
-                            Delete Item
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
+                            Delete item
                           </button>
                         </div>
                       </div>
@@ -2074,18 +1418,25 @@ export default function page() {
                 ) : (
                   <>
                     <button
-                      onClick={handleSave}
-                      disabled={isUpdating}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Edit className="w-4 h-4" />
-                      {isUpdating ? "Saving..." : "Save"}
-                    </button>
-                    <button
+                      type="button"
                       onClick={handleCancel}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 border-2 border-slate-300 text-slate-700 hover:bg-slate-100 rounded-md transition-all duration-200 text-sm font-medium"
+                      disabled={isUpdating}
+                      className={BTN_SECONDARY}
                     >
                       Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      form="item-edit-form"
+                      disabled={isUpdating}
+                      className={BTN_PRIMARY}
+                    >
+                      {isUpdating ? (
+                        <span className={SPINNER} aria-hidden="true" />
+                      ) : (
+                        <Check className="w-4 h-4" aria-hidden="true" />
+                      )}
+                      Save changes
                     </button>
                   </>
                 )}
@@ -2093,963 +1444,800 @@ export default function page() {
             </div>
 
             {/* Content */}
-            <div className="space-y-4">
-              {/* Main Info and Details Section */}
-              <div className="grid grid-cols-10 gap-4">
-                {/* Main Information - 70% width */}
-                <div className="col-span-7">
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
+            <form
+              id="item-edit-form"
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (isEditing) handleSave();
+              }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
+                {/* Main information - 70% width */}
+                <div className="lg:col-span-7 space-y-4">
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
                     <div className="flex items-start gap-4">
-                      <div className="relative w-16 h-16 overflow-hidden rounded-lg group">
-                        {isEditing && !deleteImage && (
-                          <button
-                            onClick={handleDeleteImage}
-                            className="cursor-pointer absolute top-1 right-1 z-10 p-1 bg-red-500 hover:bg-red-600 text-white rounded transition-all duration-200"
-                            title="Delete Image"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        )}
-                        {deleteImage && !imagePreview ? (
-                          <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-lg border border-slate-200">
-                            <div className="text-center">
-                              <Trash2 className="w-4 h-4 text-slate-400 mx-auto mb-1" />
-                              <p className="text-xs text-slate-500">
-                                Image will be deleted
+                      {/* Image */}
+                      <div className="shrink-0 flex flex-col items-start gap-2">
+                        <div className="relative w-20 h-20 overflow-hidden rounded-lg">
+                          {deleteImage && !imagePreview ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 rounded-lg border border-slate-200 text-center p-1">
+                              <Trash2
+                                className="w-4 h-4 text-slate-500 mb-1"
+                                aria-hidden="true"
+                              />
+                              <p className="text-xs text-slate-600">
+                                Image will be removed
                               </p>
                             </div>
-                          </div>
-                        ) : item.image?.url || imagePreview ? (
-                          <button
-                            onClick={() => {
-                              if (imagePreview) {
-                                // New image preview (blob URL)
-                                setSelectedFile({
-                                  name: item.item_id || "item-image",
-                                  type: "image",
-                                  url: imagePreview,
-                                  isExisting: false,
-                                });
-                              } else if (item.image?.url) {
-                                // Existing image
-                                setSelectedFile({
-                                  name:
-                                    item.image.filename ||
-                                    item.item_id ||
-                                    "item-image",
-                                  type: "image",
-                                  url: item.image.url.startsWith("/")
-                                    ? item.image.url
-                                    : `/${item.image.url}`,
-                                  size: item.image.size || 0,
-                                  isExisting: true,
-                                });
-                              }
-                              setViewFileModal(true);
-                            }}
-                          >
-                            <Image
-                              src={imagePreview || `/${item.image.url}`}
-                              alt={item.item_id}
-                              fill
-                              className="cursor-pointer object-cover rounded-lg border border-slate-200 transition-all duration-300 group-hover:scale-110"
-                            />
-                          </button>
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-lg border border-slate-200">
-                            <Package className="w-6 h-6 text-slate-400" />
-                          </div>
-                        )}
-                        {isEditing && (
-                          <div className="absolute bottom-0 left-0 right-0 flex justify-center pb-1">
-                            <label className="cursor-pointer px-2 py-1 bg-primary/90 hover:bg-primary text-white text-xs font-medium rounded transition-all duration-200">
-                              Change
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleImageChange}
-                                className="hidden"
+                          ) : hasImage && !imageFailed ? (
+                            <button
+                              type="button"
+                              onClick={openImageViewer}
+                              aria-label="View item image"
+                              className="cursor-pointer block w-full h-full rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                            >
+                              <Image
+                                src={imagePreview || `/${item.image.url}`}
+                                alt=""
+                                fill
+                                onError={() => setImageFailed(true)}
+                                className="object-cover rounded-lg border border-slate-200"
                               />
-                            </label>
-                          </div>
+                            </button>
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-lg border border-slate-200">
+                              <Package
+                                className="w-6 h-6 text-slate-400"
+                                aria-hidden="true"
+                              />
+                              <span className="sr-only">No image</span>
+                            </div>
+                          )}
+                        </div>
+                        {isEditing && (
+                          <>
+                            <input
+                              ref={fileInputRef}
+                              id="item-image-input"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageChange}
+                              tabIndex={-1}
+                              aria-label="Choose item image"
+                              className="sr-only"
+                            />
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className={BTN_SECONDARY_COMPACT}
+                              >
+                                {hasImage && !deleteImage
+                                  ? "Change image"
+                                  : "Add image"}
+                              </button>
+                              {!deleteImage && hasImage && (
+                                <button
+                                  type="button"
+                                  onClick={handleDeleteImage}
+                                  className={`${BTN_ICON} text-red-600`}
+                                  aria-label="Remove image"
+                                  title="Remove image"
+                                >
+                                  <Trash2
+                                    className="w-4 h-4"
+                                    aria-hidden="true"
+                                  />
+                                </button>
+                              )}
+                            </div>
+                          </>
                         )}
                       </div>
-                      <div className="flex-1">
-                        <div className="grid grid-cols-2 gap-4 mb-3">
-                          <div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <h2 className="text-lg font-bold text-slate-800">
-                                {getItemTitle()}
-                              </h2>
-                              <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full capitalize">
-                                {item.category
-                                  .toLowerCase()
-                                  .charAt(0)
-                                  .toUpperCase() +
-                                  item.category.toLowerCase().slice(1)}
-                              </span>
-                              {item.category.toLowerCase() === "sheet" &&
-                                item.sheet?.is_sunmica && (
-                                  <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
-                                    Sunmica
-                                  </span>
-                                )}
-                            </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <h2 className="text-lg font-semibold text-slate-800">
+                              {itemTitle}
+                            </h2>
                             <p className="text-xs text-slate-500">
-                              ID: {item.item_id}
+                              ID:{" "}
+                              <span className="font-mono">{item.item_id}</span>
                             </p>
                           </div>
-                          <div className="text-right">
-                            {isEditing ? (
-                              <input
-                                type="number"
-                                value={formData.quantity || ""}
-                                onChange={(e) =>
-                                  handleInputChange("quantity", e.target.value)
-                                }
-                                placeholder={formatValue(item.quantity)}
-                                className="w-full text-lg text-slate-800 px-2 py-1 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none text-right"
-                                step="0.1"
-                              />
-                            ) : (
-                              <p className="text-2xl font-bold text-emerald-600">
-                                {formatValue(item.quantity)}
-                                {item.measurement_unit && (
-                                  <span className="ml-1 text-sm font-normal">
-                                    {item.measurement_unit}
-                                  </span>
-                                )}
+                          <div className="text-right shrink-0">
+                            <p className="text-xs text-slate-500 mb-1">
+                              Quantity
+                            </p>
+                            <StockLevel
+                              stock={Number(item.quantity) || 0}
+                              unit={item.measurement_unit}
+                            />
+                            {isEditing && (
+                              <p className="text-xs text-slate-500 mt-1">
+                                Adjust stock with a stock tally.
                               </p>
                             )}
                           </div>
-                          <div className="flex-1">
-                            <div className="grid grid-cols-2 gap-4 mb-3">
-                              <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <h2 className="text-lg font-bold text-slate-800">
-                                    {getItemTitle()}
-                                  </h2>
-                                  <span className="px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-full capitalize">
-                                    {item.category
-                                      .toLowerCase()
-                                      .charAt(0)
-                                      .toUpperCase() +
-                                      item.category.toLowerCase().slice(1)}
-                                  </span>
-                                  {item.category.toLowerCase() === "sheet" &&
-                                    item.sheet?.is_sunmica && (
-                                      <span className="px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
-                                        Sunmica
-                                      </span>
-                                    )}
-                                </div>
-                                <p className="text-xs text-slate-500">
-                                  ID: {item.item_id}
-                                </p>
-                              </div>
-                              <div className="text-right">
-                                <p className="text-2xl font-bold text-emerald-600">
-                                  {formatValue(item.quantity)}
-                                  {item.measurement_unit && (
-                                    <span className="ml-1 text-sm font-normal">
-                                      {item.measurement_unit}
-                                    </span>
-                                  )}
-                                </p>
-                                {isEditing && (
-                                  <p className="text-xs text-slate-500">
-                                    Adjust stock via Stock Tally
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                        </div>
 
-                          {/* Measurement Unit Field - Back to grid */}
-                          <div className="grid grid-cols-2 gap-4">
-                            {/* Measurement Unit Field */}
-                            <div
-                              className="relative"
-                              ref={measuringUnitDropdownRef}
-                            >
-                              <label className="text-xs uppercase tracking-wide text-slate-500 mb-1 flex items-center gap-1.5">
-                                <Ruler className="w-3.5 h-3.5" />
-                                Measurement Unit
+                        {isEditing ? (
+                          <div className="mt-4 space-y-6">
+                            <div>
+                              <label
+                                htmlFor="item-description"
+                                className={LABEL}
+                              >
+                                Description
                               </label>
-                              {isEditing ? (
-                                <>
-                                  <div className="relative">
-                                    <input
-                                      type="text"
-                                      value={
-                                        measuringUnitSearchTerm ||
-                                        formData.measurement_unit ||
-                                        ""
-                                      }
-                                      onChange={handleMeasuringUnitSearchChange}
-                                      onFocus={() =>
-                                        setIsMeasuringUnitDropdownOpen(true)
-                                      }
-                                      placeholder={formatValue(
-                                        item.measurement_unit,
-                                      )}
-                                      className="w-full text-sm text-slate-800 px-2 py-1 pr-8 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        setIsMeasuringUnitDropdownOpen(
-                                          !isMeasuringUnitDropdownOpen,
+                              <textarea
+                                id="item-description"
+                                value={formData.description || ""}
+                                onChange={(e) =>
+                                  handleInputChange(
+                                    "description",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="e.g. 18 mm white melamine, matt finish"
+                                rows={3}
+                                className={`${inputClass(false)} resize-none`}
+                              />
+                            </div>
+
+                            <div className="space-y-4">
+                              <h3 className="text-sm font-semibold text-slate-700">
+                                {categoryHeading} details
+                              </h3>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {categoryFields.map((field) =>
+                                  typeof field === "string" ? (
+                                    <div
+                                      key={field}
+                                      onKeyDown={blockEnterSubmit}
+                                    >
+                                      {renderCombo(field)}
+                                    </div>
+                                  ) : (
+                                    <TextField
+                                      key={field.name}
+                                      id={`item-${field.name}`}
+                                      label={field.label}
+                                      mono={field.mono}
+                                      value={formData[field.name] || ""}
+                                      onChange={(e) =>
+                                        handleInputChange(
+                                          field.name,
+                                          e.target.value,
                                         )
                                       }
-                                      className="cursor-pointer absolute right-2 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                    >
-                                      <ChevronDown
-                                        className={`w-4 h-4 transition-transform ${
-                                          isMeasuringUnitDropdownOpen
-                                            ? "rotate-180"
-                                            : ""
-                                        }`}
-                                      />
-                                    </button>
-                                  </div>
+                                      placeholder={field.placeholder}
+                                    />
+                                  ),
+                                )}
+                                <div onKeyDown={blockEnterSubmit}>
+                                  <FreeformCombobox
+                                    id="item-measurement-unit"
+                                    label="Measurement unit"
+                                    noun="measurement unit"
+                                    value={formData.measurement_unit || ""}
+                                    onChange={(value) =>
+                                      handleInputChange(
+                                        "measurement_unit",
+                                        value,
+                                      )
+                                    }
+                                    options={configOptions.measuring_unit}
+                                    placeholder="e.g. each"
+                                    loading={loadingConfig}
+                                    loadingText="Loading measuring units..."
+                                    emptyText="No matching measuring units found"
+                                    onCreate={(seed) =>
+                                      openConfigModal("measuring_unit", seed)
+                                    }
+                                  />
+                                </div>
+                              </div>
 
-                                  {isMeasuringUnitDropdownOpen && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                                      {loadingMeasuringUnits ? (
-                                        <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                          Loading measuring units...
-                                        </div>
-                                      ) : filteredMeasuringUnits.length > 0 ? (
-                                        <>
-                                          {filteredMeasuringUnits.map(
-                                            (unit, index) => (
-                                              <button
-                                                key={index}
-                                                type="button"
-                                                onClick={() =>
-                                                  handleMeasuringUnitSelect(
-                                                    unit,
-                                                  )
-                                                }
-                                                className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                                              >
-                                                {unit}
-                                              </button>
-                                            ),
-                                          )}
-                                          {measuringUnitSearchTerm &&
-                                            !filteredMeasuringUnits.some(
-                                              (u) =>
-                                                u.toLowerCase() ===
-                                                measuringUnitSearchTerm.toLowerCase(),
-                                            ) && (
-                                              <div className="border-t border-slate-200">
-                                                <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                    setNewMeasuringUnitValue(
-                                                      measuringUnitSearchTerm,
-                                                    );
-                                                    setShowCreateMeasuringUnitModal(
-                                                      true,
-                                                    );
-                                                  }}
-                                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                                                >
-                                                  <Plus className="w-4 h-4" />
-                                                  Create "
-                                                  {measuringUnitSearchTerm}"
-                                                </button>
-                                              </div>
-                                            )}
-                                        </>
-                                      ) : (
-                                        <div className="px-4 py-3">
-                                          <div className="text-sm text-slate-500 mb-2">
-                                            No matching measuring units found
-                                          </div>
-                                          {measuringUnitSearchTerm && (
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setNewMeasuringUnitValue(
-                                                  measuringUnitSearchTerm,
-                                                );
-                                                setShowCreateMeasuringUnitModal(
-                                                  true,
-                                                );
-                                              }}
-                                              className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
-                                            >
-                                              <Plus className="w-4 h-4" />
-                                              Create "{measuringUnitSearchTerm}"
-                                            </button>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
+                              {category === "sheet" && (
+                                <div>
+                                  <label
+                                    htmlFor="item-sunmica"
+                                    className="flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <input
+                                      id="item-sunmica"
+                                      type="checkbox"
+                                      checked={!!formData.is_sunmica}
+                                      onChange={handleSunmicaChange}
+                                      aria-describedby={
+                                        formData.is_sunmica
+                                          ? "item-sunmica-hint"
+                                          : undefined
+                                      }
+                                      className={CHECKBOX}
+                                    />
+                                    <span className="text-sm font-medium text-slate-700">
+                                      Is sunmica
+                                    </span>
+                                  </label>
+                                  {formData.is_sunmica && (
+                                    <p
+                                      id="item-sunmica-hint"
+                                      className="mt-1 text-xs text-slate-500"
+                                    >
+                                      Face is set to &quot;single side&quot;
+                                      automatically for sunmica items.
+                                    </p>
                                   )}
-                                </>
-                              ) : (
-                                <p className="text-sm text-slate-800">
-                                  {formatValue(item.measurement_unit)}
-                                </p>
+                                </div>
                               )}
                             </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="mt-4 space-y-4">
+                            <dl>
+                              <dt className="text-xs text-slate-500 mb-1">
+                                Description
+                              </dt>
+                              <dd className="text-sm text-slate-700 bg-slate-50 border border-slate-200 p-3 rounded-lg">
+                                {formatValue(item.description)}
+                              </dd>
+                            </dl>
+
+                            <div className="pt-4 border-t border-slate-200">
+                              <h3 className="text-sm font-semibold text-slate-700 mb-3">
+                                {categoryHeading} details
+                              </h3>
+                              <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3">
+                                {categoryFields.map((field) => {
+                                  const name = getFieldName(field);
+                                  const raw = categoryDetails?.[name];
+                                  const value =
+                                    name === "face" && raw === "1"
+                                      ? "single side"
+                                      : raw;
+                                  const mono =
+                                    typeof field !== "string" && field.mono;
+                                  return (
+                                    <div key={name}>
+                                      <dt className="text-xs text-slate-500 mb-0.5">
+                                        {getFieldLabel(field)}
+                                      </dt>
+                                      <dd
+                                        className={`text-sm text-slate-800 ${
+                                          mono ? "font-mono" : ""
+                                        }`}
+                                      >
+                                        {formatValue(value)}
+                                      </dd>
+                                    </div>
+                                  );
+                                })}
+                                <div>
+                                  <dt className="text-xs text-slate-500 mb-0.5">
+                                    Measurement unit
+                                  </dt>
+                                  <dd className="text-sm text-slate-800">
+                                    {formatValue(item.measurement_unit)}
+                                  </dd>
+                                </div>
+                                {category === "sheet" && (
+                                  <div>
+                                    <dt className="text-xs text-slate-500 mb-0.5">
+                                      Is sunmica
+                                    </dt>
+                                    <dd className="text-sm text-slate-800">
+                                      {item.sheet?.is_sunmica ? "Yes" : "No"}
+                                    </dd>
+                                  </div>
+                                )}
+                              </dl>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Reserved Stock Section */}
-                  {item?.reserve_item_stock &&
-                    item.reserve_item_stock.length > 0 &&
-                    (() => {
-                      // Calculate total reserved quantity
-                      const totalReserved = item.reserve_item_stock.reduce(
-                        (sum, reservation) =>
-                          sum +
-                          (reservation.quantity - reservation.used_quantity),
-                        0,
-                      );
-
-                      return (
-                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mt-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                              <Box className="w-4 h-4" />
-                              Reserved Stock
-                            </h3>
-                            <div className="text-right">
-                              <label className="text-xs uppercase tracking-wide text-slate-500">
-                                Total Reserved
-                              </label>
-                              <p className="text-sm font-bold text-amber-600">
-                                {totalReserved}
-                                {item.measurement_unit && (
-                                  <span className="ml-1 text-xs text-slate-500 font-normal">
-                                    {item.measurement_unit}
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="border-b border-slate-200">
-                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                    Project Name
-                                  </th>
-                                  <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                    Lot ID
-                                  </th>
-                                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                    Reserved Qty
-                                  </th>
-                                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                    Used Qty
-                                  </th>
-                                  <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                    Remaining
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {item.reserve_item_stock.map((reservation) => {
-                                  const remaining =
-                                    reservation.quantity -
-                                    reservation.used_quantity;
-                                  return (
-                                    <tr
-                                      key={reservation.id}
-                                      className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
-                                    >
-                                      <td className="py-2 px-3 text-slate-700">
-                                        {reservation.mto?.mto?.project?.name ||
-                                          "-"}
-                                      </td>
-                                      <td className="py-2 px-3 text-slate-700">
-                                        {reservation.mto?.mto?.lots &&
-                                        reservation.mto.mto.lots.length > 0 ? (
-                                          <span className="text-xs font-medium text-slate-800">
-                                            {reservation.mto.mto.lots
-                                              .map((lot) => lot.lot_id)
-                                              .join(", ")}
-                                          </span>
-                                        ) : (
-                                          "-"
-                                        )}
-                                      </td>
-                                      <td className="py-2 px-3 text-right font-medium text-slate-800">
-                                        {reservation.quantity}
-                                        {item.measurement_unit && (
-                                          <span className="ml-1 text-xs text-slate-500 font-normal">
-                                            {item.measurement_unit}
-                                          </span>
-                                        )}
-                                      </td>
-                                      <td className="py-2 px-3 text-right text-slate-600">
-                                        {reservation.used_quantity}
-                                        {item.measurement_unit && (
-                                          <span className="ml-1 text-xs text-slate-500 font-normal">
-                                            {item.measurement_unit}
-                                          </span>
-                                        )}
-                                      </td>
-                                      <td className="py-2 px-3 text-right font-bold text-amber-600">
-                                        {remaining}
-                                        {item.measurement_unit && (
-                                          <span className="ml-1 text-xs text-slate-500 font-normal">
-                                            {item.measurement_unit}
-                                          </span>
-                                        )}
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
+                  {/* Reserved stock */}
+                  {item.reserve_item_stock &&
+                    item.reserve_item_stock.length > 0 && (
+                      <div className="bg-white rounded-lg border border-slate-200">
+                        <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-slate-200">
+                          <h2 className="text-lg font-semibold text-slate-800">
+                            Reserved stock
+                          </h2>
+                          <div className="text-right">
+                            <p className="text-xs text-slate-500">
+                              Total reserved
+                            </p>
+                            <p className="text-sm font-medium font-mono text-slate-800">
+                              {formatQty(totalReserved, item.measurement_unit)}
+                            </p>
                           </div>
                         </div>
-                      );
-                    })()}
 
-                  {/* Stock Transactions Section */}
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mt-4">
-                    <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-                      <Package className="w-4 h-4" />
-                      Stock Transactions
-                    </h3>
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-slate-50">
+                              <tr>
+                                <th scope="col" className={`${TH} text-left`}>
+                                  Project name
+                                </th>
+                                <th scope="col" className={`${TH} text-left`}>
+                                  Lot ID
+                                </th>
+                                <th scope="col" className={`${TH} text-right`}>
+                                  Reserved qty
+                                </th>
+                                <th scope="col" className={`${TH} text-right`}>
+                                  Used qty
+                                </th>
+                                <th scope="col" className={`${TH} text-right`}>
+                                  Remaining
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                              {item.reserve_item_stock.map((reservation) => {
+                                const remaining =
+                                  reservation.quantity -
+                                  reservation.used_quantity;
+                                const lots = reservation.mto?.mto?.lots;
+                                return (
+                                  <tr
+                                    key={reservation.id}
+                                    className="hover:bg-slate-50 transition-colors"
+                                  >
+                                    <td className="px-4 py-3 text-sm text-slate-700">
+                                      {formatValue(
+                                        reservation.mto?.mto?.project?.name,
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-slate-700 font-mono">
+                                      {lots && lots.length > 0
+                                        ? lots
+                                            .map((lot) => lot.lot_id)
+                                            .join(", ")
+                                        : EMPTY}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-slate-700 text-right font-mono whitespace-nowrap">
+                                      {formatQty(
+                                        reservation.quantity,
+                                        item.measurement_unit,
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-slate-700 text-right font-mono whitespace-nowrap">
+                                      {formatQty(
+                                        reservation.used_quantity,
+                                        item.measurement_unit,
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm font-medium text-slate-800 text-right font-mono whitespace-nowrap">
+                                      {formatQty(
+                                        remaining,
+                                        item.measurement_unit,
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Stock transactions */}
+                  <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-200">
+                      <h2 className="text-lg font-semibold text-slate-800">
+                        Stock transactions
+                      </h2>
+                    </div>
                     {sortedStockTransactions.length > 0 ? (
                       <>
                         <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b border-slate-200">
-                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide w-8"></th>
-                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                          <table className="w-full">
+                            <thead className="bg-slate-50">
+                              <tr>
+                                <th scope="col" className={`${TH} w-8`}>
+                                  <span className="sr-only">Notes</span>
+                                </th>
+                                <th scope="col" className={`${TH} text-left`}>
                                   Date
                                 </th>
-                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                <th scope="col" className={`${TH} text-left`}>
                                   Type
                                 </th>
-                                <th className="text-right py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                <th scope="col" className={`${TH} text-right`}>
                                   Quantity
                                 </th>
-                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                  Purchase Order
+                                <th scope="col" className={`${TH} text-left`}>
+                                  Purchase order
                                 </th>
-                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                                  Project Name
+                                <th scope="col" className={`${TH} text-left`}>
+                                  Project name
                                 </th>
-                                <th className="text-left py-2 px-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                                <th scope="col" className={`${TH} text-left`}>
                                   Lot ID
                                 </th>
                               </tr>
                             </thead>
-                            <tbody>
-                              {currentStockTransactions.map((transaction) => (
-                                <React.Fragment key={transaction.id}>
-                                  <tr
-                                    className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${
-                                      transaction.notes ? "cursor-pointer" : ""
-                                    }`}
-                                    onClick={() =>
-                                      transaction.notes &&
-                                      toggleNotes(transaction.id)
-                                    }
-                                  >
-                                    <td className="py-2 px-3 whitespace-nowrap">
-                                      {transaction.notes && (
-                                        <div className="flex items-center">
-                                          {expandedNotes.has(transaction.id) ? (
-                                            <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
-                                          ) : (
-                                            <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-                                          )}
-                                        </div>
-                                      )}
-                                    </td>
-                                    <td className="py-2 px-3 text-slate-700">
-                                      {new Date(
-                                        transaction.createdAt,
-                                      ).toLocaleString("en-US", {
-                                        year: "numeric",
-                                        month: "short",
-                                        day: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                    </td>
-                                    <td className="py-2 px-3">
-                                      <span
-                                        className={`px-2 py-1 text-xs font-medium rounded-full ${
-                                          transaction.type === "ADDED"
-                                            ? "bg-emerald-100 text-emerald-800"
-                                            : transaction.type === "USED"
-                                              ? "bg-blue-100 text-blue-800"
-                                              : "bg-red-100 text-red-800"
-                                        }`}
+                            <tbody className="divide-y divide-slate-200">
+                              {currentStockTransactions.map((transaction) => {
+                                const projectName =
+                                  transaction.materials_to_order?.project
+                                    ?.name || transaction.project?.name;
+                                const lotIds =
+                                  transaction.lot?.lot_id ||
+                                  (transaction.materials_to_order?.lots &&
+                                  transaction.materials_to_order.lots.length > 0
+                                    ? transaction.materials_to_order.lots
+                                        .map((lot) => lot.lot_id)
+                                        .join(", ")
+                                    : null);
+                                const isExpanded = expandedNotes.has(
+                                  transaction.id,
+                                );
+                                return (
+                                  <React.Fragment key={transaction.id}>
+                                    <tr
+                                      className={`hover:bg-slate-50 transition-colors ${
+                                        transaction.notes
+                                          ? "cursor-pointer"
+                                          : ""
+                                      }`}
+                                      onClick={() =>
+                                        transaction.notes &&
+                                        toggleNotes(transaction.id)
+                                      }
+                                    >
+                                      <td className="px-4 py-3 whitespace-nowrap">
+                                        {transaction.notes && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              toggleNotes(transaction.id);
+                                            }}
+                                            aria-expanded={isExpanded}
+                                            aria-label={
+                                              isExpanded
+                                                ? "Hide notes"
+                                                : "Show notes"
+                                            }
+                                            className="cursor-pointer flex p-1 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary"
+                                          >
+                                            {isExpanded ? (
+                                              <ChevronUp
+                                                className="w-4 h-4"
+                                                aria-hidden="true"
+                                              />
+                                            ) : (
+                                              <ChevronDown
+                                                className="w-4 h-4"
+                                                aria-hidden="true"
+                                              />
+                                            )}
+                                          </button>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                                        {DATE_TIME.format(
+                                          new Date(transaction.createdAt),
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <span
+                                          className={`${BADGE} ${
+                                            TX_TONES[transaction.type] ||
+                                            BADGE_TONES.neutral
+                                          }`}
+                                        >
+                                          {formatLabel(transaction.type)}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3 text-sm font-medium text-slate-800 text-right font-mono whitespace-nowrap">
+                                        {transaction.type === "ADDED"
+                                          ? "+"
+                                          : "-"}
+                                        {formatQty(
+                                          transaction.quantity,
+                                          item.measurement_unit,
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-slate-700 font-mono">
+                                        {transaction.type === "ADDED" &&
+                                        transaction.purchase_order?.order_no
+                                          ? transaction.purchase_order.order_no
+                                          : EMPTY}
+                                      </td>
+                                      <td
+                                        className="px-4 py-3 text-sm text-slate-700 max-w-xs truncate"
+                                        title={
+                                          transaction.type === "USED" &&
+                                          projectName
+                                            ? projectName
+                                            : undefined
+                                        }
                                       >
-                                        {transaction.type}
-                                      </span>
-                                    </td>
-                                    <td className="py-2 px-3 text-right font-medium text-slate-800">
-                                      {transaction.type === "ADDED" ? "+" : "-"}
-                                      {transaction.quantity}
-                                      {item.measurement_unit && (
-                                        <span className="ml-1 text-xs text-slate-500 font-normal">
-                                          {item.measurement_unit}
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="py-2 px-3 text-slate-600">
-                                      {transaction.type === "ADDED" &&
-                                      transaction.purchase_order?.order_no ? (
-                                        <span className="text-xs font-medium text-primary">
-                                          {transaction.purchase_order.order_no}
-                                        </span>
-                                      ) : (
-                                        "-"
-                                      )}
-                                    </td>
-                                    <td className="py-2 px-3 text-slate-600">
-                                      {transaction.type === "USED" &&
-                                      (transaction.materials_to_order?.project
-                                        ?.name ||
-                                        transaction.project?.name) ? (
-                                        <span className="text-xs font-medium text-slate-800">
-                                          {transaction.materials_to_order
-                                            ?.project?.name ||
-                                            transaction.project?.name}
-                                        </span>
-                                      ) : (
-                                        "-"
-                                      )}
-                                    </td>
-                                    <td className="py-2 px-3 text-slate-600">
-                                      {transaction.type === "USED" &&
-                                      (transaction.lot?.lot_id ||
-                                        (transaction.materials_to_order?.lots &&
-                                          transaction.materials_to_order.lots
-                                            .length > 0)) ? (
-                                        <span className="text-xs font-medium text-slate-800">
-                                          {transaction.lot?.lot_id ||
-                                            transaction.materials_to_order.lots
-                                              .map((lot) => lot.lot_id)
-                                              .join(", ")}
-                                        </span>
-                                      ) : (
-                                        "-"
-                                      )}
-                                    </td>
-                                  </tr>
-                                  {transaction.notes &&
-                                    expandedNotes.has(transaction.id) && (
+                                        {transaction.type === "USED" &&
+                                        projectName
+                                          ? projectName
+                                          : EMPTY}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-slate-700 font-mono">
+                                        {transaction.type === "USED" && lotIds
+                                          ? lotIds
+                                          : EMPTY}
+                                      </td>
+                                    </tr>
+                                    {transaction.notes && isExpanded && (
                                       <tr className="bg-slate-50">
-                                        <td colSpan={7} className="px-4 py-4">
-                                          <div className="text-xs text-slate-700">
-                                            <span className="font-medium text-slate-800 mb-2 block">
-                                              Notes:
-                                            </span>
-                                            <div className="text-slate-600 whitespace-pre-wrap pl-4 border-l-2 border-slate-300">
-                                              {transaction.notes}
-                                            </div>
+                                        <td colSpan={7} className="px-4 py-3">
+                                          <p className="text-xs font-medium text-slate-700 mb-1">
+                                            Notes
+                                          </p>
+                                          <div className="text-sm text-slate-600 whitespace-pre-wrap pl-3 border-l border-slate-300">
+                                            {transaction.notes}
                                           </div>
                                         </td>
                                       </tr>
                                     )}
-                                </React.Fragment>
-                              ))}
+                                  </React.Fragment>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
 
-                        {/* Pagination (same UI as Jobs list) */}
                         {stockTxTotalPages > 1 && (
-                          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200">
-                            <div className="text-xs text-slate-500">
-                              Showing {stockTxStartIndex + 1} to{" "}
-                              {Math.min(
-                                stockTxEndIndex,
-                                sortedStockTransactions.length,
-                              )}{" "}
-                              of {sortedStockTransactions.length} results
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() =>
-                                  handleStockTxPageChange(
-                                    stockTxCurrentPage - 1,
-                                  )
-                                }
-                                disabled={stockTxCurrentPage === 1}
-                                className="cursor-pointer px-2 py-1 text-xs font-medium text-slate-500 bg-white border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                Previous
-                              </button>
-                              <div className="flex items-center gap-1">
-                                {Array.from(
-                                  { length: stockTxTotalPages },
-                                  (_, i) => i + 1,
-                                ).map((page) => (
-                                  <button
-                                    key={page}
-                                    onClick={() =>
-                                      handleStockTxPageChange(page)
-                                    }
-                                    className={`cursor-pointer px-2 py-1 text-xs font-medium rounded ${
-                                      stockTxCurrentPage === page
-                                        ? "bg-primary text-white"
-                                        : "text-slate-500 bg-white border border-slate-300 hover:bg-slate-50"
-                                    }`}
-                                  >
-                                    {page}
-                                  </button>
-                                ))}
-                              </div>
-                              <button
-                                onClick={() =>
-                                  handleStockTxPageChange(
-                                    stockTxCurrentPage + 1,
-                                  )
-                                }
-                                disabled={
-                                  stockTxCurrentPage === stockTxTotalPages
-                                }
-                                className="cursor-pointer px-2 py-1 text-xs font-medium text-slate-500 bg-white border border-slate-300 rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                Next
-                              </button>
-                            </div>
-                          </div>
+                          <PaginationFooter
+                            totalItems={sortedStockTransactions.length}
+                            itemsPerPage={STOCK_TX_PER_PAGE}
+                            currentPage={stockTxCurrentPage}
+                            onPageChange={setStockTxCurrentPage}
+                            showItemsPerPage={false}
+                          />
                         )}
                       </>
                     ) : (
-                      <div className="text-center py-8 text-slate-500">
-                        <Package className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                        <p className="text-sm">No stock transactions found</p>
+                      <div className="flex flex-col items-center text-center py-12">
+                        <Package
+                          className="w-8 h-8 text-slate-300 mb-2"
+                          aria-hidden="true"
+                        />
+                        <p className="text-sm text-slate-600">
+                          No stock transactions for this item yet.
+                        </p>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Suppliers Section - 30% width (moved from main section) */}
-                <div className="col-span-3">
-                  <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-                        <Building2 className="w-4 h-4" />
+                {/* Suppliers - 30% width */}
+                <div className="lg:col-span-3">
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <div className="flex items-center justify-between gap-2 mb-4">
+                      <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                        <Building2 className="w-4 h-4" aria-hidden="true" />
                         Suppliers
-                      </h3>
+                      </h2>
                       {isEditing && (
                         <button
                           type="button"
                           onClick={handleAddSupplier}
-                          className="flex items-center gap-1 px-2 py-1 text-xs text-primary hover:bg-primary/10 rounded transition-colors"
+                          className={BTN_SECONDARY_COMPACT}
                         >
-                          <Plus className="w-3 h-3" />
-                          Add Supplier
+                          <Plus className="w-4 h-4" aria-hidden="true" />
+                          Add supplier
                         </button>
                       )}
                     </div>
 
                     {isEditing ? (
-                      <div className="space-y-3">
-                        {itemSuppliers.map((supplier, index) => (
-                          <div
-                            key={supplier.id}
-                            className="border border-slate-300 rounded-lg p-3 space-y-3 relative bg-white"
-                          >
-                            {/* Remove button */}
-                            {itemSuppliers.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleRemoveSupplier(supplier.id)
-                                }
-                                className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                                title="Remove supplier"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-
-                            <div className="text-xs font-medium text-slate-600">
-                              Supplier #{index + 1}
-                            </div>
-
-                            <div className="space-y-3">
-                              {/* Supplier Dropdown */}
-                              <div className="relative">
-                                <label className="text-xs text-slate-600 mb-1 block">
-                                  Supplier Name
-                                </label>
-                                <input
-                                  type="text"
-                                  value={supplier.supplier_search_term}
-                                  onChange={(e) =>
-                                    handleSupplierFieldChange(
-                                      supplier.id,
-                                      "supplier_search_term",
-                                      e.target.value,
-                                    )
-                                  }
-                                  onFocus={() => {
-                                    const updatedSuppliers = itemSuppliers.map(
-                                      (s) =>
-                                        s.id === supplier.id
-                                          ? {
-                                              ...s,
-                                              _dropdownOpen: true,
-                                            }
-                                          : {
-                                              ...s,
-                                              _dropdownOpen: false,
-                                            },
-                                    );
-                                    setItemSuppliers(updatedSuppliers);
-                                  }}
-                                  placeholder="Search supplier..."
-                                  className="w-full text-sm text-slate-800 px-2 py-1.5 pr-7 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const updatedSuppliers = itemSuppliers.map(
-                                      (s) =>
-                                        s.id === supplier.id
-                                          ? {
-                                              ...s,
-                                              _dropdownOpen: !s._dropdownOpen,
-                                            }
-                                          : s,
-                                    );
-                                    setItemSuppliers(updatedSuppliers);
-                                  }}
-                                  className="absolute right-2 top-7 text-slate-400 hover:text-slate-600 transition-colors"
-                                >
-                                  <ChevronDown
-                                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                                      supplier._dropdownOpen ? "rotate-180" : ""
-                                    }`}
-                                  />
-                                </button>
-
-                                {supplier._dropdownOpen && (
-                                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-auto">
-                                    {filteredSuppliers.filter((s) =>
-                                      s.name
-                                        .toLowerCase()
-                                        .includes(
-                                          (
-                                            supplier.supplier_search_term || ""
-                                          ).toLowerCase(),
-                                        ),
-                                    ).length > 0 ? (
-                                      filteredSuppliers
-                                        .filter((s) =>
-                                          s.name
-                                            .toLowerCase()
-                                            .includes(
-                                              (
-                                                supplier.supplier_search_term ||
-                                                ""
-                                              ).toLowerCase(),
-                                            ),
-                                        )
-                                        .map((s) => (
-                                          <button
-                                            key={s.supplier_id}
-                                            type="button"
-                                            onClick={() => {
-                                              // Update supplier selection and close dropdown in one state update
-                                              setItemSuppliers(
-                                                itemSuppliers.map((sup) =>
-                                                  sup.id === supplier.id
-                                                    ? {
-                                                        ...sup,
-                                                        supplier_id:
-                                                          s.supplier_id,
-                                                        supplier_search_term:
-                                                          s.name,
-                                                        _dropdownOpen: false,
-                                                      }
-                                                    : sup,
-                                                ),
-                                              );
-                                            }}
-                                            className="cursor-pointer w-full text-left px-3 py-2 text-xs text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                          >
-                                            <div className="font-medium">
-                                              {s.name}
-                                            </div>
-                                            <div className="text-xs text-slate-500">
-                                              {s.supplier_id}
-                                            </div>
-                                          </button>
-                                        ))
-                                    ) : (
-                                      <div className="px-3 py-2 text-xs text-slate-500 text-center">
-                                        No suppliers found
-                                      </div>
-                                    )}
-                                  </div>
+                      <div className="space-y-4">
+                        {itemSuppliers.map((supplier, index) => {
+                          const rowErrors = errors[supplier.id] || {};
+                          return (
+                            <div
+                              key={supplier.id}
+                              className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-4"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <h3 className="text-sm font-semibold text-slate-700">
+                                  Supplier {index + 1}
+                                </h3>
+                                {/* Remove button */}
+                                {itemSuppliers.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handleRemoveSupplier(supplier.id)
+                                    }
+                                    className="cursor-pointer p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                                    aria-label={`Remove supplier ${index + 1}`}
+                                    title="Remove supplier"
+                                  >
+                                    <X className="w-4 h-4" aria-hidden="true" />
+                                  </button>
                                 )}
                               </div>
 
-                              {/* Price */}
-                              <div>
-                                <label className="text-xs text-slate-600 mb-1 block">
-                                  Price per Unit
+                              <div onKeyDown={blockEnterSubmit}>
+                                <label
+                                  htmlFor={`item-supplier-${supplier.id}`}
+                                  className={LABEL}
+                                >
+                                  Supplier name
                                 </label>
-                                <div className="relative">
-                                  <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-slate-500 text-sm">
-                                    $
-                                  </span>
-                                  <input
-                                    type="number"
-                                    value={supplier.price}
-                                    onChange={(e) =>
-                                      handleSupplierFieldChange(
-                                        supplier.id,
-                                        "price",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0.00"
-                                    step="0.01"
-                                    className="w-full text-sm text-slate-800 pl-6 pr-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Supplier Reference */}
-                              <div>
-                                <label className="text-xs text-slate-600 mb-1 block">
-                                  Supplier Reference
-                                </label>
-                                <input
-                                  type="text"
-                                  value={supplier.supplier_reference}
-                                  onChange={(e) =>
+                                <CustomDropdown
+                                  id={`item-supplier-${supplier.id}`}
+                                  options={suppliers.map((s) => ({
+                                    value: s.supplier_id,
+                                    label: s.name,
+                                    description: s.supplier_id,
+                                  }))}
+                                  value={supplier.supplier_id}
+                                  onChange={(value) =>
                                     handleSupplierFieldChange(
                                       supplier.id,
-                                      "supplier_reference",
-                                      e.target.value,
+                                      "supplier_id",
+                                      value,
                                     )
                                   }
-                                  placeholder="e.g. SUP-12345"
-                                  className="w-full text-sm text-slate-800 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
+                                  placeholder="Select a supplier"
+                                  searchable
+                                  emptyText="No matching suppliers found"
                                 />
                               </div>
 
-                              {/* Supplier Product Link */}
-                              <div>
-                                <label className="text-xs text-slate-600 mb-1 block">
-                                  Product Link
-                                </label>
-                                <input
-                                  type="url"
-                                  value={supplier.supplier_product_link}
-                                  onChange={(e) =>
-                                    handleSupplierFieldChange(
-                                      supplier.id,
-                                      "supplier_product_link",
-                                      e.target.value,
-                                    )
-                                  }
-                                  placeholder="https://..."
-                                  className="w-full text-sm text-slate-800 px-2 py-1.5 border border-slate-300 rounded focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                                />
-                              </div>
+                              <TextField
+                                id={`item-price-${supplier.id}`}
+                                label="Price per unit (incl. GST)"
+                                type="number"
+                                mono
+                                prefix="$"
+                                step="0.01"
+                                value={supplier.price}
+                                onChange={(e) =>
+                                  handleSupplierFieldChange(
+                                    supplier.id,
+                                    "price",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="0.00"
+                                error={rowErrors.price}
+                              />
+
+                              <TextField
+                                id={`item-reference-${supplier.id}`}
+                                label="Supplier reference"
+                                mono
+                                value={supplier.supplier_reference}
+                                onChange={(e) =>
+                                  handleSupplierFieldChange(
+                                    supplier.id,
+                                    "supplier_reference",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="e.g. SUP-12345"
+                              />
+
+                              <TextField
+                                id={`item-link-${supplier.id}`}
+                                label="Product link"
+                                type="url"
+                                value={supplier.supplier_product_link}
+                                onChange={(e) =>
+                                  handleSupplierFieldChange(
+                                    supplier.id,
+                                    "supplier_product_link",
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="e.g. https://supplier.com/product/123"
+                                error={rowErrors.link}
+                              />
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {item?.itemSuppliers &&
-                        item.itemSuppliers.length > 0 ? (
-                          item.itemSuppliers.map((itemSupplier, index) => (
-                            <div
-                              key={index}
-                              className="border border-slate-200 rounded-lg p-3 bg-slate-50"
-                            >
-                              <div className="space-y-2 text-sm">
-                                <div>
-                                  <div className="text-xs text-slate-500 mb-0.5">
-                                    Supplier
-                                  </div>
+                    ) : item.itemSuppliers && item.itemSuppliers.length > 0 ? (
+                      <ul className="space-y-2">
+                        {item.itemSuppliers.map((itemSupplier, index) => (
+                          <li
+                            key={index}
+                            className="bg-slate-50 border border-slate-200 rounded-lg p-3"
+                          >
+                            <dl className="space-y-2 text-sm">
+                              <div>
+                                <dt className="text-xs text-slate-500 mb-0.5">
+                                  Supplier
+                                </dt>
+                                <dd>
                                   {itemSupplier.supplier ? (
-                                    <p
-                                      className="text-slate-800 hover:text-primary hover:underline cursor-pointer transition-colors font-medium"
-                                      onClick={() =>
-                                        router.push(
-                                          `/admin/suppliers/${itemSupplier.supplier.supplier_id}`,
-                                        )
-                                      }
+                                    <Link
+                                      href={`/admin/suppliers/${itemSupplier.supplier.supplier_id}`}
+                                      className="font-medium text-slate-800 transition-colors duration-200"
                                     >
                                       {itemSupplier.supplier.name}
-                                    </p>
+                                    </Link>
                                   ) : (
-                                    <p className="text-slate-800">-</p>
+                                    <span className="text-slate-800">
+                                      {EMPTY}
+                                    </span>
                                   )}
-                                </div>
+                                </dd>
+                              </div>
+                              <div>
+                                <dt className="text-xs text-slate-500 mb-0.5">
+                                  Price (incl. GST)
+                                </dt>
+                                <dd className="font-mono text-slate-800">
+                                  {itemSupplier.price
+                                    ? PRICE.format(
+                                        parseFloat(itemSupplier.price),
+                                      )
+                                    : EMPTY}
+                                </dd>
+                              </div>
+                              {itemSupplier.supplier_reference && (
                                 <div>
-                                  <div className="text-xs text-slate-500 mb-0.5">
-                                    Price
-                                  </div>
-                                  <p className="text-slate-800">
-                                    {itemSupplier.price
-                                      ? `$${parseFloat(itemSupplier.price).toFixed(2)}`
-                                      : "-"}
-                                  </p>
+                                  <dt className="text-xs text-slate-500 mb-0.5">
+                                    Reference
+                                  </dt>
+                                  <dd className="font-mono text-slate-800">
+                                    {itemSupplier.supplier_reference}
+                                  </dd>
                                 </div>
-                                {itemSupplier.supplier_reference && (
-                                  <div>
-                                    <div className="text-xs text-slate-500 mb-0.5">
-                                      Reference
-                                    </div>
-                                    <p className="text-slate-800">
-                                      {itemSupplier.supplier_reference}
-                                    </p>
-                                  </div>
-                                )}
-                                {itemSupplier.supplier_product_link && (
-                                  <div>
-                                    <div className="text-xs text-slate-500 mb-0.5">
-                                      Product Link
-                                    </div>
+                              )}
+                              {itemSupplier.supplier_product_link && (
+                                <div>
+                                  <dt className="text-xs text-slate-500 mb-0.5">
+                                    Product link
+                                  </dt>
+                                  <dd>
                                     <a
                                       href={itemSupplier.supplier_product_link}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="text-primary hover:underline flex items-center gap-1"
                                     >
-                                      View
-                                      <ExternalLink className="w-3 h-3" />
+                                      View product page
+                                      <ExternalLink
+                                        className="w-3 h-3"
+                                        aria-hidden="true"
+                                      />
                                     </a>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-sm text-slate-500 italic">
-                            No suppliers assigned
-                          </p>
-                        )}
+                                  </dd>
+                                </div>
+                              )}
+                            </dl>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="flex flex-col items-center text-center py-12">
+                        <Building2
+                          className="w-8 h-8 text-slate-300 mb-2"
+                          aria-hidden="true"
+                        />
+                        <p className="text-sm text-slate-600">
+                          No suppliers assigned to this item.
+                        </p>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
-            </div>
+            </form>
           </div>
         )}
       </main>
@@ -3080,268 +2268,41 @@ export default function page() {
         />
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete confirmation */}
       <DeleteConfirmation
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDeleteConfirm}
         deleteWithInput={true}
         heading="Item"
-        message="This will permanently delete this item from inventory. This action cannot be undone."
+        title={item ? `Delete ${itemTitle}?` : "Delete item?"}
+        warningHeading="This removes the item from inventory"
+        message={
+          item
+            ? `${itemTitle} (${item.item_id}) will be deleted from inventory.`
+            : "The item will be deleted from inventory."
+        }
+        confirmButtonText="Delete item"
         comparingName={item ? item.item_id : ""}
         isDeleting={isDeleting}
         entityType="item"
       />
 
-      {/* Create Finish Modal */}
-      {showCreateFinishModal && (
-        <div
-          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowCreateFinishModal(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-800">
-                Create New Finish
-              </h2>
-              <button
-                onClick={() => {
-                  setShowCreateFinishModal(false);
-                  setNewFinishValue("");
-                }}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Finish Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newFinishValue}
-                  onChange={(e) => setNewFinishValue(e.target.value)}
-                  placeholder="Enter finish name"
-                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                  autoFocus
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  onClick={() => {
-                    setShowCreateFinishModal(false);
-                    setNewFinishValue("");
-                  }}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateNewFinish}
-                  disabled={isCreatingFinish || !newFinishValue?.trim()}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isCreatingFinish ? "Creating..." : "Create Finish"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showCreateBrandModal && (
-        <div
-          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowCreateBrandModal(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-800">
-                Create New Brand
-              </h2>
-              <button
-                onClick={() => {
-                  setShowCreateBrandModal(false);
-                  setNewBrandValue("");
-                }}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Brand Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newBrandValue}
-                  onChange={(e) => setNewBrandValue(e.target.value)}
-                  placeholder="Enter brand name"
-                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                  autoFocus
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  onClick={() => {
-                    setShowCreateBrandModal(false);
-                    setNewBrandValue("");
-                  }}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateNewBrand}
-                  disabled={isCreatingBrand || !newBrandValue?.trim()}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isCreatingBrand ? "Creating..." : "Create Brand"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Measuring Unit Modal */}
-      {showCreateMeasuringUnitModal && (
-        <div
-          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowCreateMeasuringUnitModal(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-800">
-                Create New Measuring Unit
-              </h2>
-              <button
-                onClick={() => {
-                  setShowCreateMeasuringUnitModal(false);
-                  setNewMeasuringUnitValue("");
-                }}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Measuring Unit Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newMeasuringUnitValue}
-                  onChange={(e) => setNewMeasuringUnitValue(e.target.value)}
-                  placeholder="Enter measuring unit name"
-                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                  autoFocus
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  onClick={() => {
-                    setShowCreateMeasuringUnitModal(false);
-                    setNewMeasuringUnitValue("");
-                  }}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateNewMeasuringUnit}
-                  disabled={
-                    isCreatingMeasuringUnit || !newMeasuringUnitValue?.trim()
-                  }
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isCreatingMeasuringUnit
-                    ? "Creating..."
-                    : "Create Measuring Unit"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Hardware Sub Category Modal */}
-      {showCreateSubCategoryModal && (
-        <div
-          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50"
-          onClick={() => setShowCreateSubCategoryModal(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-800">
-                Create New Hardware Sub Category
-              </h2>
-              <button
-                onClick={() => {
-                  setShowCreateSubCategoryModal(false);
-                  setNewSubCategoryValue("");
-                }}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Sub Category Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newSubCategoryValue}
-                  onChange={(e) => setNewSubCategoryValue(e.target.value)}
-                  placeholder="Enter sub category name"
-                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                  autoFocus
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  onClick={() => {
-                    setShowCreateSubCategoryModal(false);
-                    setNewSubCategoryValue("");
-                  }}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateNewSubCategory}
-                  disabled={
-                    isCreatingSubCategory || !newSubCategoryValue?.trim()
-                  }
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isCreatingSubCategory
-                    ? "Creating..."
-                    : "Create Sub Category"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Create finish / brand / measuring unit / sub-category modal */}
+      {configModal && (
+        <ConfigValueModal
+          idPrefix={`item-new-${configModal.kind}`}
+          title={CONFIG_KINDS[configModal.kind].title}
+          label={CONFIG_KINDS[configModal.kind].label}
+          placeholder={CONFIG_KINDS[configModal.kind].placeholder}
+          requiredMessage={CONFIG_KINDS[configModal.kind].required}
+          initialValue={configModal.seed}
+          saving={isCreatingConfig}
+          submitLabel={CONFIG_KINDS[configModal.kind].submit}
+          onSubmit={handleCreateConfig}
+          onClose={() => setConfigModal(null)}
+          returnFocusId={CONFIG_KINDS[configModal.kind].comboId}
+        />
       )}
     </AdminShell>
   );

@@ -25,6 +25,12 @@ export const BADGE_TONES = {
 export const COUNT_BADGE =
   "bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full";
 
+// The same count inside a toolbar button (filter, sort). COUNT_BADGE is 24px
+// tall, which stretches a 38px `py-2` button to 42px; this one is 20px, the
+// height of the button's own text line, so the button keeps its size.
+export const BUTTON_COUNT_BADGE =
+  "bg-primary text-white text-xs font-semibold px-2 py-0.5 rounded-full";
+
 const AUD = new Intl.NumberFormat("en-AU", {
   style: "currency",
   currency: "AUD",
@@ -97,8 +103,7 @@ export const daysLeftBadge = (days) => {
       label: `${Math.abs(days)}d overdue`,
       className: BADGE_TONES.danger,
     };
-  if (days === 0)
-    return { label: "Due today", className: BADGE_TONES.warning };
+  if (days === 0) return { label: "Due today", className: BADGE_TONES.warning };
   if (days <= 7)
     return {
       label: `${days}d left`,

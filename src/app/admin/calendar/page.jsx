@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { Suspense, useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import AdminShell from "@/components/AdminShell";
 import {
   ChevronLeft,
@@ -14,51 +15,87 @@ import {
   Check,
   Pen,
   Trash2,
+  AlertCircle,
 } from "lucide-react";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import SearchBar from "@/components/SearchBar";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "@/contexts/AuthContext";
+import useModalFocus from "@/hooks/useModalFocus";
+import {
+  BADGE,
+  BADGE_TONES,
+  formatTime,
+} from "@/app/admin/dashboard/lib/format";
+import { formatLabel } from "@/app/admin/employees/punches/lib/punchStyles";
 
-// Event type colours. Semantic hues per DESIGN.md 5.3; violet is a sanctioned
-// categorical hue (5.5) for a type that carries no success/progress meaning.
-// Every swatch uses the -100 background / -800 text / -200 border formula.
+// Event types are categories, not statuses, so they take the sanctioned
+// categorical hues (DESIGN.md 5.5) rather than success/info/warning colours.
+// Every swatch uses the -100 fill / -800 ink / -200 border formula (9.6).
 const eventTypeStyles = {
-  installation: {
-    light: "bg-blue-100",
-    border: "border-blue-200",
-    dot: "bg-blue-500",
-    text: "text-blue-800",
-  },
-  meeting: {
-    light: "bg-green-100",
-    border: "border-green-200",
-    dot: "bg-green-500",
-    text: "text-green-800",
-  },
-  inspection: {
-    light: "bg-violet-100",
-    border: "border-violet-200",
-    dot: "bg-violet-500",
-    text: "text-violet-800",
-  },
-  delivery: {
-    light: "bg-amber-100",
-    border: "border-amber-200",
-    dot: "bg-amber-500",
-    text: "text-amber-800",
-  },
-  default: {
-    light: "bg-slate-100",
-    border: "border-slate-200",
-    dot: "bg-slate-500",
-    text: "text-slate-800",
-  },
+  meeting: { tone: BADGE_TONES.indigo, dot: "bg-indigo-500" },
+  default: { tone: BADGE_TONES.neutral, dot: "bg-slate-500" },
 };
 
+const getTypeStyles = (type) =>
+  eventTypeStyles[type] || eventTypeStyles.default;
+
+// Clickable event tile shared by the "selected day" and "Coming up" cards so an
+// event looks identical wherever it appears (DESIGN.md 15.1).
+function EventCard({ event, onOpen }) {
+  const styles = getTypeStyles(event.type);
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(event)}
+      className="w-full text-left p-3 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer transition-colors duration-200 hover:border-primary/25 focus:outline-none focus:ring-2 focus:ring-primary"
+    >
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <span className={`${BADGE} ${styles.tone}`}>
+          {formatLabel(event.type)}
+        </span>
+        <span className="text-xs text-slate-500 tabular-nums">
+          {event.time}
+        </span>
+      </div>
+
+      <h4 className="text-sm font-semibold text-slate-800 mb-2">
+        {event.title}
+      </h4>
+
+      {event.lot && (
+        <div className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg">
+          <Home
+            className="w-4 h-4 text-slate-500 shrink-0"
+            aria-hidden="true"
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-slate-700 truncate">
+              {event.lot.name}
+            </p>
+            <p className="text-xs text-slate-500 truncate">
+              {event.lot.project}
+            </p>
+          </div>
+        </div>
+      )}
+    </button>
+  );
+}
+
+// useSearchParams needs a Suspense boundary above it
 export default function CalendarPage() {
+  return (
+    <Suspense fallback={null}>
+      <CalendarContent />
+    </Suspense>
+  );
+}
+
+function CalendarContent() {
   const { getToken, getUserData } = useAuth();
+  const searchParams = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [miniCalendarDate, setMiniCalendarDate] = useState(new Date());
@@ -90,6 +127,12 @@ export default function CalendarPage() {
 
   const [events, setEvents] = useState([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  // Inline field errors for the event form (DESIGN.md 11, 15.3)
+  const [formErrors, setFormErrors] = useState({});
+  const quickViewRef = useRef(null);
+  const eventModalRef = useRef(null);
 
   // Edit/Delete states
   const [editingEventId, setEditingEventId] = useState(null);
@@ -99,6 +142,7 @@ export default function CalendarPage() {
   const fetchMeetings = async () => {
     try {
       setIsLoadingEvents(true);
+      setLoadError(false);
       const token = getToken();
       const response = await axios.get("/api/v1/meeting/all", {
         headers: { Authorization: `Bearer ${token}` },
@@ -113,10 +157,7 @@ export default function CalendarPage() {
           date_time_end: meeting.date_time_end
             ? new Date(meeting.date_time_end)
             : null,
-          time: new Date(meeting.date_time).toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
+          time: formatTime(meeting.date_time),
           type: "meeting",
           notes: meeting.notes,
           participants: meeting.participants,
@@ -130,9 +171,12 @@ export default function CalendarPage() {
             : null,
         }));
         setEvents(transformedEvents);
+      } else {
+        setLoadError(true);
       }
     } catch (error) {
       console.error("Error fetching meetings:", error);
+      setLoadError(true);
     } finally {
       setIsLoadingEvents(false);
     }
@@ -433,6 +477,7 @@ export default function CalendarPage() {
     });
     setEditingEventId(null);
     setSelectedTimelineEvent(null);
+    setFormErrors({});
   };
 
   const handleOpenModal = () => {
@@ -493,6 +538,34 @@ export default function CalendarPage() {
 
   const [quickViewEvent, setQuickViewEvent] = useState(null);
 
+  useModalFocus(quickViewRef, !!quickViewEvent);
+  useModalFocus(eventModalRef, showNewEventModal);
+
+  // Deep link from an update: ?event=<meeting id> jumps to that day and opens
+  // the event. Applied once per link, after the events have loaded.
+  const openedEventRef = useRef(null);
+  useEffect(() => {
+    const eventId = searchParams.get("event");
+    if (!eventId || openedEventRef.current === eventId || events.length === 0) {
+      return;
+    }
+    const target = events.find((e) => e.id === eventId);
+    if (!target) return;
+    openedEventRef.current = eventId;
+    setCurrentDate(target.date);
+    setSelectedDate(target.date);
+    setMiniCalendarDate(target.date);
+    setQuickViewEvent(target);
+  }, [events, searchParams]);
+
+  // A form with typed-in work does not close on a stray backdrop click
+  // (DESIGN.md 15.1). Escape and the Cancel / close buttons still do.
+  const isFormDirty =
+    !!newEventForm.title.trim() ||
+    !!newEventForm.notes.trim() ||
+    newEventForm.participants.length > 0 ||
+    newEventForm.lots.length > 0;
+
   // Modals close on Escape (DESIGN.md 9.4).
   useEffect(() => {
     if (!quickViewEvent && !showNewEventModal) return;
@@ -531,7 +604,7 @@ export default function CalendarPage() {
       );
 
       if (response.data.status) {
-        toast.success("Event deleted successfully");
+        toast.success("Event deleted.");
         fetchMeetings();
         setQuickViewEvent(null); // Close quick view if open
         if (editingEventId === eventToDelete.id) {
@@ -545,25 +618,33 @@ export default function CalendarPage() {
       }
     } catch (error) {
       console.error("Error deleting event:", error);
-      toast.error("Failed to delete event");
+      toast.error(
+        "Couldn't delete the event. Check your connection and try again.",
+      );
     } finally {
       setIsDeletingEvent(false);
     }
   };
 
   const handleSubmitEvent = async () => {
-    if (!newEventForm.title.trim()) {
-      toast.error("Please enter an event title");
-      return;
-    }
-    if (!newEventForm.date) {
-      toast.error("Please select a date");
-      return;
-    }
+    const errors = {};
+    if (!newEventForm.title.trim()) errors.title = "Enter an event title.";
+    if (!newEventForm.date) errors.date = "Select a date.";
     if (newEventForm.endTime < newEventForm.startTime) {
-      toast.error("End time cannot be before start time");
+      errors.endTime = "End time can't be before the start time.";
+    }
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      const firstInvalid = ["title", "date", "endTime"].find((k) => errors[k]);
+      const ids = {
+        title: "event-title",
+        date: "event-date",
+        endTime: "event-end-time",
+      };
+      document.getElementById(ids[firstInvalid])?.focus();
       return;
     }
+    setFormErrors({});
 
     try {
       setIsCreatingEvent(true);
@@ -594,7 +675,6 @@ export default function CalendarPage() {
       };
 
       let response;
-      console.log(editingEventId);
       if (editingEventId) {
         response = await axios.patch(
           `/api/v1/meeting/${editingEventId}`,
@@ -610,11 +690,7 @@ export default function CalendarPage() {
       }
 
       if (response.data.status) {
-        toast.success(
-          editingEventId
-            ? "Event updated successfully!"
-            : "Event created successfully!",
-        );
+        toast.success(editingEventId ? "Event updated." : "Event created.");
         handleCloseModal();
         fetchMeetings(); // Refresh the events list
       } else {
@@ -622,7 +698,10 @@ export default function CalendarPage() {
       }
     } catch (error) {
       console.error("Error saving event:", error);
-      toast.error(error.response?.data?.message || "Failed to save event");
+      toast.error(
+        error.response?.data?.message ||
+          "Couldn't save the event. Check your connection and try again.",
+      );
     } finally {
       setIsCreatingEvent(false);
     }
@@ -642,16 +721,16 @@ export default function CalendarPage() {
                 className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus className="w-4 h-4" aria-hidden="true" />
-                New Event
+                New event
               </button>
             </div>
           </div>
         </div>
 
         {/* Main Content - Split Layout */}
-        <div className="flex-1 flex overflow-hidden px-4 pb-4 gap-4">
+        <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden px-4 pb-4 gap-4">
           {/* Left Sidebar - Modern Design */}
-          <div className="w-80 shrink-0 space-y-4 overflow-y-auto pr-1">
+          <div className="w-full lg:w-80 shrink-0 grid grid-cols-1 md:grid-cols-3 lg:flex lg:flex-col gap-4 md:items-start lg:items-stretch lg:overflow-y-auto lg:pr-1">
             {/* Mini Calendar - Modern Card */}
             <div className="bg-white rounded-lg border border-slate-200 p-4">
               <div className="flex items-center justify-between mb-4">
@@ -705,7 +784,7 @@ export default function CalendarPage() {
                   const miniDayState = isTodayDate
                     ? "bg-primary border-primary text-white font-semibold"
                     : isSelectedDate
-                      ? "bg-blue-100 border-blue-200 text-blue-800 font-medium"
+                      ? "bg-primary/10 border-primary/25 text-primary font-medium"
                       : dayObj.isCurrentMonth
                         ? "border-transparent text-slate-700 font-medium hover:bg-slate-100"
                         : "border-transparent text-slate-400";
@@ -719,7 +798,7 @@ export default function CalendarPage() {
                         setCurrentDate(dayObj.date);
                       }}
                       aria-pressed={isSelectedDate}
-                      aria-label={dayObj.date.toLocaleDateString("en-US", {
+                      aria-label={dayObj.date.toLocaleDateString("en-AU", {
                         weekday: "long",
                         month: "long",
                         day: "numeric",
@@ -751,12 +830,12 @@ export default function CalendarPage() {
                     </div>
                     <div>
                       <p className="text-sm font-medium text-slate-700">
-                        {selectedDate.toLocaleDateString("en-US", {
+                        {selectedDate.toLocaleDateString("en-AU", {
                           weekday: "long",
                         })}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {selectedDate.toLocaleDateString("en-US", {
+                        {selectedDate.toLocaleDateString("en-AU", {
                           month: "long",
                           year: "numeric",
                         })}
@@ -766,52 +845,13 @@ export default function CalendarPage() {
                 </div>
 
                 <div className="p-4 space-y-2">
-                  {getEventsForDate(selectedDate).map((event) => {
-                    const styles =
-                      eventTypeStyles[event.type] || eventTypeStyles.default;
-                    return (
-                      <button
-                        type="button"
-                        key={event.id}
-                        onClick={() => setQuickViewEvent(event)}
-                        className={`relative w-full text-left p-3 rounded-lg ${styles.light} border ${styles.border} cursor-pointer transition-colors duration-200 hover:border-primary/25 focus:outline-none focus:ring-2 focus:ring-primary`}
-                      >
-                        {/* Type badge */}
-                        <div className="flex items-center justify-between mb-2">
-                          <span
-                            className={`text-xs font-medium uppercase tracking-wider ${styles.text}`}
-                          >
-                            {event.type}
-                          </span>
-                          <span className="text-xs text-slate-500">
-                            {event.time}
-                          </span>
-                        </div>
-
-                        <h4 className="text-sm font-semibold text-slate-800 mb-2">
-                          {event.title}
-                        </h4>
-
-                        {/* Lot Info */}
-                        {event.lot && (
-                          <div className="flex items-center gap-2 p-2 bg-white border border-slate-200 rounded-lg">
-                            <Home
-                              className="w-4 h-4 text-slate-500 shrink-0"
-                              aria-hidden="true"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-slate-700 truncate">
-                                {event.lot.name}
-                              </p>
-                              <p className="text-xs text-slate-500 truncate">
-                                {event.lot.project}
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                  {getEventsForDate(selectedDate).map((event) => (
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      onOpen={setQuickViewEvent}
+                    />
+                  ))}
 
                   {getEventsForDate(selectedDate).length === 0 && (
                     <div className="flex flex-col items-center justify-center gap-2 py-8 px-4 text-center">
@@ -825,10 +865,10 @@ export default function CalendarPage() {
                       <button
                         type="button"
                         onClick={handleOpenModal}
-                        className="cursor-pointer flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200"
+                        className="cursor-pointer flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
                       >
                         <Plus className="w-4 h-4" aria-hidden="true" />
-                        New Event
+                        New event
                       </button>
                     </div>
                   )}
@@ -848,10 +888,10 @@ export default function CalendarPage() {
                       />
                     </div>
                     <span className="text-sm font-semibold text-slate-800">
-                      Coming Up
+                      Coming up
                     </span>
-                    <span className="ml-auto inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium text-primary bg-primary/10 border border-primary/20">
-                      {getNextUpcomingEvent.date.toLocaleDateString("en-US", {
+                    <span className={`ml-auto ${BADGE} ${BADGE_TONES.neutral}`}>
+                      {getNextUpcomingEvent.date.toLocaleDateString("en-AU", {
                         month: "short",
                         day: "numeric",
                       })}
@@ -860,56 +900,20 @@ export default function CalendarPage() {
                 </div>
 
                 <div className="p-4 space-y-2">
-                  {getNextUpcomingEvent.events.map((event) => {
-                    const styles =
-                      eventTypeStyles[event.type] || eventTypeStyles.default;
-                    return (
-                      <div
-                        key={event.id}
-                        className="relative p-3 bg-slate-50 border border-slate-200 rounded-lg"
-                      >
-                        <div className="flex items-start gap-3">
-                          <span
-                            className={`w-1 h-12 rounded-full shrink-0 ${styles.dot}`}
-                            aria-hidden="true"
-                          ></span>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span
-                                className={`text-xs font-medium uppercase tracking-wider ${styles.text}`}
-                              >
-                                {event.type}
-                              </span>
-                              <span className="text-xs text-slate-500">
-                                • {event.time}
-                              </span>
-                            </div>
-                            <h4 className="text-sm font-semibold text-slate-800 mb-1">
-                              {event.title}
-                            </h4>
-                            {event.lot && (
-                              <div className="flex items-center gap-2 text-xs text-slate-500">
-                                <Home
-                                  className="w-3 h-3 shrink-0"
-                                  aria-hidden="true"
-                                />
-                                <span className="truncate">
-                                  {event.lot.name}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {getNextUpcomingEvent.events.map((event) => (
+                    <EventCard
+                      key={event.id}
+                      event={event}
+                      onOpen={setQuickViewEvent}
+                    />
+                  ))}
                 </div>
               </div>
             )}
           </div>
 
           {/* Right Side - Main Calendar */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col min-h-[640px] lg:min-h-0 lg:overflow-hidden">
             <div className="bg-white rounded-lg border border-slate-200 flex flex-col h-full overflow-hidden">
               {/* Calendar Controls */}
               <div className="p-4 border-b border-slate-200 shrink-0">
@@ -1012,6 +1016,22 @@ export default function CalendarPage() {
                     </button>
                   </div>
 
+                  {loadError && !isLoadingEvents && (
+                    <div
+                      className="flex items-center gap-2 text-xs text-red-600"
+                      role="alert"
+                    >
+                      <AlertCircle className="w-4 h-4" aria-hidden="true" />
+                      Couldn&apos;t load events.
+                      <button
+                        type="button"
+                        onClick={fetchMeetings}
+                        className="cursor-pointer font-medium text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary rounded-sm"
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  )}
                   {isLoadingEvents && (
                     <div
                       className="flex items-center gap-2 text-xs text-slate-500"
@@ -1047,14 +1067,14 @@ export default function CalendarPage() {
                       const isSelectedDate = isSelected(dayObj.date);
 
                       const dayBackground = isSelectedDate
-                        ? "bg-blue-50"
+                        ? "bg-primary/10"
                         : dayObj.isCurrentMonth
                           ? "bg-white"
                           : "bg-slate-50 text-slate-400";
                       const dayBorder = isTodayDate
                         ? "border-primary"
                         : isSelectedDate
-                          ? "border-blue-300"
+                          ? "border-primary/25"
                           : dayObj.isCurrentMonth
                             ? "border-slate-200 hover:border-primary/25"
                             : "border-slate-200";
@@ -1086,13 +1106,11 @@ export default function CalendarPage() {
 
                           <div className="space-y-1">
                             {dayEvents.slice(0, 2).map((event) => {
-                              const styles =
-                                eventTypeStyles[event.type] ||
-                                eventTypeStyles.default;
+                              const styles = getTypeStyles(event.type);
                               return (
                                 <div
                                   key={event.id}
-                                  className={`${styles.light} ${styles.text} border ${styles.border} text-xs font-medium px-2 py-1 rounded-sm truncate`}
+                                  className={`${styles.tone} border text-xs font-medium px-2 py-1 rounded-sm truncate`}
                                   title={`${event.title}${event.lot ? ` - ${event.lot.name}` : ""}`}
                                 >
                                   {event.time} - {event.title}
@@ -1121,13 +1139,14 @@ export default function CalendarPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
           onClick={() => setQuickViewEvent(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label={quickViewEvent.title}
         >
           <div
+            ref={quickViewRef}
             className="bg-white rounded-xl border border-slate-200 w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={quickViewEvent.title}
           >
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-start gap-3">
@@ -1137,25 +1156,15 @@ export default function CalendarPage() {
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <span
-                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium uppercase border ${
-                      (
-                        eventTypeStyles[quickViewEvent.type] ||
-                        eventTypeStyles.default
-                      ).light
-                    } ${(eventTypeStyles[quickViewEvent.type] || eventTypeStyles.default).text} ${(eventTypeStyles[quickViewEvent.type] || eventTypeStyles.default).border}`}
+                    className={`${BADGE} ${getTypeStyles(quickViewEvent.type).tone}`}
                   >
-                    {quickViewEvent.type}
+                    {formatLabel(quickViewEvent.type)}
                   </span>
-                  <span className="text-xs text-slate-500">
-                    {quickViewEvent.time} -{" "}
+                  <span className="text-xs text-slate-500 tabular-nums">
+                    {quickViewEvent.time} –{" "}
                     {quickViewEvent.date_time_end
-                      ? new Date(
-                          quickViewEvent.date_time_end,
-                        ).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : "..."}
+                      ? formatTime(quickViewEvent.date_time_end)
+                      : "—"}
                   </span>
                 </div>
               </div>
@@ -1171,7 +1180,6 @@ export default function CalendarPage() {
 
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Lot Info */}
               {/* Lot Info */}
               {quickViewEvent.lots && quickViewEvent.lots.length > 0 && (
                 <div className="space-y-2">
@@ -1217,7 +1225,7 @@ export default function CalendarPage() {
                         return (
                           <span
                             key={p.id}
-                            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200"
+                            className={`${BADGE} ${BADGE_TONES.neutral}`}
                           >
                             {displayName}
                           </span>
@@ -1241,7 +1249,7 @@ export default function CalendarPage() {
             </div>
 
             {/* Footer Actions */}
-            <div className="grid grid-cols-2 gap-3 px-6 py-4 border-t border-slate-200">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
               <button
                 type="button"
                 onClick={() => handleDeleteEvent(quickViewEvent)}
@@ -1281,19 +1289,22 @@ export default function CalendarPage() {
       {showNewEventModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
-          onClick={handleCloseModal}
-          role="dialog"
-          aria-modal="true"
-          aria-label={editingEventId ? "Edit Event" : "New Event"}
+          onClick={() => {
+            if (!isFormDirty) handleCloseModal();
+          }}
         >
           <div
-            className="bg-white rounded-xl border border-slate-200 w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
+            ref={eventModalRef}
+            className="bg-white rounded-xl border border-slate-200 w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={editingEventId ? "Edit event" : "New event"}
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <h2 className="text-lg font-semibold text-slate-800">
-                {editingEventId ? "Edit Event" : "New Event"}
+                {editingEventId ? "Edit event" : "New event"}
               </h2>
               <button
                 type="button"
@@ -1306,30 +1317,49 @@ export default function CalendarPage() {
             </div>
 
             {/* Modal Body - Two Column Layout */}
-            <div className="flex-5 flex overflow-hidden">
+            <div className="flex-1 flex overflow-hidden min-h-0">
               {/* Left Pane - Form */}
-              <div className="flex-3 overflow-y-auto p-6 space-y-4 border-r border-slate-200">
+              <div className="flex-3 overflow-y-auto p-6 space-y-4 md:border-r border-slate-200">
                 {/* Title */}
                 <div>
                   <label
                     htmlFor="event-title"
                     className="block text-sm font-medium text-slate-700 mb-1.5"
                   >
-                    Event Title <span className="text-red-600">*</span>
+                    Event title <span className="text-red-600">*</span>
                   </label>
                   <input
                     id="event-title"
                     type="text"
+                    data-autofocus
                     value={newEventForm.title}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setNewEventForm({
                         ...newEventForm,
                         title: e.target.value,
-                      })
+                      });
+                      if (formErrors.title)
+                        setFormErrors((prev) => ({ ...prev, title: null }));
+                    }}
+                    placeholder="e.g. Site measure – Smith kitchen"
+                    aria-invalid={!!formErrors.title}
+                    aria-describedby={
+                      formErrors.title ? "event-title-error" : undefined
                     }
-                    placeholder="Enter event title"
-                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                      formErrors.title
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-slate-300 focus:ring-primary"
+                    } focus:border-transparent`}
                   />
+                  {formErrors.title && (
+                    <p
+                      id="event-title-error"
+                      className="text-xs text-red-600 mt-1"
+                    >
+                      {formErrors.title}
+                    </p>
+                  )}
                 </div>
 
                 {/* Participants - Multi-select with search */}
@@ -1359,13 +1389,13 @@ export default function CalendarPage() {
                       {newEventForm.participants.map((user) => (
                         <span
                           key={user.id}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
+                          className={`${BADGE} ${BADGE_TONES.neutral}`}
                         >
                           {user.name || user.username}
                           <button
                             type="button"
                             onClick={() => toggleParticipant(user)}
-                            className="cursor-pointer hover:bg-primary/20 rounded-full p-0.5 transition-colors duration-200"
+                            className="cursor-pointer hover:bg-slate-200 rounded-full p-0.5 transition-colors duration-200"
                             aria-label={`Remove ${user.name || user.username}`}
                           >
                             <X className="w-3 h-3" aria-hidden="true" />
@@ -1406,7 +1436,7 @@ export default function CalendarPage() {
                                   (p) => p.id === user.id,
                                 )}
                                 onChange={() => toggleParticipant(user)}
-                                className="w-4 h-4 accent-primary border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                                className="w-4 h-4 accent-primary border-slate-300 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                               />
                             </label>
                           ))
@@ -1430,7 +1460,7 @@ export default function CalendarPage() {
                 </div>
 
                 {/* Date and Time */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label
                       htmlFor="event-date"
@@ -1443,21 +1473,33 @@ export default function CalendarPage() {
                       type="date"
                       value={newEventForm.date}
                       min={new Date().toISOString().split("T")[0]}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setNewEventForm({
                           ...newEventForm,
                           date: e.target.value,
-                        })
-                      }
-                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                        });
+                        if (formErrors.date)
+                          setFormErrors((prev) => ({ ...prev, date: null }));
+                      }}
+                      aria-invalid={!!formErrors.date}
+                      className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                        formErrors.date
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-slate-300 focus:ring-primary"
+                      } focus:border-transparent`}
                     />
+                    {formErrors.date && (
+                      <p className="text-xs text-red-600 mt-1">
+                        {formErrors.date}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label
                       htmlFor="event-start-time"
                       className="block text-sm font-medium text-slate-700 mb-1.5"
                     >
-                      Start Time
+                      Start time
                     </label>
                     <input
                       id="event-start-time"
@@ -1482,7 +1524,7 @@ export default function CalendarPage() {
                       htmlFor="event-end-time"
                       className="block text-sm font-medium text-slate-700 mb-1.5"
                     >
-                      End Time
+                      End time
                     </label>
                     <input
                       id="event-end-time"
@@ -1491,17 +1533,30 @@ export default function CalendarPage() {
                       min={newEventForm.startTime}
                       onChange={(e) => {
                         const newEndTime = e.target.value;
-                        if (newEndTime >= newEventForm.startTime) {
-                          setNewEventForm({
-                            ...newEventForm,
-                            endTime: newEndTime,
-                          });
-                        } else {
-                          toast.error("End time cannot be before start time");
-                        }
+                        setNewEventForm({
+                          ...newEventForm,
+                          endTime: newEndTime,
+                        });
+                        setFormErrors((prev) => ({
+                          ...prev,
+                          endTime:
+                            newEndTime < newEventForm.startTime
+                              ? "End time can't be before the start time."
+                              : null,
+                        }));
                       }}
-                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      aria-invalid={!!formErrors.endTime}
+                      className={`w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 ${
+                        formErrors.endTime
+                          ? "border-red-500 focus:ring-red-500"
+                          : "border-slate-300 focus:ring-primary"
+                      } focus:border-transparent`}
                     />
+                    {formErrors.endTime && (
+                      <p className="text-xs text-red-600 mt-1">
+                        {formErrors.endTime}
+                      </p>
+                    )}
                   </div>
                 </div>
                 {/* Lots - Multi-select with search */}
@@ -1531,13 +1586,13 @@ export default function CalendarPage() {
                       {newEventForm.lots.map((lot) => (
                         <span
                           key={lot.lot_id}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200"
+                          className={`${BADGE} ${BADGE_TONES.neutral}`}
                         >
                           {lot.lot_id}
                           <button
                             type="button"
                             onClick={() => toggleLot(lot)}
-                            className="cursor-pointer hover:bg-green-200 rounded-full p-0.5 transition-colors duration-200"
+                            className="cursor-pointer hover:bg-slate-200 rounded-full p-0.5 transition-colors duration-200"
                             aria-label={`Remove lot ${lot.lot_id}`}
                           >
                             <X className="w-3 h-3" aria-hidden="true" />
@@ -1599,7 +1654,7 @@ export default function CalendarPage() {
                                   (l) => l.lot_id === lot.lot_id,
                                 )}
                                 onChange={() => toggleLot(lot)}
-                                className="w-4 h-4 ml-2 accent-primary border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
+                                className="w-4 h-4 ml-2 accent-primary border-slate-300 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                               />
                             </label>
                           ))
@@ -1625,15 +1680,15 @@ export default function CalendarPage() {
                         notes: e.target.value,
                       })
                     }
-                    placeholder="Add any notes..."
+                    placeholder="e.g. Bring the door samples"
                     rows={5}
                     className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
                   />
                 </div>
               </div>
 
-              {/* Lots - Multi-select with search - moved here */}
-              <div className="relative lots-dropdown flex-2">
+              {/* Day timeline: drag the block to set the time */}
+              <div className="relative flex-2 hidden md:block">
                 <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
                   <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Timeline
@@ -1655,7 +1710,7 @@ export default function CalendarPage() {
                           height: "48px",
                         }}
                       >
-                        <div className="w-12 shrink-0 text-xs text-slate-400 pr-2 text-right pt-0.5">
+                        <div className="w-12 shrink-0 text-xs text-slate-500 pr-2 text-right pt-0.5">
                           {hour === 0
                             ? "12 AM"
                             : hour < 12
@@ -1700,34 +1755,27 @@ export default function CalendarPage() {
                         const topOffset = ((startMinutes - 360) / 60) * 48;
                         const height = ((endMinutes - startMinutes) / 60) * 48;
 
-                        const styles =
-                          eventTypeStyles[event.type] ||
-                          eventTypeStyles.default;
+                        const styles = getTypeStyles(event.type);
 
                         return (
                           <div
                             key={event.id}
-                            className={`absolute left-0 right-2 rounded-lg border px-2 py-1 text-xs overflow-hidden ${styles.light} ${styles.border} ${styles.text}`}
+                            className={`absolute z-10 left-0 right-2 rounded-lg border px-2 py-1 text-xs overflow-hidden ${styles.tone}`}
                             style={{
                               top: `${topOffset}px`,
                               height: `${Math.max(height, 24)}px`,
                               width: "calc(100% - 3.5rem)",
                               left: "3.5rem",
                               right: "0.5rem",
-                              zIndex: 5,
                               opacity: 0.7,
                             }}
-                            title={`${event.title} (${event.time} - ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })})`}
+                            title={`${event.title} (${event.time} – ${formatTime(end)})`}
                           >
                             <div className="font-semibold truncate">
                               {event.title}
                             </div>
                             <div className="opacity-75 truncate text-xs">
-                              {event.time} -{" "}
-                              {end.toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {event.time} – {formatTime(end)}
                             </div>
                           </div>
                         );
@@ -1856,7 +1904,7 @@ export default function CalendarPage() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
               <button
                 type="button"
                 onClick={handleCloseModal}
@@ -1871,16 +1919,14 @@ export default function CalendarPage() {
                 className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isCreatingEvent ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    {editingEventId ? "Updating..." : "Creating..."}
-                  </>
+                  <span
+                    className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                    aria-hidden="true"
+                  />
                 ) : (
-                  <>
-                    <Check className="w-4 h-4" aria-hidden="true" />
-                    {editingEventId ? "Update Event" : "Create Event"}
-                  </>
+                  <Check className="w-4 h-4" aria-hidden="true" />
                 )}
+                {editingEventId ? "Save changes" : "Create event"}
               </button>
             </div>
           </div>

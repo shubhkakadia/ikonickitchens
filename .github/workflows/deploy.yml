@@ -66,11 +66,38 @@ jobs:
         run: npm run build
 
   # ---------------------------------------------------------------------------
+  # Dependency audit - production dependencies, high severity and above.
+  # ---------------------------------------------------------------------------
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: audit-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout repository
+        # actions/checkout v5.1.0, pinned to an immutable commit.
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  # ---------------------------------------------------------------------------
   # Part 2: Deploy - only on pushes to dev/main, and only after CI passes.
   # ---------------------------------------------------------------------------
   deploy:
     name: Deploy ${{ github.ref_name }}
-    needs: ci
+    needs: [ci, audit]
     if: github.event_name == 'push'
     runs-on: self-hosted
     timeout-minutes: 45

@@ -1,12 +1,19 @@
 "use client";
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, {
+  Suspense,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  useRef,
+} from "react";
+import { useSearchParams } from "next/navigation";
 import AdminShell from "@/components/AdminShell";
 import PaginationFooter from "@/components/PaginationFooter";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
   Calendar,
   FileText,
@@ -20,7 +27,7 @@ import {
   Sheet,
   Plus,
   FileUp,
-  Trash,
+  Paperclip,
   Trash2,
   X,
   File,
@@ -33,17 +40,473 @@ import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import CreateMaterialsToOrderModal from "./components/CreateMaterialsToOrderModal";
 import SearchBar from "@/components/SearchBar";
+import useModalFocus from "@/hooks/useModalFocus";
 import {
   usePersistedTableFilter,
   useTableFilterActions,
 } from "@/hooks/usePersistedTableFilter";
+import {
+  BADGE,
+  BADGE_TONES,
+  COUNT_BADGE,
+  STATUS_COLORS,
+  formatQty,
+  formatTime,
+} from "@/app/admin/dashboard/lib/format";
+import { formatLabel } from "@/app/admin/employees/punches/lib/punchStyles";
 
 const TABLE_KEY = "materials-to-order";
+const EMPTY = "—";
+const TABLE_COLUMNS = 5;
+const SESSION_ERROR = "Your session has expired. Sign in again to continue.";
+const LOAD_ERROR =
+  "Couldn't load materials to order. Check your connection and try again.";
+const CUMULATIVE_ERROR =
+  "Couldn't load the cumulative list. Check your connection and try again.";
+const TOAST_OPTIONS = { position: "top-right", autoClose: 3000 };
 
-export default function page() {
+const ACTIVE_STATUSES = ["DRAFT", "PARTIALLY_ORDERED"];
+const COMPLETED_STATUSES = ["FULLY_ORDERED", "CLOSED"];
+
+// Fields the list can be sorted by. Used by both the "Sort by" menu and the
+// column headers so the two never drift apart.
+const SORT_OPTIONS = [
+  { field: "project", label: "Project" },
+  { field: "status", label: "Status" },
+  { field: "items", label: "Items" },
+  { field: "remaining", label: "Items remaining" },
+];
+
+// Button, field, menu and table recipes from DESIGN.md 9.1 / 9.2 / 9.5 / 9.8.
+const BTN_PRIMARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY_COMPACT =
+  "cursor-pointer flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+// A red-ink outline for destructive actions that sit beside secondary buttons;
+// the solid red button lives in the confirmation dialog.
+const BTN_DANGER_COMPACT =
+  "cursor-pointer flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-700 bg-white border border-red-200 hover:bg-red-50 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-600 disabled:opacity-50 disabled:cursor-not-allowed";
+const ICON_BTN =
+  "cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const ICON_BTN_ACCENT =
+  "cursor-pointer p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const FIELD_COMPACT =
+  "text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200 disabled:bg-slate-50 disabled:text-slate-600 disabled:cursor-not-allowed";
+const MENU_ITEM =
+  "cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between";
+const MENU_CHECK_ROW =
+  "cursor-pointer flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors";
+const CHECKBOX =
+  "h-4 w-4 accent-primary border-slate-300 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+const TH =
+  "px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider";
+
+// Which attributes to list for each item category, in display order.
+const DETAIL_FIELDS = {
+  sheet: [
+    ["Brand", "brand"],
+    ["Colour", "color"],
+    ["Finish", "finish"],
+    ["Face", "face"],
+    ["Dimensions", "dimensions"],
+  ],
+  handle: [
+    ["Brand", "brand"],
+    ["Colour", "color"],
+    ["Type", "type"],
+    ["Dimensions", "dimensions"],
+    ["Material", "material"],
+  ],
+  hardware: [
+    ["Brand", "brand"],
+    ["Name", "name"],
+    ["Type", "type"],
+    ["Dimensions", "dimensions"],
+    ["Sub category", "sub_category"],
+  ],
+  accessory: [["Name", "name"]],
+  edging_tape: [
+    ["Brand", "brand"],
+    ["Colour", "color"],
+    ["Finish", "finish"],
+    ["Dimensions", "dimensions"],
+  ],
+};
+
+// A created date without a year is ambiguous on a record, so this keeps the
+// year (the shared formatDate is the compact day + month form).
+const formatCreated = (value) => {
+  if (!value) return EMPTY;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return EMPTY;
+  const day = date.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const time = formatTime(value);
+  return time ? `${day}, ${time}` : day;
+};
+
+const formatFileSize = (bytes) => {
+  if (!bytes || bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+};
+
+const isImageFile = (file) =>
+  file.mime_type?.includes("image") || file.file_type === "image";
+const isVideoFile = (file) =>
+  file.mime_type?.includes("video") || file.file_type === "video";
+const isPdfFile = (file) =>
+  file.mime_type?.includes("pdf") ||
+  file.file_type === "pdf" ||
+  file.extension === "pdf";
+
+// If a purchase order already covers the line, show its quantity instead of the
+// manually entered one.
+const defaultQuantityOrdered = (entry) =>
+  entry.quantity_ordered_po && Number(entry.quantity_ordered_po) > 0
+    ? entry.quantity_ordered_po
+    : (entry.quantity_ordered ?? 0);
+
+// A short name for an item, used to label its image and quantity controls.
+const itemLabel = (detail, fallbackId) => {
+  const part =
+    detail?.sheet ||
+    detail?.handle ||
+    detail?.hardware ||
+    detail?.accessory ||
+    detail?.edging_tape;
+  const name = [part?.brand, part?.name || part?.color]
+    .filter(Boolean)
+    .join(" ");
+  return name || fallbackId || formatLabel(detail?.category) || "item";
+};
+
+// Group an MTO's lines by supplier name (Unassigned last). A line can appear
+// under several suppliers when the item has more than one.
+const groupItemsBySupplier = (items) => {
+  const groups = new Map();
+  items.forEach((it) => {
+    if (it.item?.itemSuppliers && it.item.itemSuppliers.length > 0) {
+      it.item.itemSuppliers.forEach((itemSupplier) => {
+        const supplierName = itemSupplier.supplier?.name || "Unassigned";
+        if (!groups.has(supplierName)) groups.set(supplierName, []);
+        groups.get(supplierName).push(it);
+      });
+    } else {
+      // Legacy single supplier structure, or no supplier
+      const supplierName = it.item?.supplier?.name || "Unassigned";
+      if (!groups.has(supplierName)) groups.set(supplierName, []);
+      groups.get(supplierName).push(it);
+    }
+  });
+
+  const orderedGroupNames = Array.from(groups.keys()).sort((a, b) => {
+    if (a === "Unassigned" && b !== "Unassigned") return 1;
+    if (b === "Unassigned" && a !== "Unassigned") return -1;
+    return a.localeCompare(b);
+  });
+
+  return { groups, orderedGroupNames };
+};
+
+// The supplier id behind a group name, taken from the group's first line.
+const resolveSupplierId = (firstItem, name) => {
+  if (
+    firstItem?.item?.itemSuppliers &&
+    firstItem.item.itemSuppliers.length > 0
+  ) {
+    const matchingSupplier = firstItem.item.itemSuppliers.find(
+      (is) => is.supplier?.name === name,
+    );
+    return matchingSupplier?.supplier?.supplier_id || null;
+  }
+  // Legacy single supplier structure
+  return (
+    firstItem?.item?.supplier?.supplier_id ||
+    firstItem?.item?.supplier_id ||
+    null
+  );
+};
+
+// Sortable column header. The label is a real button so the sort is reachable
+// by keyboard (DESIGN.md 13.7); the active column carries the only indicator.
+function SortHeader({
+  field,
+  label,
+  sortField,
+  sortOrder,
+  onSort,
+  alignRight = false,
+}) {
+  const isActive = sortField === field;
+  const ariaSort = isActive
+    ? sortOrder === "asc"
+      ? "ascending"
+      : "descending"
+    : undefined;
+  const Icon = !isActive
+    ? ArrowUpDown
+    : sortOrder === "asc"
+      ? ArrowUp
+      : ArrowDown;
+
+  return (
+    <th
+      scope="col"
+      aria-sort={ariaSort}
+      className={`${TH} ${alignRight ? "text-right" : "text-left"}`}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className={`cursor-pointer flex items-center gap-2 uppercase tracking-wider hover:text-slate-700 transition-colors duration-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-primary ${
+          alignRight ? "ml-auto" : ""
+        }`}
+      >
+        {label}
+        <Icon
+          className={`w-4 h-4 ${isActive ? "text-primary" : "text-slate-400"}`}
+          aria-hidden="true"
+        />
+      </button>
+    </th>
+  );
+}
+
+// Item thumbnail that opens the image viewer. Falls back to a placeholder when
+// there is no image or it fails to load.
+function ItemThumb({ image, label, onOpen }) {
+  const [failed, setFailed] = useState(false);
+
+  if (!image?.url || failed) {
+    return (
+      <div className="w-10 h-10 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center">
+        <Package className="w-5 h-5 text-slate-400" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(image)}
+      aria-label={`View image of ${label}`}
+      title="View image"
+      className="cursor-pointer block rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+    >
+      <Image
+        loading="lazy"
+        src={`/${image.url}`}
+        alt=""
+        className="w-10 h-10 object-cover rounded-lg border border-slate-200"
+        onError={() => setFailed(true)}
+        width={40}
+        height={40}
+      />
+    </button>
+  );
+}
+
+// The category-specific attributes of an item, driven by DETAIL_FIELDS.
+function ItemDetails({ detail, supplierRef }) {
+  return (
+    <div className="text-xs text-slate-600 space-y-1">
+      {supplierRef && (
+        <div>
+          <span className="font-medium">Supplier ref:</span> {supplierRef}
+        </div>
+      )}
+      {Object.entries(DETAIL_FIELDS).map(
+        ([key, fields]) =>
+          detail?.[key] && (
+            <React.Fragment key={key}>
+              {fields.map(([label, field]) => (
+                <div key={field}>
+                  <span className="font-medium">{label}:</span>{" "}
+                  {detail[key][field] || EMPTY}
+                </div>
+              ))}
+            </React.Fragment>
+          ),
+      )}
+    </div>
+  );
+}
+
+// Category pill. A category carries no status meaning, so it takes the
+// sanctioned categorical hue (DESIGN.md 5.5).
+function CategoryBadge({ category }) {
+  if (!category) return <span className="text-sm text-slate-500">{EMPTY}</span>;
+  return (
+    <span className={`${BADGE} ${BADGE_TONES.indigo}`}>
+      {formatLabel(category)}
+    </span>
+  );
+}
+
+// One collapsible group of uploaded files (images, videos, PDFs, other).
+function FileCategorySection({
+  title,
+  files,
+  isSmall = false,
+  sectionKey,
+  isExpanded,
+  onToggle,
+  onView,
+  onDelete,
+  deletingMediaId,
+}) {
+  if (files.length === 0) return null;
+
+  const panelId = `mto-files-${sectionKey}`;
+
+  return (
+    <div className="mb-4">
+      <button
+        type="button"
+        onClick={() => onToggle(sectionKey)}
+        aria-expanded={isExpanded}
+        aria-controls={panelId}
+        className="cursor-pointer w-full flex items-center justify-between text-sm font-semibold text-slate-700 mb-3 hover:text-slate-900 transition-colors duration-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-primary"
+      >
+        <span>
+          {title} ({files.length})
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 transition-transform duration-200 ${
+            isExpanded ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+        />
+      </button>
+
+      {isExpanded && (
+        <div id={panelId} className="flex flex-wrap gap-3">
+          {files.map((file) => (
+            <div
+              key={file.id}
+              className={`relative bg-white border border-slate-200 hover:border-primary/25 rounded-lg transition-colors duration-200 ${
+                isSmall ? "w-32" : "w-40"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => onView(file)}
+                title="View file"
+                className="cursor-pointer block w-full text-left p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <span
+                  className={`flex w-full ${
+                    isSmall ? "aspect-4/3" : "aspect-square"
+                  } rounded-lg items-center justify-center mb-2 overflow-hidden bg-slate-50`}
+                >
+                  {isImageFile(file) ? (
+                    <Image
+                      height={100}
+                      width={100}
+                      src={`/${file.url}`}
+                      alt=""
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  ) : isVideoFile(file) ? (
+                    <video
+                      src={`/${file.url}`}
+                      className="w-full h-full object-cover rounded-lg"
+                      muted
+                      playsInline
+                    />
+                  ) : isPdfFile(file) ? (
+                    <FileText
+                      className={`${isSmall ? "w-5 h-5" : "w-8 h-8"} text-slate-400`}
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <File
+                      className={`${isSmall ? "w-5 h-5" : "w-8 h-8"} text-slate-400`}
+                      aria-hidden="true"
+                    />
+                  )}
+                </span>
+                <span className="block space-y-1">
+                  <span
+                    className="block text-xs font-medium text-slate-700 truncate"
+                    title={file.filename}
+                  >
+                    {file.filename || EMPTY}
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    {formatFileSize(file.size || 0)}
+                  </span>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onDelete(file.id)}
+                disabled={deletingMediaId === file.id}
+                aria-label={`Delete ${file.filename || "file"}`}
+                title="Delete file"
+                className="absolute top-2 right-2 cursor-pointer p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deletingMediaId === file.id ? (
+                  <span
+                    className="block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Trash2 className="w-4 h-4" aria-hidden="true" />
+                )}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Stock on hand, with a text label so the level never rests on colour alone
+// (DESIGN.md 13.4).
+function StockLevel({ stock, unit }) {
+  const tone =
+    stock <= 0
+      ? "text-red-700"
+      : stock < 10
+        ? "text-amber-700"
+        : "text-green-700";
+  const label = stock <= 0 ? "Out of stock" : stock < 10 ? "Low stock" : null;
+  return (
+    <div>
+      <div className={`text-sm font-mono font-medium ${tone}`}>
+        {formatQty(stock, unit)}
+      </div>
+      {label && <div className="text-xs text-slate-500">{label}</div>}
+    </div>
+  );
+}
+
+// useSearchParams needs a Suspense boundary above it
+export default function MaterialsToOrderPage() {
+  return (
+    <Suspense fallback={null}>
+      <MaterialsToOrderContent />
+    </Suspense>
+  );
+}
+
+function MaterialsToOrderContent() {
   const { getToken } = useAuth();
+  const searchParams = useSearchParams();
+  const fileFieldId = useId();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState("");
   const [mtos, setMtos] = useState([]);
   const [activeTab, setActiveTab] = useState("active");
   const [showCreatePurchaseOrderModal, setShowCreatePurchaseOrderModal] =
@@ -67,6 +530,7 @@ export default function page() {
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
   // Define all available columns for export
   const availableColumns = [
@@ -118,6 +582,7 @@ export default function page() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const fileInputRef = useRef(null);
+  const mediaModalRef = useRef(null);
   const [quantityOrderedDraftById, setQuantityOrderedDraftById] = useState({});
   const [isSavingQuantityOrderedById, setIsSavingQuantityOrderedById] =
     useState({});
@@ -135,10 +600,43 @@ export default function page() {
   // Cumulative materials state
   const [cumulativeData, setCumulativeData] = useState([]);
   const [loadingCumulative, setLoadingCumulative] = useState(false);
+  const [cumulativeLoaded, setCumulativeLoaded] = useState(false);
+  const [cumulativeError, setCumulativeError] = useState("");
+
+  // Focus moves into the media modal, stays inside it, and returns to the
+  // trigger on close (DESIGN.md 13.6).
+  useModalFocus(mediaModalRef, showMediaModal && !!selectedMtoForMedia);
 
   useEffect(() => {
     fetchMTOs();
   }, []);
+
+  // Deep link from an update: ?mto=<id> switches to the tab the MTO is on,
+  // clears anything that would hide it (search, paging), opens its row and
+  // scrolls to it. Applied once per link, after the MTOs have loaded.
+  const openedMtoRef = useRef(null);
+  useEffect(() => {
+    const mtoId = searchParams.get("mto");
+    if (!mtoId || openedMtoRef.current === mtoId) return;
+    const target = (Array.isArray(mtos) ? mtos : []).find(
+      (m) => m.id === mtoId,
+    );
+    if (!target) return;
+    openedMtoRef.current = mtoId;
+    if (search) setSearch("");
+    setItemsPerPage(0);
+    setActiveTab(
+      COMPLETED_STATUSES.includes(target.status) ? "completed" : "active",
+    );
+    setOpenAccordionId(mtoId);
+    setTimeout(
+      () =>
+        document
+          .getElementById(`mto-${mtoId}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      200,
+    );
+  }, [mtos, searchParams]);
 
   // Fetch cumulative data when cumulative tab is active
   useEffect(() => {
@@ -180,10 +678,9 @@ export default function page() {
   const handleReserveStock = async (mtoItem, stockAvailable) => {
     const sessionToken = getToken();
     if (!sessionToken) {
-      toast.error("No valid session found. Please login again.");
+      toast.error(SESSION_ERROR);
       return;
     }
-    console.log(mtoItem);
 
     setReservingItemId(mtoItem.id);
     try {
@@ -198,7 +695,7 @@ export default function page() {
       );
 
       if (response.data.status) {
-        toast.success("Stock reserved successfully");
+        toast.success("Stock reserved.");
         // Update local state
         setReservedItemsMap((prev) => ({
           ...prev,
@@ -238,10 +735,16 @@ export default function page() {
           })),
         );
       } else {
-        toast.error(response.data.message || "Failed to reserve stock");
+        toast.error(
+          response.data.message ||
+            "Couldn't reserve the stock. Check your connection and try again.",
+        );
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to reserve stock");
+      toast.error(
+        err?.response?.data?.message ||
+          "Couldn't reserve the stock. Check your connection and try again.",
+      );
     } finally {
       setReservingItemId(null);
     }
@@ -250,7 +753,7 @@ export default function page() {
   const handleDeleteReservation = async (reservationId, mtoItemId) => {
     const sessionToken = getToken();
     if (!sessionToken) {
-      toast.error("No valid session found. Please login again.");
+      toast.error(SESSION_ERROR);
       return;
     }
 
@@ -262,7 +765,7 @@ export default function page() {
       );
 
       if (response.data.status) {
-        toast.success("Stock reservation deleted successfully");
+        toast.success("Stock unreserved.");
 
         // Get the reservation quantity before deleting from state
         const reservation = reservedItemsMap[mtoItemId];
@@ -298,11 +801,15 @@ export default function page() {
           );
         }
       } else {
-        toast.error(response.data.message || "Failed to delete reservation");
+        toast.error(
+          response.data.message ||
+            "Couldn't unreserve the stock. Check your connection and try again.",
+        );
       }
     } catch (err) {
       toast.error(
-        err?.response?.data?.message || "Failed to delete reservation",
+        err?.response?.data?.message ||
+          "Couldn't unreserve the stock. Check your connection and try again.",
       );
     } finally {
       setReservingItemId(null);
@@ -313,8 +820,12 @@ export default function page() {
   const fetchCumulativeData = async () => {
     try {
       setLoadingCumulative(true);
+      setCumulativeError("");
       const sessionToken = getToken();
-      if (!sessionToken) return;
+      if (!sessionToken) {
+        setCumulativeError(SESSION_ERROR);
+        return;
+      }
 
       const response = await axios.get(
         "/api/v1/materials_to_order/cumulative",
@@ -326,15 +837,16 @@ export default function page() {
       if (response.data.status) {
         setCumulativeData(response.data.data || []);
       } else {
-        toast.error("Failed to fetch cumulative data");
+        setCumulativeError(response.data.message || CUMULATIVE_ERROR);
         setCumulativeData([]);
       }
     } catch (err) {
       console.error("Error fetching cumulative data:", err);
-      toast.error("Failed to fetch cumulative materials");
+      setCumulativeError(err?.response?.data?.message || CUMULATIVE_ERROR);
       setCumulativeData([]);
     } finally {
       setLoadingCumulative(false);
+      setCumulativeLoaded(true);
     }
   };
 
@@ -348,11 +860,7 @@ export default function page() {
       (mto?.items || []).forEach((it) => {
         if (it?.id) {
           // If quantity_ordered_po > 0, use that value instead of quantity_ordered
-          const qtyOrdered =
-            it.quantity_ordered_po && Number(it.quantity_ordered_po) > 0
-              ? it.quantity_ordered_po
-              : (it.quantity_ordered ?? 0);
-          const originalValue = String(qtyOrdered);
+          const originalValue = String(defaultQuantityOrdered(it));
           newDraft[it.id] = originalValue;
           newOriginal[it.id] = originalValue;
         }
@@ -389,30 +897,36 @@ export default function page() {
     };
   }, []);
 
-  // Close dropdowns when clicking outside
+  // Close menus when clicking outside or pressing Escape
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!event.target.closest(".dropdown-container")) {
+        setShowSortDropdown(false);
+        setShowColumnDropdown(false);
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setShowSortDropdown(false);
         setShowColumnDropdown(false);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
 
   const fetchMTOs = async () => {
     try {
       setLoading(true);
-      setError(null);
+      setError("");
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        setError(SESSION_ERROR);
         return;
       }
       const response = await axios.get("/api/v1/materials_to_order/all", {
@@ -423,12 +937,14 @@ export default function page() {
         const data = response.data.data || [];
         setMtos(Array.isArray(data) ? data : []);
       } else {
-        setError(response.data.message || "Failed to fetch materials to order");
+        setError(response.data.message || LOAD_ERROR);
       }
     } catch (err) {
-      setError(
-        err?.response?.data?.message || "Failed to fetch materials to order",
-      );
+      const message = err?.response?.data?.message || LOAD_ERROR;
+      setError(message);
+      // With a list already on screen the inline error state is not shown, so
+      // say so in a toast instead.
+      if (mtos.length > 0) toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -447,7 +963,7 @@ export default function page() {
     const fileObj = {
       url: formattedUrl,
       type: "image/jpeg", // ViewMedia checks for selectedFile.type?.includes("image")
-      name: imageObj.filename || imageObj.name || "Item Image",
+      name: imageObj.filename || imageObj.name || "Item image",
       size: imageObj.size || 0,
       isExisting: true,
     };
@@ -459,10 +975,7 @@ export default function page() {
   const saveQuantityOrdered = async (mtoItemId, rawValue) => {
     const sessionToken = getToken();
     if (!sessionToken) {
-      toast.error("No valid session found. Please login again.", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      toast.error(SESSION_ERROR, TOAST_OPTIONS);
       return;
     }
 
@@ -480,7 +993,7 @@ export default function page() {
       );
       if (!response?.data?.status) {
         throw new Error(
-          response?.data?.message || "Failed to update quantity ordered",
+          response?.data?.message || "Couldn't update the quantity ordered.",
         );
       }
 
@@ -523,7 +1036,9 @@ export default function page() {
     } catch (err) {
       console.error("Failed to update quantity_ordered:", err);
       toast.error(
-        err?.response?.data?.message || err?.message || "Failed to save",
+        err?.response?.data?.message ||
+          err?.message ||
+          "Couldn't save the quantity ordered. Check your connection and try again.",
       );
     } finally {
       setIsSavingQuantityOrderedById((prev) => ({
@@ -621,29 +1136,42 @@ export default function page() {
     setShowCreatePurchaseOrderModal(true);
   };
 
-  const filteredAndSortedMTOs = useMemo(() => {
+  // Search filter (project name, lot name, status), applied before the tab
+  // split so the tab counts match what each tab would show.
+  const searchedMTOs = useMemo(() => {
     // Ensure mtos is always an array
     const mtosArray = Array.isArray(mtos) ? mtos : [];
+    if (!search) return mtosArray;
 
+    const q = search.toLowerCase();
+    return mtosArray.filter((mto) => {
+      const proj = (mto.project?.name || "").toLowerCase();
+      const lots = (mto.lots || [])
+        .map((l) => (l.name || "").toLowerCase())
+        .join(" ");
+      const status = (mto.status || "").toLowerCase();
+      return proj.includes(q) || lots.includes(q) || status.includes(q);
+    });
+  }, [mtos, search]);
+
+  const tabCounts = useMemo(
+    () => ({
+      active: searchedMTOs.filter((mto) => ACTIVE_STATUSES.includes(mto.status))
+        .length,
+      completed: searchedMTOs.filter((mto) =>
+        COMPLETED_STATUSES.includes(mto.status),
+      ).length,
+    }),
+    [searchedMTOs],
+  );
+
+  const filteredAndSortedMTOs = useMemo(() => {
     // Tab filter
-    let list = mtosArray.filter((mto) =>
+    const list = searchedMTOs.filter((mto) =>
       activeTab === "active"
-        ? mto.status === "DRAFT" || mto.status === "PARTIALLY_ORDERED"
-        : mto.status === "FULLY_ORDERED" || mto.status === "CLOSED",
+        ? ACTIVE_STATUSES.includes(mto.status)
+        : COMPLETED_STATUSES.includes(mto.status),
     );
-
-    // Search filter (project name, lot name, status)
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter((mto) => {
-        const proj = (mto.project?.name || "").toLowerCase();
-        const lots = (mto.lots || [])
-          .map((l) => (l.name || "").toLowerCase())
-          .join(" ");
-        const status = (mto.status || "").toLowerCase();
-        return proj.includes(q) || lots.includes(q) || status.includes(q);
-      });
-    }
 
     // Precompute counts
     const withCounts = list.map((mto) => {
@@ -691,12 +1219,10 @@ export default function page() {
     });
 
     return withCounts;
-  }, [mtos, activeTab, search, sortField, sortOrder]);
+  }, [searchedMTOs, activeTab, sortField, sortOrder]);
 
   // Pagination
   const totalItems = filteredAndSortedMTOs.length;
-  const totalPages =
-    itemsPerPage === 0 ? 1 : Math.ceil(totalItems / itemsPerPage);
   const startIndex = itemsPerPage === 0 ? 0 : (currentPage - 1) * itemsPerPage;
   const endIndex = itemsPerPage === 0 ? totalItems : startIndex + itemsPerPage;
   const paginatedMTOs = filteredAndSortedMTOs.slice(startIndex, endIndex);
@@ -708,15 +1234,16 @@ export default function page() {
       setSortField(field);
       setSortOrder("asc");
     }
+    setShowSortDropdown(false);
   };
 
+  // Only the active field shows a sort indicator (DESIGN.md 15.4).
   const getSortIcon = (field) => {
-    if (sortField !== field)
-      return <ArrowUpDown className="h-4 w-4 text-slate-400" />;
+    if (sortField !== field) return null;
     if (sortOrder === "asc")
-      return <ArrowUp className="h-4 w-4 text-primary" />;
+      return <ArrowUp className="h-4 w-4 text-primary" aria-hidden="true" />;
     if (sortOrder === "desc")
-      return <ArrowDown className="h-4 w-4 text-primary" />;
+      return <ArrowDown className="h-4 w-4 text-primary" aria-hidden="true" />;
     return null;
   };
 
@@ -738,6 +1265,13 @@ export default function page() {
     setCurrentPage(1);
   };
 
+  // Filters that narrow the list (sort does not hide records), used to tell
+  // "no records" apart from "no results for this filter" (DESIGN.md 15.4).
+  const isNarrowingFilterActive = search !== "";
+
+  const isAnyFilterActive =
+    search !== "" || sortField !== "project" || sortOrder !== "asc";
+
   const handleColumnToggle = (column) => {
     if (column === "Select All") {
       if (selectedColumns.length === availableColumns.length) {
@@ -758,10 +1292,7 @@ export default function page() {
 
   const handleExportToExcel = async () => {
     if (filteredAndSortedMTOs.length === 0) {
-      toast.warning("No data to export.", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      toast.warning("No data to export.", TOAST_OPTIONS);
       return;
     }
     setIsExporting(true);
@@ -950,7 +1481,7 @@ export default function page() {
       XLSX.writeFile(wb, filename);
       toast.success(`Exported ${exportData.length} rows to ${filename}`);
     } catch (err) {
-      toast.error("Failed to export data to Excel.");
+      toast.error("Couldn't export to Excel. Try again.");
     } finally {
       setIsExporting(false);
     }
@@ -971,13 +1502,18 @@ export default function page() {
     }
   };
 
-  const formatFileSize = (bytes) => {
-    if (!bytes || bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
-  };
+  // The media modal closes on Escape (DESIGN.md 9.4), except while an upload is
+  // running. The delete confirmation needs an explicit button, and the file
+  // viewer handles its own Escape.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+      if (showDeleteMediaModal || viewFileModal) return;
+      if (showMediaModal && !uploadingMedia) handleCloseMediaModal();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  });
 
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -996,10 +1532,7 @@ export default function page() {
     try {
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(SESSION_ERROR, TOAST_OPTIONS);
         return;
       }
 
@@ -1020,10 +1553,10 @@ export default function page() {
       );
 
       if (response.data.status) {
-        toast.success(response.data.message || "Files uploaded successfully", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.success(
+          response.data.message || "Files uploaded.",
+          TOAST_OPTIONS,
+        );
         // Refresh media files
         const updatedMedia = [...mediaFiles, ...(response.data.data || [])];
         setMediaFiles(updatedMedia);
@@ -1034,16 +1567,18 @@ export default function page() {
           fileInputRef.current.value = "";
         }
       } else {
-        toast.error(response.data.message || "Failed to upload files", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(
+          response.data.message ||
+            "Couldn't upload the files. Check your connection and try again.",
+          TOAST_OPTIONS,
+        );
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to upload files", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      toast.error(
+        err?.response?.data?.message ||
+          "Couldn't upload the files. Check your connection and try again.",
+        TOAST_OPTIONS,
+      );
     } finally {
       setUploadingMedia(false);
     }
@@ -1061,10 +1596,7 @@ export default function page() {
     try {
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(SESSION_ERROR, TOAST_OPTIONS);
         return;
       }
 
@@ -1078,10 +1610,7 @@ export default function page() {
       );
 
       if (response.data.status) {
-        toast.success("File deleted successfully", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.success("File deleted.", TOAST_OPTIONS);
         // Remove from local state
         setMediaFiles((prev) =>
           prev.filter((f) => f.id !== pendingDeleteMediaId),
@@ -1091,16 +1620,18 @@ export default function page() {
         setShowDeleteMediaModal(false);
         setPendingDeleteMediaId(null);
       } else {
-        toast.error(response.data.message || "Failed to delete file", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(
+          response.data.message ||
+            "Couldn't delete the file. Check your connection and try again.",
+          TOAST_OPTIONS,
+        );
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to delete file", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      toast.error(
+        err?.response?.data?.message ||
+          "Couldn't delete the file. Check your connection and try again.",
+        TOAST_OPTIONS,
+      );
     } finally {
       setDeletingMediaId(null);
     }
@@ -1126,10 +1657,7 @@ export default function page() {
     try {
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(SESSION_ERROR, TOAST_OPTIONS);
         return;
       }
 
@@ -1143,10 +1671,7 @@ export default function page() {
       );
 
       if (response.data.status) {
-        toast.success("Materials to order deleted successfully", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.success("Materials to order deleted.", TOAST_OPTIONS);
         // Refresh the MTO list
         fetchMTOs();
         setShowDeleteMTOModal(false);
@@ -1157,20 +1682,16 @@ export default function page() {
         }
       } else {
         toast.error(
-          response.data.message || "Failed to delete materials to order",
-          {
-            position: "top-right",
-            autoClose: 3000,
-          },
+          response.data.message ||
+            "Couldn't delete the materials to order. Check your connection and try again.",
+          TOAST_OPTIONS,
         );
       }
     } catch (err) {
       toast.error(
-        err?.response?.data?.message || "Failed to delete materials to order",
-        {
-          position: "top-right",
-          autoClose: 3000,
-        },
+        err?.response?.data?.message ||
+          "Couldn't delete the materials to order. Check your connection and try again.",
+        TOAST_OPTIONS,
       );
     } finally {
       setDeletingMTOId(null);
@@ -1202,1623 +1723,1073 @@ export default function page() {
     }));
   };
 
+  const openCreateMTO = () => setShowCreateMTOModal(true);
+
+  const tabClass = (tab) =>
+    `cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-t-sm ${
+      activeTab === tab
+        ? "border-primary text-primary"
+        : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+    }`;
+
+  const exportDisabled =
+    isExporting ||
+    filteredAndSortedMTOs.length === 0 ||
+    selectedColumns.length === 0;
+  const columnPickerDisabled =
+    isExporting || filteredAndSortedMTOs.length === 0;
+
+  // Categorised uploads for the media modal
+  const categorizedMedia = {
+    images: mediaFiles.filter((file) => isImageFile(file)),
+    videos: mediaFiles.filter(
+      (file) => !isImageFile(file) && isVideoFile(file),
+    ),
+    pdfs: mediaFiles.filter(
+      (file) => !isImageFile(file) && !isVideoFile(file) && isPdfFile(file),
+    ),
+    others: mediaFiles.filter(
+      (file) => !isImageFile(file) && !isVideoFile(file) && !isPdfFile(file),
+    ),
+  };
+
+  const pendingDeleteFile = mediaFiles.find(
+    (file) => file.id === pendingDeleteMediaId,
+  );
+  const pendingDeleteName = pendingDeleteFile?.filename || "This file";
+  const pendingDeleteMtoName = mtoPendingDelete?.project?.name;
+
+  const otherTab = activeTab === "active" ? "completed" : "active";
+  const showInitialLoading = loading && mtos.length === 0;
+  const showLoadError = !!error && !loading && mtos.length === 0;
+  const showCumulativeLoading =
+    loadingCumulative || (!cumulativeLoaded && !cumulativeError);
+
+  // The items of one materials to order, grouped by supplier.
+  const renderSupplierGroups = (mto) => {
+    const { groups, orderedGroupNames } = groupItemsBySupplier(mto.items);
+
+    return (
+      <div className="space-y-4">
+        {orderedGroupNames.map((name) => {
+          const groupItems = groups.get(name) || [];
+
+          // Show the button only if there are items to order (not reserved
+          // and not fully ordered)
+          const hasItemsToOrder = groupItems.some(
+            (it) =>
+              !reservedItemsMap[it.id] &&
+              Number(it.quantity_ordered_po || 0) < Number(it.quantity || 0),
+          );
+
+          return (
+            <div key={name}>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <h3 className="text-sm font-semibold text-slate-700">{name}</h3>
+                {activeTab === "active" &&
+                  name !== "Unassigned" &&
+                  hasItemsToOrder && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const supplierId = resolveSupplierId(
+                          groupItems[0],
+                          name,
+                        );
+                        if (!supplierId) return;
+                        openCreatePOForSupplier(name, supplierId, mto.id);
+                      }}
+                      className={BTN_SECONDARY_COMPACT}
+                    >
+                      <Plus className="w-4 h-4" aria-hidden="true" />
+                      Create purchase order
+                    </button>
+                  )}
+              </div>
+              <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th scope="col" className={`${TH} text-left`}>
+                        Image
+                      </th>
+                      <th scope="col" className={`${TH} text-left`}>
+                        Category
+                      </th>
+                      <th scope="col" className={`${TH} text-left`}>
+                        Details
+                      </th>
+                      <th scope="col" className={`${TH} text-right`}>
+                        In stock
+                      </th>
+                      <th scope="col" className={`${TH} text-right`}>
+                        Quantity
+                      </th>
+                      <th scope="col" className={`${TH} text-right`}>
+                        Qty ordered
+                      </th>
+                      <th scope="col" className={`${TH} text-left`}>
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {groupItems.map((item) => {
+                      const stockOnHand = Number(item.item?.quantity ?? 0);
+                      const measurementUnit = item.item?.measurement_unit || "";
+
+                      // Check if this item has a reservation
+                      const reservation = reservedItemsMap[item.id];
+                      const isReserved = !!reservation;
+
+                      // Check if item has been ordered via PO
+                      const isOrdered =
+                        Number(item.quantity_ordered_po || 0) > 0;
+
+                      // Quantity actually ordered on purchase orders
+                      const actualQuantityOrdered = (
+                        item.ordered_items || []
+                      ).reduce(
+                        (sum, poItem) => sum + (poItem.quantity || 0),
+                        0,
+                      );
+
+                      const supplierRef =
+                        item.item?.itemSuppliers?.find(
+                          (is) => (is.supplier?.name || "Unassigned") === name,
+                        )?.supplier_reference || item.item?.supplier_reference;
+
+                      const label = itemLabel(item.item, item.item_id);
+                      const isSaving = !!isSavingQuantityOrderedById[item.id];
+
+                      return (
+                        <tr
+                          key={item.id}
+                          className={
+                            isReserved || isOrdered
+                              ? "bg-slate-100"
+                              : "hover:bg-slate-50 transition-colors"
+                          }
+                        >
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <ItemThumb
+                              image={item.item?.image}
+                              label={label}
+                              onOpen={handleImageClick}
+                            />
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <CategoryBadge category={item.item?.category} />
+                          </td>
+                          <td className="px-4 py-3">
+                            <ItemDetails
+                              detail={item.item}
+                              supplierRef={supplierRef}
+                            />
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right">
+                            <StockLevel
+                              stock={stockOnHand}
+                              unit={measurementUnit}
+                            />
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right">
+                            <p className="text-sm font-mono text-slate-700">
+                              {formatQty(
+                                item.quantity,
+                                item.item?.measurement_unit,
+                              )}
+                            </p>
+                            {actualQuantityOrdered > 0 && (
+                              <p className="text-xs font-mono text-slate-600">
+                                Ordered {formatQty(actualQuantityOrdered)}
+                              </p>
+                            )}
+                            {item.quantity_received > 0 && (
+                              <p className="text-xs font-mono text-slate-600">
+                                Received {formatQty(item.quantity_received)}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right">
+                            <div className="flex flex-col items-end gap-1">
+                              <div className="flex items-center gap-1">
+                                {pendingChangesById[item.id] && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleSaveQuantityOrdered(item.id)
+                                      }
+                                      disabled={isSaving}
+                                      aria-label={`Save quantity ordered for ${label}`}
+                                      title="Save"
+                                      className={ICON_BTN_ACCENT}
+                                    >
+                                      <Check
+                                        className="w-4 h-4"
+                                        aria-hidden="true"
+                                      />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        handleCancelQuantityOrdered(item.id)
+                                      }
+                                      disabled={isSaving}
+                                      aria-label={`Discard quantity change for ${label}`}
+                                      title="Cancel"
+                                      className={ICON_BTN}
+                                    >
+                                      <X
+                                        className="w-4 h-4"
+                                        aria-hidden="true"
+                                      />
+                                    </button>
+                                  </>
+                                )}
+                                <input
+                                  type="number"
+                                  min="0"
+                                  aria-label={`Quantity ordered for ${label}`}
+                                  value={
+                                    quantityOrderedDraftById[item.id] ??
+                                    String(defaultQuantityOrdered(item))
+                                  }
+                                  onChange={(e) =>
+                                    handleQuantityOrderedChange(
+                                      item.id,
+                                      e.target.value,
+                                    )
+                                  }
+                                  disabled={isSaving || isOrdered || isReserved}
+                                  title={
+                                    isOrdered
+                                      ? "A purchase order already covers this line"
+                                      : isReserved
+                                        ? "Stock is reserved for this line"
+                                        : undefined
+                                  }
+                                  className={`w-24 text-right font-mono ${FIELD_COMPACT}`}
+                                />
+                              </div>
+                              {item.ordered_by?.username &&
+                                !pendingChangesById[item.id] && (
+                                  <div className="text-xs text-slate-500">
+                                    Ordered by {item.ordered_by.username}
+                                  </div>
+                                )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col items-start gap-2">
+                              {isOrdered && (
+                                <span
+                                  className={`${BADGE} ${STATUS_COLORS.ORDERED}`}
+                                >
+                                  Ordered
+                                </span>
+                              )}
+                              {item.quantity_received > 0 && (
+                                <span
+                                  className={`${BADGE} ${STATUS_COLORS.FULLY_RECEIVED}`}
+                                >
+                                  Received
+                                </span>
+                              )}
+                              {!isOrdered && item.quantity_received === 0 && (
+                                <span
+                                  className={`${BADGE} ${BADGE_TONES.warning}`}
+                                >
+                                  Pending
+                                </span>
+                              )}
+                              {/* Reserve stock button */}
+                              {!isOrdered &&
+                                (stockOnHand > 0 || isReserved) && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      !isReserved
+                                        ? handleReserveStock(item, stockOnHand)
+                                        : handleDeleteReservation(
+                                            reservation.id,
+                                            item.id,
+                                          )
+                                    }
+                                    disabled={reservingItemId === item.id}
+                                    className={BTN_SECONDARY_COMPACT}
+                                  >
+                                    {reservingItemId === item.id
+                                      ? !isReserved
+                                        ? "Reserving…"
+                                        : "Unreserving…"
+                                      : !isReserved
+                                        ? "Reserve stock"
+                                        : "Unreserve"}
+                                  </button>
+                                )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <AdminShell>
       <main className="flex h-full min-h-0 flex-col overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-              <p className="text-sm text-slate-600 font-medium">
-                Loading materials to order details...
-              </p>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
+        <div className="px-4 py-2 shrink-0">
+          <div className="flex justify-between items-center">
+            <h1 className="text-xl font-semibold text-slate-800">
+              Materials to order
+            </h1>
+            <div className="flex items-center gap-2">
+              <SearchBar />
               <button
-                onClick={() => window.location.reload()}
-                className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+                type="button"
+                onClick={openCreateMTO}
+                className={BTN_PRIMARY}
               >
-                Try Again
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Create materials to order
               </button>
             </div>
           </div>
-        ) : (
-          <>
-            <div className="px-4 py-2 shrink-0">
-              <div className="flex justify-between items-center">
-                <h1 className="text-xl font-bold text-slate-700">
-                  Materials to Order
-                </h1>
-                <div className="flex items-center gap-2">
-                  <SearchBar />
-                  <button
-                    onClick={() => setShowCreateMTOModal(true)}
-                    className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium shadow-sm"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Create Materials to Order</span>
-                  </button>
+        </div>
+
+        <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
+          <div className="bg-white rounded-lg border border-slate-200 flex flex-col h-full overflow-hidden">
+            {/* Fixed header section */}
+            <div className="p-4 shrink-0 border-b border-slate-200">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                {/* Search */}
+                <div className="flex items-center gap-2 flex-1 min-w-64 max-w-2xl relative">
+                  <Search
+                    className="h-4 w-4 absolute left-3 text-slate-400 pointer-events-none"
+                    aria-hidden="true"
+                  />
+                  <input
+                    type="text"
+                    aria-label="Search materials to order"
+                    placeholder="Search by project, lot or status"
+                    className="w-full text-sm text-slate-800 py-2 pr-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
                 </div>
-              </div>
-            </div>
 
-            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-                {/* Fixed Header Section */}
-                <div className="p-4 shrink-0 border-b border-slate-200">
-                  <div className="flex items-center justify-between gap-3">
-                    {/* Search */}
-                    <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
-                      <Search className="h-4 w-4 absolute left-3 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Search by project, lot or status"
-                        className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </div>
+                {/* Reset, sort, export */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {isAnyFilterActive && (
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className={BTN_SECONDARY}
+                    >
+                      <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                      <span>Reset</span>
+                    </button>
+                  )}
 
-                    {/* Reset, Sort, Export */}
-                    <div className="flex items-center gap-2">
-                      {(search !== "" ||
-                        sortField !== "project" ||
-                        sortOrder !== "asc") && (
-                        <button
-                          onClick={handleReset}
-                          className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                          <span>Reset</span>
-                        </button>
-                      )}
-
-                      <DropdownMenu.Root>
-                        <DropdownMenu.Trigger asChild>
-                          <button className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium">
-                            <ArrowUpDown className="h-4 w-4" />
-                            <span>Sort by</span>
-                          </button>
-                        </DropdownMenu.Trigger>
-
-                        <DropdownMenu.Content
-                          className="w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-50 py-1"
-                          sideOffset={4}
-                        >
-                          {[
-                            { key: "project", label: "Project" },
-                            { key: "status", label: "Status" },
-                            { key: "items", label: "Items" },
-                            {
-                              key: "remaining",
-                              label: "Items Remaining",
-                            },
-                          ].map((opt) => (
-                            <DropdownMenu.Item
-                              key={opt.key}
-                              className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between outline-none"
-                              onSelect={() => handleSort(opt.key)}
+                  <div className="relative dropdown-container">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowColumnDropdown(false);
+                        setShowSortDropdown(!showSortDropdown);
+                      }}
+                      aria-haspopup="true"
+                      aria-expanded={showSortDropdown}
+                      className={BTN_SECONDARY}
+                    >
+                      <ArrowUpDown className="h-4 w-4" aria-hidden="true" />
+                      <span>Sort by</span>
+                    </button>
+                    {showSortDropdown && (
+                      <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-300 rounded-lg z-40">
+                        <div className="py-1">
+                          {SORT_OPTIONS.map(({ field, label }) => (
+                            <button
+                              type="button"
+                              key={field}
+                              onClick={() => handleSort(field)}
+                              className={MENU_ITEM}
                             >
-                              {opt.label} {getSortIcon(opt.key)}
-                            </DropdownMenu.Item>
+                              {label} {getSortIcon(field)}
+                            </button>
                           ))}
-                        </DropdownMenu.Content>
-                      </DropdownMenu.Root>
-
-                      <div className="relative dropdown-container flex items-center">
-                        <button
-                          onClick={handleExportToExcel}
-                          disabled={
-                            isExporting ||
-                            filteredAndSortedMTOs.length === 0 ||
-                            selectedColumns.length === 0
-                          }
-                          className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                            isExporting ||
-                            filteredAndSortedMTOs.length === 0 ||
-                            selectedColumns.length === 0
-                              ? "opacity-50 cursor-not-allowed"
-                              : "cursor-pointer hover:bg-slate-100"
-                          }`}
-                        >
-                          <Sheet className="h-4 w-4" />
-                          <span>
-                            {isExporting ? "Exporting..." : "Export to Excel"}
-                          </span>
-                        </button>
-                        <button
-                          onClick={() =>
-                            setShowColumnDropdown(!showColumnDropdown)
-                          }
-                          disabled={
-                            isExporting || filteredAndSortedMTOs.length === 0
-                          }
-                          className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                            isExporting || filteredAndSortedMTOs.length === 0
-                              ? "opacity-50 cursor-not-allowed"
-                              : "cursor-pointer hover:bg-slate-100"
-                          }`}
-                        >
-                          <ChevronDown className="h-5 w-5" />
-                        </button>
-                        {showColumnDropdown && (
-                          <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                            <div className="py-1">
-                              <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                <span className="font-semibold">
-                                  Select All
-                                </span>
-                                <input
-                                  type="checkbox"
-                                  checked={
-                                    selectedColumns.length ===
-                                    availableColumns.length
-                                  }
-                                  onChange={() =>
-                                    handleColumnToggle("Select All")
-                                  }
-                                  className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                />
-                              </label>
-                              {availableColumns.map((column) => (
-                                <label
-                                  key={column}
-                                  className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                >
-                                  <span>{column}</span>
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedColumns.includes(column)}
-                                    onChange={() => handleColumnToggle(column)}
-                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                  />
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
+                    )}
+                  </div>
+
+                  <div className="relative dropdown-container flex items-stretch">
+                    <button
+                      type="button"
+                      onClick={handleExportToExcel}
+                      disabled={exportDisabled}
+                      className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 border-r-0 hover:bg-slate-100 rounded-l-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Sheet className="h-4 w-4" aria-hidden="true" />
+                      <span>
+                        {isExporting ? "Exporting…" : "Export to Excel"}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSortDropdown(false);
+                        setShowColumnDropdown(!showColumnDropdown);
+                      }}
+                      disabled={columnPickerDisabled}
+                      aria-label="Choose columns to export"
+                      aria-haspopup="true"
+                      aria-expanded={showColumnDropdown}
+                      className="cursor-pointer flex items-center px-2 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-r-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    {showColumnDropdown && (
+                      <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-300 rounded-lg z-40 max-h-96 overflow-y-auto">
+                        <div className="py-1">
+                          <label
+                            className={`${MENU_CHECK_ROW} sticky top-0 bg-white border-b border-slate-200`}
+                          >
+                            <span className="font-medium">Select all</span>
+                            <input
+                              type="checkbox"
+                              checked={
+                                selectedColumns.length ===
+                                availableColumns.length
+                              }
+                              onChange={() => handleColumnToggle("Select All")}
+                              className={CHECKBOX}
+                            />
+                          </label>
+                          {availableColumns.map((column) => (
+                            <label key={column} className={MENU_CHECK_ROW}>
+                              <span>{column}</span>
+                              <input
+                                type="checkbox"
+                                checked={selectedColumns.includes(column)}
+                                onChange={() => handleColumnToggle(column)}
+                                className={CHECKBOX}
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {/* Tabs Section */}
-                <div className="px-4 shrink-0 border-b border-slate-200">
-                  <nav className="flex space-x-6">
-                    <button
-                      onClick={() => setActiveTab("cumulative")}
-                      className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "cumulative"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                      }`}
-                    >
-                      Cumulative List
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("active")}
-                      className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "active"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                      }`}
-                    >
-                      Active
-                    </button>
-                    <button
-                      onClick={() => setActiveTab("completed")}
-                      className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "completed"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                      }`}
-                    >
-                      Completed
-                    </button>
-                  </nav>
-                </div>
-
-                {/* Scrollable Content Section */}
-                <div className="flex-1 overflow-auto">
-                  {/* Cumulative Tab Content */}
-                  {activeTab === "cumulative" && (
-                    <div className="p-4">
-                      {loadingCumulative ? (
-                        <div className="flex items-center justify-center h-64">
-                          <div className="text-center">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                            <p className="text-sm text-slate-600 font-medium">
-                              Loading cumulative data...
-                            </p>
-                          </div>
-                        </div>
-                      ) : cumulativeData.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-64">
-                          <Package className="w-16 h-16 text-slate-300 mb-4" />
-                          <p className="text-slate-600 text-lg font-medium mb-2">
-                            No materials to order
-                          </p>
-                          <p className="text-slate-500 text-sm">
-                            Create a new materials to order to get started
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-6">
-                          {cumulativeData.map((supplier) => (
-                            <div
-                              key={supplier.supplier_id}
-                              className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden"
-                            >
-                              <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                                <div>
-                                  <h3 className="text-sm font-semibold text-slate-800">
-                                    {supplier.supplier_name}
-                                  </h3>
-                                  <p className="text-xs text-slate-500 mt-0.5">
-                                    {supplier.items.length} unique item(s)
-                                  </p>
-                                </div>
-                                {supplier.supplier_id !== "unassigned" && (
-                                  <button
-                                    onClick={() => {
-                                      openCreatePOForSupplier(
-                                        supplier.supplier_name,
-                                        supplier.supplier_id,
-                                      );
-                                    }}
-                                    className="cursor-pointer px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary/90 transition-colors"
-                                  >
-                                    Create Purchase Order
-                                  </button>
-                                )}
-                              </div>
-                              <div className="overflow-x-auto">
-                                <table className="w-full">
-                                  <thead className="bg-slate-50 border-b border-slate-200">
-                                    <tr>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        Image
-                                      </th>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        Category
-                                      </th>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        Details
-                                      </th>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        Stock On Hand
-                                      </th>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        Cumulative Qty
-                                      </th>
-                                      <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                        MTO Sources
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="bg-white divide-y divide-slate-200">
-                                    {supplier.items.map((item) => (
-                                      <tr
-                                        key={item.item_id}
-                                        className="hover:bg-slate-50"
-                                      >
-                                        <td className="px-3 py-2 whitespace-nowrap">
-                                          <div className="flex items-center">
-                                            {item.image?.url ? (
-                                              <Image
-                                                loading="lazy"
-                                                src={`/${item.image.url}`}
-                                                alt={item.category || "Item"}
-                                                className="w-10 h-10 object-cover rounded border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
-                                                width={40}
-                                                height={40}
-                                                onClick={() =>
-                                                  handleImageClick(item.image)
-                                                }
-                                              />
-                                            ) : (
-                                              <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
-                                                <Package className="w-5 h-5 text-slate-400" />
-                                              </div>
-                                            )}
-                                          </div>
-                                        </td>
-                                        <td className="px-3 py-2 whitespace-nowrap">
-                                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                            {item.category}
-                                          </span>
-                                        </td>
-                                        <td className="px-3 py-2">
-                                          <div className="text-xs text-slate-600 space-y-1">
-                                            {item?.supplier_reference && (
-                                              <div>
-                                                <span className="font-medium">
-                                                  Supplier Ref:
-                                                </span>{" "}
-                                                {item.supplier_reference}
-                                              </div>
-                                            )}
-                                            {item.sheet && (
-                                              <>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Brand:
-                                                  </span>{" "}
-                                                  {item.sheet.brand || "-"}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Color:
-                                                  </span>{" "}
-                                                  {item.sheet.color}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Finish:
-                                                  </span>{" "}
-                                                  {item.sheet.finish}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Face:
-                                                  </span>{" "}
-                                                  {item.sheet.face || "-"}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Dimensions:
-                                                  </span>{" "}
-                                                  {item.sheet.dimensions}
-                                                </div>
-                                              </>
-                                            )}
-                                            {item.handle && (
-                                              <>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Brand:
-                                                  </span>{" "}
-                                                  {item.handle.brand || "-"}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Color:
-                                                  </span>{" "}
-                                                  {item.handle.color}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Type:
-                                                  </span>{" "}
-                                                  {item.handle.type}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Dimensions:
-                                                  </span>{" "}
-                                                  {item.handle.dimensions}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Material:
-                                                  </span>{" "}
-                                                  {item.handle.material || "-"}
-                                                </div>
-                                              </>
-                                            )}
-                                            {item.hardware && (
-                                              <>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Brand:
-                                                  </span>{" "}
-                                                  {item.hardware.brand || "-"}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Name:
-                                                  </span>{" "}
-                                                  {item.hardware.name}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Type:
-                                                  </span>{" "}
-                                                  {item.hardware.type}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Dimensions:
-                                                  </span>{" "}
-                                                  {item.hardware.dimensions}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Sub Category:
-                                                  </span>{" "}
-                                                  {item.hardware.sub_category}
-                                                </div>
-                                              </>
-                                            )}
-                                            {item.accessory && (
-                                              <div>
-                                                <span className="font-medium">
-                                                  Name:
-                                                </span>{" "}
-                                                {item.accessory.name}
-                                              </div>
-                                            )}
-                                            {item.edging_tape && (
-                                              <>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Brand:
-                                                  </span>{" "}
-                                                  {item.edging_tape.brand ||
-                                                    "-"}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Color:
-                                                  </span>{" "}
-                                                  {item.edging_tape.color ||
-                                                    "-"}
-                                                </div>
-                                                <div>
-                                                  <span className="font-medium">
-                                                    Finish:
-                                                  </span>{" "}
-                                                  {item.edging_tape.finish ||
-                                                    "-"}
-                                                </div>
-                                              </>
-                                            )}
-                                          </div>
-                                        </td>
-                                        <td className="px-3 py-2 whitespace-nowrap">
-                                          <div className="text-xs">
-                                            <div
-                                              className={`font-medium ${
-                                                item.stock_on_hand <= 0
-                                                  ? "text-red-600"
-                                                  : item.stock_on_hand < 10
-                                                    ? "text-yellow-600"
-                                                    : "text-green-600"
-                                              }`}
-                                            >
-                                              {item.stock_on_hand}{" "}
-                                              {item.measurement_unit}
-                                            </div>
-                                          </div>
-                                        </td>
-                                        <td className="px-3 py-2 whitespace-nowrap">
-                                          <div className="text-sm font-semibold text-primary">
-                                            {item.cumulative_quantity}{" "}
-                                            {item.measurement_unit}
-                                          </div>
-                                        </td>
-                                        <td className="px-3 py-2">
-                                          <div className="text-xs text-slate-600 space-y-1">
-                                            {item.mto_sources.map(
-                                              (source, idx) => (
-                                                <div key={idx}>
-                                                  <span className="font-medium">
-                                                    {source.project_name ||
-                                                      "Manually Added MTO"}{" "}
-                                                    :
-                                                  </span>{" "}
-                                                  {source.quantity}{" "}
-                                                  {item.measurement_unit}
-                                                </div>
-                                              ),
-                                            )}
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Active and Completed Tabs Content */}
-                  {(activeTab === "active" || activeTab === "completed") && (
-                    <div className="min-w-full">
-                      <table className="min-w-full divide-y divide-slate-200">
-                        <thead className="bg-slate-50 sticky top-0 z-10">
-                          <tr>
-                            <th
-                              className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("project")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Project / Lots
-                                {getSortIcon("project")}
-                              </div>
-                            </th>
-                            <th
-                              className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("items")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Items
-                                {getSortIcon("items")}
-                              </div>
-                            </th>
-                            <th
-                              className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("remaining")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Items Remaining
-                                {getSortIcon("remaining")}
-                              </div>
-                            </th>
-                            <th
-                              className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                              onClick={() => handleSort("status")}
-                            >
-                              <div className="flex items-center gap-2">
-                                Status
-                                {getSortIcon("status")}
-                              </div>
-                            </th>
-                            <th className="px-4 py-2 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-slate-200">
-                          {paginatedMTOs.length === 0 ? (
-                            <tr>
-                              <td
-                                className="px-4 py-4 text-sm text-slate-500 text-center"
-                                colSpan={5}
-                              >
-                                No materials to order found
-                              </td>
-                            </tr>
-                          ) : (
-                            paginatedMTOs.map((mto) => {
-                              return (
-                                <React.Fragment key={mto.id}>
-                                  <tr
-                                    onClick={() => {
-                                      if (openAccordionId === mto.id) {
-                                        setOpenAccordionId(null);
-                                      } else {
-                                        setOpenAccordionId(mto.id);
-                                      }
-                                    }}
-                                    className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
-                                  >
-                                    <td className="px-4 py-3">
-                                      <div className="flex flex-row items-center gap-3">
-                                        <span className="text-sm font-semibold text-slate-800 truncate">
-                                          {mto.project?.name || "Project"}
-                                        </span>
-                                        <div className="flex flex-wrap gap-1 mt-1 md:mt-0">
-                                          {mto.lots?.map((lot) => (
-                                            <span
-                                              key={lot.lot_id || lot.id}
-                                              className="text-[10px] px-2 py-1 bg-purple-100 text-purple-800 rounded"
-                                            >
-                                              {lot.name}
-                                            </span>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-slate-700">
-                                      {mto.__itemsCount ??
-                                        (mto.items?.length || 0)}
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-slate-700">
-                                      {mto.__itemsRemaining ??
-                                        (mto.items?.filter(
-                                          (it) =>
-                                            (it.quantity_ordered_po || 0) <
-                                            (it.quantity || 0),
-                                        ).length ||
-                                          0)}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <span
-                                        className={`px-2 py-1 text-xs font-medium rounded ${
-                                          mto.status === "DRAFT"
-                                            ? "bg-yellow-100 text-yellow-800"
-                                            : mto.status === "PARTIALLY_ORDERED"
-                                              ? "bg-blue-100 text-blue-800"
-                                              : mto.status === "FULLY_ORDERED"
-                                                ? "bg-green-100 text-green-800"
-                                                : "bg-slate-100 text-slate-800"
-                                        }`}
-                                      >
-                                        {mto.status}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-right">
-                                      <ChevronDown
-                                        className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${
-                                          openAccordionId === mto.id
-                                            ? "rotate-180"
-                                            : ""
-                                        }`}
-                                      />
-                                    </td>
-                                  </tr>
-
-                                  {/* Accordion content */}
-                                  {openAccordionId === mto.id && (
-                                    <tr>
-                                      <td
-                                        colSpan={5}
-                                        className="px-4 pb-4 border-t border-slate-200 bg-slate-50"
-                                      >
-                                        <div
-                                          id={`mto-${mto.id}`}
-                                          className="mt-2"
-                                        >
-                                          <div className="mb-2 p-2 bg-slate-50 rounded-lg">
-                                            <div className="flex items-center justify-between">
-                                              <div className="flex items-center gap-4 text-xs text-slate-600">
-                                                <div className="flex items-center gap-1.5">
-                                                  <Calendar className="w-4 h-4" />
-                                                  <span>
-                                                    <span className="font-medium">
-                                                      Created:
-                                                    </span>{" "}
-                                                    {mto.createdAt
-                                                      ? new Date(
-                                                          mto.createdAt,
-                                                        ).toLocaleString()
-                                                      : "No date"}
-                                                  </span>
-                                                </div>
-                                                {mto.notes && (
-                                                  <div className="flex items-center gap-1.5">
-                                                    <FileText className="w-4 h-4" />
-                                                    <span>
-                                                      <span className="font-medium">
-                                                        Notes:
-                                                      </span>{" "}
-                                                      {mto.notes}
-                                                    </span>
-                                                  </div>
-                                                )}
-                                                <div className="flex items-center gap-1.5">
-                                                  <FileText className="w-4 h-4" />
-                                                  <button
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      handleOpenMediaModal(mto);
-                                                    }}
-                                                    className="cursor-pointer text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
-                                                  >
-                                                    <span>Media Files:</span>
-                                                    <span className="px-2 py-0.5 bg-primary/10 text-primary rounded">
-                                                      {(mto.media || []).length}
-                                                    </span>
-                                                  </button>
-                                                </div>
-                                              </div>
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleMTODelete(mto.id);
-                                                }}
-                                                disabled={
-                                                  deletingMTOId === mto.id
-                                                }
-                                                className={`cursor-pointer px-2 py-1 border border-red-300 rounded-lg hover:bg-red-50 text-xs text-red-700 flex items-center gap-1.5 ${
-                                                  deletingMTOId === mto.id
-                                                    ? "opacity-50 cursor-not-allowed"
-                                                    : ""
-                                                }`}
-                                              >
-                                                {deletingMTOId === mto.id ? (
-                                                  <>
-                                                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-red-600"></div>
-                                                    <span>Deleting...</span>
-                                                  </>
-                                                ) : (
-                                                  <>
-                                                    <Trash2 className="w-3 h-3" />
-                                                    <span>Delete MTO</span>
-                                                  </>
-                                                )}
-                                              </button>
-                                            </div>
-                                          </div>
-
-                                          {/* Items grouped by supplier */}
-                                          {!!(
-                                            mto.items && mto.items.length
-                                          ) && (
-                                            <div className="space-y-2">
-                                              {(() => {
-                                                // Group items by supplier name (Unassigned last)
-                                                // UPDATED: Handle multi-supplier items - an item can appear under multiple suppliers
-                                                const groups = new Map();
-                                                mto.items.forEach((it) => {
-                                                  // Check if item has itemSuppliers array (new multi-supplier structure)
-                                                  if (
-                                                    it.item?.itemSuppliers &&
-                                                    it.item.itemSuppliers
-                                                      .length > 0
-                                                  ) {
-                                                    // Add this item under each of its suppliers
-                                                    it.item.itemSuppliers.forEach(
-                                                      (itemSupplier) => {
-                                                        const supplierName =
-                                                          itemSupplier.supplier
-                                                            ?.name ||
-                                                          "Unassigned";
-                                                        if (
-                                                          !groups.has(
-                                                            supplierName,
-                                                          )
-                                                        )
-                                                          groups.set(
-                                                            supplierName,
-                                                            [],
-                                                          );
-                                                        groups
-                                                          .get(supplierName)
-                                                          .push(it);
-                                                      },
-                                                    );
-                                                  } else {
-                                                    // Fallback: Legacy single supplier structure or no supplier
-                                                    const supplierName =
-                                                      it.item?.supplier?.name ||
-                                                      "Unassigned";
-                                                    if (
-                                                      !groups.has(supplierName)
-                                                    )
-                                                      groups.set(
-                                                        supplierName,
-                                                        [],
-                                                      );
-                                                    groups
-                                                      .get(supplierName)
-                                                      .push(it);
-                                                  }
-                                                });
-                                                const orderedGroupNames =
-                                                  Array.from(
-                                                    groups.keys(),
-                                                  ).sort((a, b) => {
-                                                    if (
-                                                      a === "Unassigned" &&
-                                                      b !== "Unassigned"
-                                                    )
-                                                      return 1;
-                                                    if (
-                                                      b === "Unassigned" &&
-                                                      a !== "Unassigned"
-                                                    )
-                                                      return -1;
-                                                    return a.localeCompare(b);
-                                                  });
-                                                return orderedGroupNames.map(
-                                                  (name) => {
-                                                    // Check if all items in this group have been fully ordered
-                                                    const groupItems =
-                                                      groups.get(name) || [];
-
-                                                    // Check if all items are reserved
-                                                    const allItemsReserved =
-                                                      groupItems.length > 0 &&
-                                                      groupItems.every(
-                                                        (it) =>
-                                                          !!reservedItemsMap[
-                                                            it.id
-                                                          ],
-                                                      );
-
-                                                    // Show button only if there are items to order (not reserved and not fully ordered)
-                                                    const hasItemsToOrder =
-                                                      groupItems.some(
-                                                        (it) =>
-                                                          !reservedItemsMap[
-                                                            it.id
-                                                          ] &&
-                                                          Number(
-                                                            it.quantity_ordered_po ||
-                                                              0,
-                                                          ) <
-                                                            Number(
-                                                              it.quantity || 0,
-                                                            ),
-                                                      );
-
-                                                    return (
-                                                      <div key={name}>
-                                                        <div className="flex items-center justify-between mb-2">
-                                                          <div className="text-xs font-semibold text-slate-700">
-                                                            {name}
-                                                          </div>
-                                                          {activeTab ===
-                                                            "active" &&
-                                                            name !==
-                                                              "Unassigned" &&
-                                                            hasItemsToOrder && (
-                                                              <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                  const firstItem =
-                                                                    groups.get(
-                                                                      name,
-                                                                    )?.[0];
-
-                                                                  // UPDATED: Get supplier ID from itemSuppliers for multi-supplier support
-                                                                  let supplierId =
-                                                                    null;
-
-                                                                  if (
-                                                                    firstItem
-                                                                      ?.item
-                                                                      ?.itemSuppliers &&
-                                                                    firstItem
-                                                                      .item
-                                                                      .itemSuppliers
-                                                                      .length >
-                                                                      0
-                                                                  ) {
-                                                                    // Find the supplier matching this group name
-                                                                    const matchingSupplier =
-                                                                      firstItem.item.itemSuppliers.find(
-                                                                        (is) =>
-                                                                          is
-                                                                            .supplier
-                                                                            ?.name ===
-                                                                          name,
-                                                                      );
-                                                                    supplierId =
-                                                                      matchingSupplier
-                                                                        ?.supplier
-                                                                        ?.supplier_id ||
-                                                                      null;
-                                                                  } else {
-                                                                    // Fallback: Legacy single supplier structure
-                                                                    supplierId =
-                                                                      firstItem
-                                                                        ?.item
-                                                                        ?.supplier
-                                                                        ?.supplier_id ||
-                                                                      firstItem
-                                                                        ?.item
-                                                                        ?.supplier_id ||
-                                                                      null;
-                                                                  }
-
-                                                                  if (
-                                                                    !supplierId
-                                                                  )
-                                                                    return;
-                                                                  openCreatePOForSupplier(
-                                                                    name,
-                                                                    supplierId,
-                                                                    mto.id,
-                                                                  );
-                                                                }}
-                                                                className="cursor-pointer px-2 py-1 text-xs border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors"
-                                                              >
-                                                                <Plus className="inline w-3 h-3 mr-1" />{" "}
-                                                                Create Purchase
-                                                                Order
-                                                              </button>
-                                                            )}
-                                                        </div>
-                                                        <div className="overflow-x-auto">
-                                                          <table className="w-full border border-slate-200 rounded-lg table-fixed">
-                                                            <colgroup>
-                                                              <col className="w-40" />
-                                                              <col className="w-30" />
-                                                              <col className="w-60" />
-                                                              <col className="w-32" />
-                                                              <col className="w-40" />
-                                                              <col className="w-60" />
-                                                              <col className="w-40" />
-                                                            </colgroup>
-                                                            <thead className="bg-slate-50">
-                                                              <tr>
-                                                                <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                                                  Image
-                                                                </th>
-                                                                <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                                                  Category
-                                                                </th>
-                                                                <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                                                  Details
-                                                                </th>
-                                                                <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                                                  In Stock
-                                                                </th>
-                                                                <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                                                  Quantity
-                                                                </th>
-                                                                <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                                                  Qty Ordered
-                                                                </th>
-                                                                <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                                                                  Status
-                                                                </th>
-                                                              </tr>
-                                                            </thead>
-                                                            <tbody className="bg-white divide-y divide-slate-200">
-                                                              {groups
-                                                                .get(name)
-                                                                .map((item) => {
-                                                                  const stockOnHand =
-                                                                    Number(
-                                                                      item.item
-                                                                        ?.quantity ??
-                                                                        0,
-                                                                    );
-                                                                  const measurementUnit =
-                                                                    item.item
-                                                                      ?.measurement_unit ||
-                                                                    "";
-
-                                                                  // Check if this item has a reservation
-                                                                  const reservation =
-                                                                    reservedItemsMap[
-                                                                      item.id
-                                                                    ];
-                                                                  const isReserved =
-                                                                    !!reservation;
-
-                                                                  // Check if item has been ordered via PO
-                                                                  const isOrdered =
-                                                                    Number(
-                                                                      item.quantity_ordered_po ||
-                                                                        0,
-                                                                    ) > 0;
-
-                                                                  return (
-                                                                    <tr
-                                                                      key={
-                                                                        item.id
-                                                                      }
-                                                                      className={`${
-                                                                        isReserved ||
-                                                                        isOrdered
-                                                                          ? "bg-slate-200 opacity-60"
-                                                                          : "hover:bg-slate-50"
-                                                                      }`}
-                                                                    >
-                                                                      <td className="px-3 py-2 whitespace-nowrap">
-                                                                        <div className="flex items-center">
-                                                                          {item
-                                                                            .item
-                                                                            ?.image
-                                                                            ?.url ? (
-                                                                            <Image
-                                                                              loading="lazy"
-                                                                              src={`/${item.item.image.url}`}
-                                                                              alt={
-                                                                                item
-                                                                                  .item
-                                                                                  ?.category
-                                                                                  ? `${item.item.category} item image`
-                                                                                  : item.item_id
-                                                                                    ? `Item ${item.item_id} image`
-                                                                                    : "Item image"
-                                                                              }
-                                                                              className="w-10 h-10 object-cover rounded border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
-                                                                              width={
-                                                                                40
-                                                                              }
-                                                                              height={
-                                                                                40
-                                                                              }
-                                                                              onClick={() =>
-                                                                                handleImageClick(
-                                                                                  item
-                                                                                    .item
-                                                                                    .image,
-                                                                                )
-                                                                              }
-                                                                            />
-                                                                          ) : (
-                                                                            <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
-                                                                              <Package className="w-5 h-5 text-slate-400" />
-                                                                            </div>
-                                                                          )}
-                                                                        </div>
-                                                                      </td>
-                                                                      <td className="px-3 py-2 whitespace-nowrap">
-                                                                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                                                          {
-                                                                            item
-                                                                              .item
-                                                                              ?.category
-                                                                          }
-                                                                        </span>
-                                                                      </td>
-                                                                      <td className="px-3 py-2">
-                                                                        <div className="text-xs text-slate-600 space-y-1">
-                                                                          {(() => {
-                                                                            const supplierRef =
-                                                                              item.item?.itemSuppliers?.find(
-                                                                                (
-                                                                                  is,
-                                                                                ) =>
-                                                                                  (is
-                                                                                    .supplier
-                                                                                    ?.name ||
-                                                                                    "Unassigned") ===
-                                                                                  name,
-                                                                              )
-                                                                                ?.supplier_reference ||
-                                                                              item
-                                                                                .item
-                                                                                ?.supplier_reference;
-
-                                                                            return (
-                                                                              supplierRef && (
-                                                                                <div>
-                                                                                  <span className="font-medium">
-                                                                                    Supplier
-                                                                                    Ref:
-                                                                                  </span>{" "}
-                                                                                  {
-                                                                                    supplierRef
-                                                                                  }
-                                                                                </div>
-                                                                              )
-                                                                            );
-                                                                          })()}
-                                                                          {item
-                                                                            .item
-                                                                            ?.sheet && (
-                                                                            <>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Brand:
-                                                                                </span>{" "}
-                                                                                {item
-                                                                                  .item
-                                                                                  .sheet
-                                                                                  .brand ||
-                                                                                  "-"}
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Color:
-                                                                                </span>{" "}
-                                                                                {
-                                                                                  item
-                                                                                    .item
-                                                                                    .sheet
-                                                                                    .color
-                                                                                }
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Finish:
-                                                                                </span>{" "}
-                                                                                {
-                                                                                  item
-                                                                                    .item
-                                                                                    .sheet
-                                                                                    .finish
-                                                                                }
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Face:
-                                                                                </span>{" "}
-                                                                                {item
-                                                                                  .item
-                                                                                  .sheet
-                                                                                  .face ||
-                                                                                  "-"}
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Dimensions:
-                                                                                </span>{" "}
-                                                                                {
-                                                                                  item
-                                                                                    .item
-                                                                                    .sheet
-                                                                                    .dimensions
-                                                                                }
-                                                                              </div>
-                                                                            </>
-                                                                          )}
-                                                                          {item
-                                                                            .item
-                                                                            ?.handle && (
-                                                                            <>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Brand:
-                                                                                </span>{" "}
-                                                                                {item
-                                                                                  .item
-                                                                                  .handle
-                                                                                  .brand ||
-                                                                                  "-"}
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Color:
-                                                                                </span>{" "}
-                                                                                {
-                                                                                  item
-                                                                                    .item
-                                                                                    .handle
-                                                                                    .color
-                                                                                }
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Type:
-                                                                                </span>{" "}
-                                                                                {
-                                                                                  item
-                                                                                    .item
-                                                                                    .handle
-                                                                                    .type
-                                                                                }
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Dimensions:
-                                                                                </span>{" "}
-                                                                                {
-                                                                                  item
-                                                                                    .item
-                                                                                    .handle
-                                                                                    .dimensions
-                                                                                }
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Material:
-                                                                                </span>{" "}
-                                                                                {item
-                                                                                  .item
-                                                                                  .handle
-                                                                                  .material ||
-                                                                                  "-"}
-                                                                              </div>
-                                                                            </>
-                                                                          )}
-                                                                          {item
-                                                                            .item
-                                                                            ?.hardware && (
-                                                                            <>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Brand:
-                                                                                </span>{" "}
-                                                                                {item
-                                                                                  .item
-                                                                                  .hardware
-                                                                                  .brand ||
-                                                                                  "-"}
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Name:
-                                                                                </span>{" "}
-                                                                                {
-                                                                                  item
-                                                                                    .item
-                                                                                    .hardware
-                                                                                    .name
-                                                                                }
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Type:
-                                                                                </span>{" "}
-                                                                                {
-                                                                                  item
-                                                                                    .item
-                                                                                    .hardware
-                                                                                    .type
-                                                                                }
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Dimensions:
-                                                                                </span>{" "}
-                                                                                {
-                                                                                  item
-                                                                                    .item
-                                                                                    .hardware
-                                                                                    .dimensions
-                                                                                }
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Sub
-                                                                                  Category:
-                                                                                </span>{" "}
-                                                                                {
-                                                                                  item
-                                                                                    .item
-                                                                                    .hardware
-                                                                                    .sub_category
-                                                                                }
-                                                                              </div>
-                                                                            </>
-                                                                          )}
-                                                                          {item
-                                                                            .item
-                                                                            ?.accessory && (
-                                                                            <>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Name:
-                                                                                </span>{" "}
-                                                                                {
-                                                                                  item
-                                                                                    .item
-                                                                                    .accessory
-                                                                                    .name
-                                                                                }
-                                                                              </div>
-                                                                            </>
-                                                                          )}
-                                                                          {item
-                                                                            .item
-                                                                            ?.edging_tape && (
-                                                                            <>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Brand:
-                                                                                </span>{" "}
-                                                                                {item
-                                                                                  .item
-                                                                                  .edging_tape
-                                                                                  .brand ||
-                                                                                  "-"}
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Color:
-                                                                                </span>{" "}
-                                                                                {item
-                                                                                  .item
-                                                                                  .edging_tape
-                                                                                  .color ||
-                                                                                  "-"}
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Finish:
-                                                                                </span>{" "}
-                                                                                {item
-                                                                                  .item
-                                                                                  .edging_tape
-                                                                                  .finish ||
-                                                                                  "-"}
-                                                                              </div>
-                                                                              <div>
-                                                                                <span className="font-medium">
-                                                                                  Dimensions:
-                                                                                </span>{" "}
-                                                                                {item
-                                                                                  .item
-                                                                                  .edging_tape
-                                                                                  .dimensions ||
-                                                                                  "-"}
-                                                                              </div>
-                                                                            </>
-                                                                          )}
-                                                                        </div>
-                                                                      </td>
-                                                                      <td className="px-3 py-2 whitespace-nowrap">
-                                                                        <div className="text-xs">
-                                                                          <div className="font-semibold text-green-600">
-                                                                            {
-                                                                              stockOnHand
-                                                                            }{" "}
-                                                                            {
-                                                                              measurementUnit
-                                                                            }
-                                                                          </div>
-                                                                          <div className="text-[11px] text-slate-500">
-                                                                            in
-                                                                            stock
-                                                                          </div>
-                                                                        </div>
-                                                                      </td>
-                                                                      <td className="px-3 py-2 whitespace-nowrap">
-                                                                        <div className="text-xs text-slate-600">
-                                                                          <div className="flex items-center gap-1.5 mb-1">
-                                                                            <Package className="w-4 h-4 text-slate-500" />
-                                                                            <span>
-                                                                              <span className="font-medium">
-                                                                                Qty:
-                                                                              </span>{" "}
-                                                                              {
-                                                                                item.quantity
-                                                                              }{" "}
-                                                                              {
-                                                                                item
-                                                                                  .item
-                                                                                  ?.measurement_unit
-                                                                              }
-                                                                            </span>
-                                                                          </div>
-                                                                          {(() => {
-                                                                            const actualQuantityOrdered =
-                                                                              (
-                                                                                item.ordered_items ||
-                                                                                []
-                                                                              ).reduce(
-                                                                                (
-                                                                                  sum,
-                                                                                  poItem,
-                                                                                ) =>
-                                                                                  sum +
-                                                                                  (poItem.quantity ||
-                                                                                    0),
-                                                                                0,
-                                                                              );
-                                                                            return (
-                                                                              actualQuantityOrdered >
-                                                                                0 && (
-                                                                                <div className="flex items-center gap-1.5 text-blue-600 text-xs">
-                                                                                  <span>
-                                                                                    Ordered:{" "}
-                                                                                    {
-                                                                                      actualQuantityOrdered
-                                                                                    }
-                                                                                  </span>
-                                                                                </div>
-                                                                              )
-                                                                            );
-                                                                          })()}
-                                                                          {item.quantity_received >
-                                                                            0 && (
-                                                                            <div className="flex items-center gap-1.5 text-green-600 text-xs">
-                                                                              <span>
-                                                                                Received:{" "}
-                                                                                {
-                                                                                  item.quantity_received
-                                                                                }
-                                                                              </span>
-                                                                            </div>
-                                                                          )}
-                                                                        </div>
-                                                                      </td>
-                                                                      <td className="px-3 py-2 whitespace-nowrap">
-                                                                        <div className="flex flex-col gap-1">
-                                                                          <div className="flex items-center gap-1">
-                                                                            <input
-                                                                              type="number"
-                                                                              min="0"
-                                                                              value={
-                                                                                quantityOrderedDraftById[
-                                                                                  item
-                                                                                    .id
-                                                                                ] ??
-                                                                                String(
-                                                                                  // If quantity_ordered_po > 0, use that value instead of quantity_ordered
-                                                                                  item.quantity_ordered_po &&
-                                                                                    Number(
-                                                                                      item.quantity_ordered_po,
-                                                                                    )
-                                                                                    ? item.quantity_ordered_po
-                                                                                    : (item.quantity_ordered ??
-                                                                                        0),
-                                                                                )
-                                                                              }
-                                                                              onChange={(
-                                                                                e,
-                                                                              ) =>
-                                                                                handleQuantityOrderedChange(
-                                                                                  item.id,
-                                                                                  e
-                                                                                    .target
-                                                                                    .value,
-                                                                                )
-                                                                              }
-                                                                              disabled={
-                                                                                !!isSavingQuantityOrderedById[
-                                                                                  item
-                                                                                    .id
-                                                                                ] ||
-                                                                                Number(
-                                                                                  item.quantity_ordered_po ||
-                                                                                    0,
-                                                                                ) >
-                                                                                  0 ||
-                                                                                isReserved
-                                                                              }
-                                                                              className="w-24 text-xs text-slate-800 px-2 py-1 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none disabled:opacity-60"
-                                                                            />
-                                                                            {pendingChangesById[
-                                                                              item
-                                                                                .id
-                                                                            ] && (
-                                                                              <div className="flex items-center gap-1">
-                                                                                <button
-                                                                                  onClick={() =>
-                                                                                    handleSaveQuantityOrdered(
-                                                                                      item.id,
-                                                                                    )
-                                                                                  }
-                                                                                  disabled={
-                                                                                    !!isSavingQuantityOrderedById[
-                                                                                      item
-                                                                                        .id
-                                                                                    ]
-                                                                                  }
-                                                                                  className="cursor-pointer p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                                  title="Save"
-                                                                                >
-                                                                                  <Check className="w-4 h-4" />
-                                                                                </button>
-                                                                                <button
-                                                                                  onClick={() =>
-                                                                                    handleCancelQuantityOrdered(
-                                                                                      item.id,
-                                                                                    )
-                                                                                  }
-                                                                                  disabled={
-                                                                                    !!isSavingQuantityOrderedById[
-                                                                                      item
-                                                                                        .id
-                                                                                    ]
-                                                                                  }
-                                                                                  className="cursor-pointer p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                                  title="Cancel"
-                                                                                >
-                                                                                  <X className="w-4 h-4" />
-                                                                                </button>
-                                                                              </div>
-                                                                            )}
-                                                                          </div>
-                                                                          {item
-                                                                            .ordered_by
-                                                                            ?.username &&
-                                                                            !pendingChangesById[
-                                                                              item
-                                                                                .id
-                                                                            ] && (
-                                                                              <div className="text-[12px] text-slate-500">
-                                                                                Ordered
-                                                                                by:{" "}
-                                                                                {
-                                                                                  item
-                                                                                    .ordered_by
-                                                                                    .username
-                                                                                }
-                                                                              </div>
-                                                                            )}
-                                                                        </div>
-                                                                      </td>
-                                                                      <td className="px-3 py-2">
-                                                                        <div className="flex flex-col gap-2">
-                                                                          {Number(
-                                                                            item.quantity_ordered_po ||
-                                                                              0,
-                                                                          ) >
-                                                                            0 && (
-                                                                            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                                                              Ordered
-                                                                            </span>
-                                                                          )}
-                                                                          {item.quantity_received >
-                                                                            0 && (
-                                                                            <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
-                                                                              Received
-                                                                            </span>
-                                                                          )}
-                                                                          {Number(
-                                                                            item.quantity_ordered_po ||
-                                                                              0,
-                                                                          ) ===
-                                                                            0 &&
-                                                                            item.quantity_received ===
-                                                                              0 && (
-                                                                              <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-                                                                                Pending
-                                                                              </span>
-                                                                            )}
-                                                                          {/* Reserve Stock Button */}
-                                                                          {!isOrdered &&
-                                                                            (stockOnHand >
-                                                                              0 ||
-                                                                              isReserved) && (
-                                                                              <button
-                                                                                type="button"
-                                                                                onClick={() =>
-                                                                                  !isReserved
-                                                                                    ? handleReserveStock(
-                                                                                        item,
-                                                                                        stockOnHand,
-                                                                                      )
-                                                                                    : handleDeleteReservation(
-                                                                                        reservation.id,
-                                                                                        item.id,
-                                                                                      )
-                                                                                }
-                                                                                disabled={
-                                                                                  reservingItemId ===
-                                                                                  item.id
-                                                                                }
-                                                                                className={`cursor-pointer px-2 py-1 text-xs border rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                                                                  !isReserved
-                                                                                    ? "border-green-600 text-green-600 hover:bg-green-600 hover:text-white"
-                                                                                    : "border-red-600 text-red-600 hover:bg-red-600 hover:text-white"
-                                                                                }`}
-                                                                              >
-                                                                                {reservingItemId ===
-                                                                                item.id
-                                                                                  ? !isReserved
-                                                                                    ? "Reserving..."
-                                                                                    : "Deleting..."
-                                                                                  : !isReserved
-                                                                                    ? "Reserve Stock"
-                                                                                    : "Unreserve"}
-                                                                              </button>
-                                                                            )}
-                                                                        </div>
-                                                                      </td>
-                                                                    </tr>
-                                                                  );
-                                                                })}
-                                                            </tbody>
-                                                          </table>
-                                                        </div>
-                                                      </div>
-                                                    );
-                                                  },
-                                                );
-                                              })()}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  )}
-                                </React.Fragment>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-
-                {/* Fixed Pagination Footer */}
-                {paginatedMTOs.length > 0 && (
-                  <PaginationFooter
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    currentPage={currentPage}
-                    onPageChange={handlePageChange}
-                    onItemsPerPageChange={handleItemsPerPageChange}
-                    itemsPerPageOptions={[50, 100, 250, 0]}
-                    showItemsPerPage={true}
-                  />
-                )}
               </div>
             </div>
-          </>
-        )}
+
+            {/* Tabs section */}
+            <div className="px-4 shrink-0 border-b border-slate-200">
+              <div
+                className="flex space-x-6"
+                role="tablist"
+                aria-label="Materials to order view"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  id="mto-tab-cumulative"
+                  aria-selected={activeTab === "cumulative"}
+                  aria-controls="mto-panel"
+                  onClick={() => setActiveTab("cumulative")}
+                  className={tabClass("cumulative")}
+                >
+                  Cumulative list
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="mto-tab-active"
+                  aria-selected={activeTab === "active"}
+                  aria-controls="mto-panel"
+                  onClick={() => setActiveTab("active")}
+                  className={tabClass("active")}
+                >
+                  <span className="flex items-center gap-2">
+                    Active
+                    {tabCounts.active > 0 && (
+                      <span className={COUNT_BADGE}>{tabCounts.active}</span>
+                    )}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  id="mto-tab-completed"
+                  aria-selected={activeTab === "completed"}
+                  aria-controls="mto-panel"
+                  onClick={() => setActiveTab("completed")}
+                  className={tabClass("completed")}
+                >
+                  <span className="flex items-center gap-2">
+                    Completed
+                    {tabCounts.completed > 0 && (
+                      <span className={COUNT_BADGE}>{tabCounts.completed}</span>
+                    )}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable content section */}
+            <div
+              id="mto-panel"
+              role="tabpanel"
+              aria-labelledby={`mto-tab-${activeTab}`}
+              className="flex-1 overflow-auto"
+            >
+              {activeTab === "cumulative" ? (
+                <div className="p-4">
+                  {showCumulativeLoading ? (
+                    <div className="px-4 py-12 text-center">
+                      <div
+                        className="flex flex-col items-center gap-2"
+                        role="status"
+                      >
+                        <span
+                          className="w-6 h-6 border-2 border-slate-200 border-t-primary rounded-full animate-spin"
+                          aria-hidden="true"
+                        />
+                        <p className="text-sm text-slate-600">
+                          Loading cumulative list…
+                        </p>
+                      </div>
+                    </div>
+                  ) : cumulativeError ? (
+                    <div className="px-4 py-12 text-center">
+                      <div
+                        className="flex flex-col items-center gap-2"
+                        role="alert"
+                      >
+                        <AlertTriangle
+                          className="w-8 h-8 text-red-500"
+                          aria-hidden="true"
+                        />
+                        <p className="text-sm text-red-600">
+                          {cumulativeError}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={fetchCumulativeData}
+                          className={BTN_SECONDARY_COMPACT}
+                        >
+                          Try again
+                        </button>
+                      </div>
+                    </div>
+                  ) : cumulativeData.length === 0 ? (
+                    <div className="px-4 py-12 text-center">
+                      <div className="flex flex-col items-center gap-2">
+                        <Package
+                          className="w-8 h-8 text-slate-300"
+                          aria-hidden="true"
+                        />
+                        <p className="text-sm text-slate-600">
+                          No materials to order yet
+                        </p>
+                        <button
+                          type="button"
+                          onClick={openCreateMTO}
+                          className={BTN_SECONDARY_COMPACT}
+                        >
+                          <Plus className="h-4 w-4" aria-hidden="true" />
+                          Create materials to order
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {cumulativeData.map((supplier) => (
+                        <div
+                          key={supplier.supplier_id}
+                          className="bg-white border border-slate-200 rounded-lg overflow-hidden"
+                        >
+                          <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between gap-3">
+                            <div>
+                              <h3 className="text-sm font-semibold text-slate-800">
+                                {supplier.supplier_name}
+                              </h3>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                {supplier.items.length} unique{" "}
+                                {supplier.items.length === 1 ? "item" : "items"}
+                              </p>
+                            </div>
+                            {supplier.supplier_id !== "unassigned" && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  openCreatePOForSupplier(
+                                    supplier.supplier_name,
+                                    supplier.supplier_id,
+                                  );
+                                }}
+                                className={BTN_SECONDARY_COMPACT}
+                              >
+                                <Plus className="w-4 h-4" aria-hidden="true" />
+                                Create purchase order
+                              </button>
+                            )}
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-slate-200">
+                              <thead className="bg-slate-50">
+                                <tr>
+                                  <th scope="col" className={`${TH} text-left`}>
+                                    Image
+                                  </th>
+                                  <th scope="col" className={`${TH} text-left`}>
+                                    Category
+                                  </th>
+                                  <th scope="col" className={`${TH} text-left`}>
+                                    Details
+                                  </th>
+                                  <th
+                                    scope="col"
+                                    className={`${TH} text-right`}
+                                  >
+                                    Stock on hand
+                                  </th>
+                                  <th
+                                    scope="col"
+                                    className={`${TH} text-right`}
+                                  >
+                                    Cumulative qty
+                                  </th>
+                                  <th scope="col" className={`${TH} text-left`}>
+                                    Sources
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-slate-200">
+                                {supplier.items.map((item) => (
+                                  <tr
+                                    key={item.item_id}
+                                    className="hover:bg-slate-50 transition-colors"
+                                  >
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <ItemThumb
+                                        image={item.image}
+                                        label={itemLabel(item, item.item_id)}
+                                        onOpen={handleImageClick}
+                                      />
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <CategoryBadge category={item.category} />
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <ItemDetails
+                                        detail={item}
+                                        supplierRef={item?.supplier_reference}
+                                      />
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-right">
+                                      <StockLevel
+                                        stock={Number(item.stock_on_hand)}
+                                        unit={item.measurement_unit}
+                                      />
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-mono font-semibold text-slate-800">
+                                      {formatQty(
+                                        item.cumulative_quantity,
+                                        item.measurement_unit,
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <div className="text-xs text-slate-600 space-y-1">
+                                        {item.mto_sources.map((source, idx) => (
+                                          <div key={idx}>
+                                            <span className="font-medium">
+                                              {source.project_name ||
+                                                "Manually added"}
+                                              :
+                                            </span>{" "}
+                                            {formatQty(
+                                              source.quantity,
+                                              item.measurement_unit,
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="min-w-full">
+                  <table className="min-w-full divide-y divide-slate-200">
+                    <thead className="bg-slate-50 sticky top-0 z-10">
+                      <tr>
+                        <SortHeader
+                          field="project"
+                          label="Project / lots"
+                          sortField={sortField}
+                          sortOrder={sortOrder}
+                          onSort={handleSort}
+                        />
+                        <SortHeader
+                          field="items"
+                          label="Items"
+                          sortField={sortField}
+                          sortOrder={sortOrder}
+                          onSort={handleSort}
+                          alignRight
+                        />
+                        <SortHeader
+                          field="remaining"
+                          label="Items remaining"
+                          sortField={sortField}
+                          sortOrder={sortOrder}
+                          onSort={handleSort}
+                          alignRight
+                        />
+                        <SortHeader
+                          field="status"
+                          label="Status"
+                          sortField={sortField}
+                          sortOrder={sortOrder}
+                          onSort={handleSort}
+                        />
+                        <th scope="col" className={`${TH} text-right`}>
+                          <span className="sr-only">Show items</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-slate-200">
+                      {showInitialLoading ? (
+                        <tr>
+                          <td
+                            className="px-4 py-12 text-center"
+                            colSpan={TABLE_COLUMNS}
+                          >
+                            <div
+                              className="flex flex-col items-center gap-2"
+                              role="status"
+                            >
+                              <span
+                                className="w-6 h-6 border-2 border-slate-200 border-t-primary rounded-full animate-spin"
+                                aria-hidden="true"
+                              />
+                              <p className="text-sm text-slate-600">
+                                Loading materials to order…
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : showLoadError ? (
+                        <tr>
+                          <td
+                            className="px-4 py-12 text-center"
+                            colSpan={TABLE_COLUMNS}
+                          >
+                            <div
+                              className="flex flex-col items-center gap-2"
+                              role="alert"
+                            >
+                              <AlertTriangle
+                                className="w-8 h-8 text-red-500"
+                                aria-hidden="true"
+                              />
+                              <p className="text-sm text-red-600">{error}</p>
+                              <button
+                                type="button"
+                                onClick={fetchMTOs}
+                                className={BTN_SECONDARY_COMPACT}
+                              >
+                                Try again
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : paginatedMTOs.length === 0 ? (
+                        <tr>
+                          <td
+                            className="px-4 py-12 text-center"
+                            colSpan={TABLE_COLUMNS}
+                          >
+                            <div className="flex flex-col items-center gap-2">
+                              <Package
+                                className="w-8 h-8 text-slate-300"
+                                aria-hidden="true"
+                              />
+                              {mtos.length > 0 && isNarrowingFilterActive ? (
+                                <>
+                                  <p className="text-sm text-slate-600">
+                                    No materials to order match your filters
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={handleReset}
+                                    className={BTN_SECONDARY_COMPACT}
+                                  >
+                                    <RotateCcw
+                                      className="h-4 w-4"
+                                      aria-hidden="true"
+                                    />
+                                    Clear filters
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <p className="text-sm text-slate-600">
+                                    {activeTab === "active"
+                                      ? "No active materials to order yet"
+                                      : "No completed materials to order yet"}
+                                  </p>
+                                  <div className="flex flex-wrap items-center justify-center gap-2">
+                                    {activeTab === "active" && (
+                                      <button
+                                        type="button"
+                                        onClick={openCreateMTO}
+                                        className={BTN_SECONDARY_COMPACT}
+                                      >
+                                        <Plus
+                                          className="h-4 w-4"
+                                          aria-hidden="true"
+                                        />
+                                        Create materials to order
+                                      </button>
+                                    )}
+                                    {tabCounts[otherTab] > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveTab(otherTab)}
+                                        className={BTN_SECONDARY_COMPACT}
+                                      >
+                                        View {otherTab} ({tabCounts[otherTab]})
+                                      </button>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedMTOs.map((mto) => {
+                          const isOpen = openAccordionId === mto.id;
+                          const projectName = mto.project?.name || EMPTY;
+                          const rowName =
+                            mto.project?.name || "these materials to order";
+                          return (
+                            <React.Fragment key={mto.id}>
+                              <tr
+                                onClick={() =>
+                                  setOpenAccordionId(isOpen ? null : mto.id)
+                                }
+                                className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
+                              >
+                                <td className="px-4 py-3">
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <span
+                                      className="text-sm font-semibold text-slate-800 truncate max-w-xs"
+                                      title={projectName}
+                                    >
+                                      {projectName}
+                                    </span>
+                                    <div className="flex flex-wrap gap-1">
+                                      {mto.lots?.map((lot) => (
+                                        <span
+                                          key={lot.lot_id || lot.id}
+                                          className={`${BADGE} ${BADGE_TONES.violet}`}
+                                        >
+                                          {lot.name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-right text-sm font-mono text-slate-700">
+                                  {mto.__itemsCount}
+                                </td>
+                                <td className="px-4 py-3 text-right text-sm font-mono text-slate-700">
+                                  {mto.__itemsRemaining}
+                                </td>
+                                <td className="px-4 py-3">
+                                  {mto.status ? (
+                                    <span
+                                      className={`${BADGE} ${
+                                        STATUS_COLORS[mto.status] ||
+                                        BADGE_TONES.neutral
+                                      }`}
+                                    >
+                                      {formatLabel(mto.status)}
+                                    </span>
+                                  ) : (
+                                    <span className="text-sm text-slate-500">
+                                      {EMPTY}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOpenAccordionId(
+                                        isOpen ? null : mto.id,
+                                      );
+                                    }}
+                                    aria-expanded={isOpen}
+                                    aria-controls={
+                                      isOpen ? `mto-${mto.id}` : undefined
+                                    }
+                                    aria-label={`${
+                                      isOpen ? "Hide" : "Show"
+                                    } items for ${rowName}`}
+                                    className={ICON_BTN}
+                                  >
+                                    <ChevronDown
+                                      className={`w-4 h-4 transition-transform duration-200 ${
+                                        isOpen ? "rotate-180" : ""
+                                      }`}
+                                      aria-hidden="true"
+                                    />
+                                  </button>
+                                </td>
+                              </tr>
+
+                              {/* Accordion content */}
+                              {isOpen && (
+                                <tr>
+                                  <td
+                                    colSpan={TABLE_COLUMNS}
+                                    className="px-4 py-4 bg-slate-50"
+                                  >
+                                    <div
+                                      id={`mto-${mto.id}`}
+                                      className="space-y-4"
+                                    >
+                                      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+                                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-600">
+                                          <div className="flex items-center gap-2">
+                                            <Calendar
+                                              className="w-4 h-4"
+                                              aria-hidden="true"
+                                            />
+                                            <span>
+                                              <span className="font-medium">
+                                                Created:
+                                              </span>{" "}
+                                              {formatCreated(mto.createdAt)}
+                                            </span>
+                                          </div>
+                                          {mto.notes && (
+                                            <div className="flex items-center gap-2">
+                                              <FileText
+                                                className="w-4 h-4"
+                                                aria-hidden="true"
+                                              />
+                                              <span>
+                                                <span className="font-medium">
+                                                  Notes:
+                                                </span>{" "}
+                                                {mto.notes}
+                                              </span>
+                                            </div>
+                                          )}
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleOpenMediaModal(mto);
+                                            }}
+                                            className="cursor-pointer flex items-center gap-2 text-xs font-medium text-primary rounded-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                          >
+                                            <Paperclip
+                                              className="w-4 h-4"
+                                              aria-hidden="true"
+                                            />
+                                            Media files (
+                                            {(mto.media || []).length})
+                                          </button>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleMTODelete(mto.id);
+                                          }}
+                                          disabled={deletingMTOId === mto.id}
+                                          aria-label={`Delete materials to order for ${rowName}`}
+                                          className={BTN_DANGER_COMPACT}
+                                        >
+                                          {deletingMTOId === mto.id ? (
+                                            <>
+                                              <span
+                                                className="w-4 h-4 border-2 border-red-200 border-t-red-700 rounded-full animate-spin"
+                                                aria-hidden="true"
+                                              />
+                                              Deleting…
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Trash2
+                                                className="w-4 h-4"
+                                                aria-hidden="true"
+                                              />
+                                              Delete
+                                            </>
+                                          )}
+                                        </button>
+                                      </div>
+
+                                      {/* Items grouped by supplier */}
+                                      {!!(mto.items && mto.items.length) &&
+                                        renderSupplierGroups(mto)}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Fixed pagination footer */}
+            {activeTab !== "cumulative" &&
+              !showInitialLoading &&
+              !showLoadError &&
+              paginatedMTOs.length > 0 && (
+                <PaginationFooter
+                  totalItems={totalItems}
+                  itemsPerPage={itemsPerPage}
+                  currentPage={currentPage}
+                  onPageChange={handlePageChange}
+                  onItemsPerPageChange={handleItemsPerPageChange}
+                  itemsPerPageOptions={[50, 100, 250, 0]}
+                  showItemsPerPage={true}
+                />
+              )}
+          </div>
+        </div>
       </main>
       {showCreatePurchaseOrderModal && selectedSupplierForPO && (
         <PurchaseOrder
@@ -2830,260 +2801,131 @@ export default function page() {
         />
       )}
 
-      {/* Media Files Modal */}
+      {/* Media files modal */}
       {showMediaModal && selectedMtoForMedia && (
-        <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col relative z-50">
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Media Files - {selectedMtoForMedia.project?.name || "Project"}
-              </h2>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
+          onClick={() => {
+            if (!uploadingMedia) handleCloseMediaModal();
+          }}
+        >
+          <div
+            ref={mediaModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mto-media-title"
+            className="bg-white rounded-xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+              <div>
+                <h2
+                  id="mto-media-title"
+                  className="text-lg font-semibold text-slate-800"
+                >
+                  Media files
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Project: {selectedMtoForMedia.project?.name || EMPTY}
+                </p>
+              </div>
               <button
+                type="button"
                 onClick={handleCloseMediaModal}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                disabled={uploadingMedia}
+                className={ICON_BTN}
+                aria-label="Close"
               >
-                <X className="w-5 h-5 text-slate-600" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1">
-              {/* Display Existing Files First */}
-              {(() => {
-                // Categorize files by type
-                const categorizeFiles = () => {
-                  const images = [];
-                  const videos = [];
-                  const pdfs = [];
-                  const others = [];
-
-                  mediaFiles.forEach((file) => {
-                    if (
-                      file.mime_type?.includes("image") ||
-                      file.file_type === "image"
-                    ) {
-                      images.push(file);
-                    } else if (
-                      file.mime_type?.includes("video") ||
-                      file.file_type === "video"
-                    ) {
-                      videos.push(file);
-                    } else if (
-                      file.mime_type?.includes("pdf") ||
-                      file.file_type === "pdf" ||
-                      file.extension === "pdf"
-                    ) {
-                      pdfs.push(file);
-                    } else {
-                      others.push(file);
-                    }
-                  });
-
-                  return { images, videos, pdfs, others };
-                };
-
-                const { images, videos, pdfs, others } = categorizeFiles();
-
-                // File Category Section Component
-                const FileCategorySection = ({
-                  title,
-                  files,
-                  isSmall = false,
-                  sectionKey,
-                }) => {
-                  if (files.length === 0) return null;
-
-                  const isExpanded = expandedSections[sectionKey];
-
-                  return (
-                    <div className="mb-4">
-                      {/* Category Header with Toggle */}
-                      <button
-                        onClick={() => toggleSection(sectionKey)}
-                        className="w-full flex items-center justify-between text-sm font-semibold text-slate-700 mb-3 hover:text-slate-900 transition-colors"
-                      >
-                        <span>
-                          {title} ({files.length})
-                        </span>
-                        <div
-                          className={`transform transition-transform duration-200 ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </div>
-                      </button>
-
-                      {/* Collapsible Content */}
-                      {isExpanded && (
-                        <div className="flex flex-wrap gap-3">
-                          {files.map((file) => (
-                            <div
-                              key={file.id}
-                              onClick={() => handleViewExistingFile(file)}
-                              title="Click to view file"
-                              className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${
-                                isSmall ? "w-32" : "w-40"
-                              }`}
-                            >
-                              {/* File Preview */}
-                              <div
-                                className={`w-full ${
-                                  isSmall ? "aspect-4/3" : "aspect-square"
-                                } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
-                              >
-                                {file.mime_type?.includes("image") ||
-                                file.file_type === "image" ? (
-                                  <Image
-                                    height={100}
-                                    width={100}
-                                    src={`/${file.url}`}
-                                    alt={file.filename || "Media file image"}
-                                    className="w-full h-full object-cover rounded-lg"
-                                  />
-                                ) : file.mime_type?.includes("video") ||
-                                  file.file_type === "video" ? (
-                                  <video
-                                    src={`/${file.url}`}
-                                    className="w-full h-full object-cover rounded-lg"
-                                    muted
-                                    playsInline
-                                  />
-                                ) : (
-                                  <div
-                                    className={`w-full h-full flex items-center justify-center rounded-lg ${
-                                      file.mime_type?.includes("pdf") ||
-                                      file.file_type === "pdf" ||
-                                      file.extension === "pdf"
-                                        ? "bg-red-50"
-                                        : "bg-green-50"
-                                    }`}
-                                  >
-                                    {file.mime_type?.includes("pdf") ||
-                                    file.file_type === "pdf" ||
-                                    file.extension === "pdf" ? (
-                                      <FileText
-                                        className={`${
-                                          isSmall ? "w-6 h-6" : "w-8 h-8"
-                                        } text-red-600`}
-                                      />
-                                    ) : (
-                                      <File
-                                        className={`${
-                                          isSmall ? "w-6 h-6" : "w-8 h-8"
-                                        } text-green-600`}
-                                      />
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* File Info */}
-                              <div className="space-y-1">
-                                <p
-                                  className="text-xs font-medium text-slate-700 truncate"
-                                  title={file.filename}
-                                >
-                                  {file.filename}
-                                </p>
-                                <p className="text-xs text-slate-500">
-                                  {formatFileSize(file.size || 0)}
-                                </p>
-                              </div>
-
-                              {/* Delete Button */}
-                              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteMedia(file.id);
-                                  }}
-                                  disabled={deletingMediaId === file.id}
-                                  className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
-                                  title="Delete file"
-                                >
-                                  {deletingMediaId === file.id ? (
-                                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
-                                  ) : (
-                                    <Trash className="w-3.5 h-3.5" />
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                };
-
-                return (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-slate-700 mb-4">
-                      Uploaded Files
-                    </h3>
-
-                    {mediaFiles.length > 0 ? (
-                      <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                        {/* Images Section */}
-                        <FileCategorySection
-                          title="Images"
-                          files={images}
-                          isSmall={false}
-                          sectionKey="images"
-                        />
-
-                        {/* Videos Section */}
-                        <FileCategorySection
-                          title="Videos"
-                          files={videos}
-                          isSmall={false}
-                          sectionKey="videos"
-                        />
-
-                        {/* PDFs Section - Smaller cards */}
-                        <FileCategorySection
-                          title="PDFs"
-                          files={pdfs}
-                          isSmall={true}
-                          sectionKey="pdfs"
-                        />
-
-                        {/* Other Files Section - Smaller cards */}
-                        <FileCategorySection
-                          title="Other Files"
-                          files={others}
-                          isSmall={true}
-                          sectionKey="others"
-                        />
-                      </div>
-                    ) : (
-                      <div className="bg-slate-50 rounded-lg p-8 border border-slate-200 text-center">
-                        <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                        <p className="text-slate-600">No files uploaded yet</p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Upload New Files Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-slate-700">
-                  Upload New Files
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              {/* Display existing files first */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 mb-4">
+                  Uploaded files
                 </h3>
 
-                {/* File Upload Area */}
+                {mediaFiles.length > 0 ? (
+                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                    <FileCategorySection
+                      title="Images"
+                      files={categorizedMedia.images}
+                      sectionKey="images"
+                      isExpanded={expandedSections.images}
+                      onToggle={toggleSection}
+                      onView={handleViewExistingFile}
+                      onDelete={handleDeleteMedia}
+                      deletingMediaId={deletingMediaId}
+                    />
+                    <FileCategorySection
+                      title="Videos"
+                      files={categorizedMedia.videos}
+                      sectionKey="videos"
+                      isExpanded={expandedSections.videos}
+                      onToggle={toggleSection}
+                      onView={handleViewExistingFile}
+                      onDelete={handleDeleteMedia}
+                      deletingMediaId={deletingMediaId}
+                    />
+                    <FileCategorySection
+                      title="PDFs"
+                      files={categorizedMedia.pdfs}
+                      isSmall
+                      sectionKey="pdfs"
+                      isExpanded={expandedSections.pdfs}
+                      onToggle={toggleSection}
+                      onView={handleViewExistingFile}
+                      onDelete={handleDeleteMedia}
+                      deletingMediaId={deletingMediaId}
+                    />
+                    <FileCategorySection
+                      title="Other files"
+                      files={categorizedMedia.others}
+                      isSmall
+                      sectionKey="others"
+                      isExpanded={expandedSections.others}
+                      onToggle={toggleSection}
+                      onView={handleViewExistingFile}
+                      onDelete={handleDeleteMedia}
+                      deletingMediaId={deletingMediaId}
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 rounded-lg px-4 py-12 border border-slate-200 text-center">
+                    <FileText
+                      className="w-8 h-8 text-slate-300 mx-auto mb-2"
+                      aria-hidden="true"
+                    />
+                    <p className="text-sm text-slate-600">
+                      No files uploaded yet
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Upload new files section */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-slate-700">
+                  Upload new files
+                </h3>
+
+                {/* File upload area */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-slate-600 mb-2">
-                    Select Files {uploadingMedia && "(Uploading...)"}
+                  <label
+                    htmlFor={fileFieldId}
+                    className="block text-sm font-medium text-slate-700 mb-1.5"
+                  >
+                    Select files
                   </label>
                   <div
-                    className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
+                    className={`border-2 border-dashed border-slate-300 hover:border-primary focus-within:ring-2 focus-within:ring-primary rounded-lg transition-colors duration-200 bg-slate-50 hover:bg-slate-100 ${
                       uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
                     }`}
                   >
                     <input
+                      id={fileFieldId}
                       ref={fileInputRef}
                       type="file"
                       multiple
@@ -3094,16 +2936,25 @@ export default function page() {
                     />
                     <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
                       {uploadingMedia ? (
-                        <>
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-3"></div>
-                          <p className="text-sm font-medium text-slate-700 mb-1">
-                            Uploading files...
+                        <div
+                          role="status"
+                          className="flex flex-col items-center"
+                        >
+                          <span
+                            className="w-8 h-8 border-2 border-slate-200 border-t-primary rounded-full animate-spin mb-3"
+                            aria-hidden="true"
+                          />
+                          <p className="text-sm font-medium text-slate-700">
+                            Uploading files…
                           </p>
-                        </>
+                        </div>
                       ) : (
                         <>
-                          <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mb-3">
-                            <FileUp className="w-6 h-6 text-secondary" />
+                          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-3">
+                            <FileUp
+                              className="w-5 h-5 text-primary"
+                              aria-hidden="true"
+                            />
                           </div>
                           <p className="text-sm font-medium text-slate-700 mb-1">
                             Click to upload or drag and drop
@@ -3122,7 +2973,7 @@ export default function page() {
         </div>
       )}
 
-      {/* File View Modal */}
+      {/* File view modal */}
       {viewFileModal && selectedFile && (
         <ViewMedia
           selectedFile={selectedFile}
@@ -3132,26 +2983,42 @@ export default function page() {
         />
       )}
 
-      {/* Delete Media Confirmation Modal */}
+      {/* Delete media confirmation modal */}
       <DeleteConfirmation
         isOpen={showDeleteMediaModal}
         onClose={handleDeleteMediaCancel}
         onConfirm={handleDeleteMediaConfirm}
         deleteWithInput={false}
-        heading="Media File"
-        message="This will permanently delete the media file. This action cannot be undone."
+        heading="media file"
+        title={`Delete ${pendingDeleteName}?`}
+        warningHeading="This removes the file from the list"
+        message={`${pendingDeleteName} will be deleted from ${
+          selectedMtoForMedia?.project?.name || "this"
+        } materials to order.`}
+        confirmButtonText="Delete file"
         isDeleting={deletingMediaId !== null}
         entityType="media"
       />
 
-      {/* Delete Materials to Order Confirmation Modal */}
+      {/* Delete materials to order confirmation modal */}
       <DeleteConfirmation
         isOpen={showDeleteMTOModal}
         onClose={handleMTODeleteCancel}
         onConfirm={handleMTODeleteConfirm}
         deleteWithInput={true}
-        heading="Materials to Order"
-        message="This will permanently delete the materials to order and all associated items. This action cannot be undone."
+        heading="materials to order"
+        title={
+          pendingDeleteMtoName
+            ? `Delete materials to order for ${pendingDeleteMtoName}?`
+            : "Delete materials to order?"
+        }
+        warningHeading="This removes the materials to order and its items"
+        message={
+          pendingDeleteMtoName
+            ? `The materials to order for ${pendingDeleteMtoName} and all of its items will be deleted.`
+            : "These materials to order and all of their items will be deleted."
+        }
+        confirmButtonText="Delete materials to order"
         comparingName={
           mtoPendingDelete?.project?.name || mtoPendingDelete?.id || ""
         }
@@ -3159,7 +3026,7 @@ export default function page() {
         entityType="materials_to_order"
       />
 
-      {/* Create Materials to Order Modal */}
+      {/* Create materials to order modal */}
       {showCreateMTOModal && (
         <CreateMaterialsToOrderModal
           setShowModal={setShowCreateMTOModal}

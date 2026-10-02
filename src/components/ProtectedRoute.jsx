@@ -204,6 +204,8 @@ export function AdminRoute({
 
   const siteMap = {
     "/admin/dashboard": "dashboard",
+    // Tasks are served by the dashboard-module todo API, so they share its access.
+    "/admin/todo": "dashboard",
     "/admin/clients": "all_clients",
     "/admin/clients/addclient": "add_clients",
     [`/admin/clients/${id}`]: "client_details",
@@ -307,6 +309,20 @@ export function AdminRoute({
     return (
       <ProtectedRoute
         requiredUserType={["admin", "master-admin", "manager", "employee"]}
+        redirectTo={redirectTo}
+        fallback={fallback}
+      >
+        {children}
+      </ProtectedRoute>
+    );
+  }
+
+  // The updates feed has no module of its own: the API only returns updates
+  // for the modules the user holds, so any office role may open the page.
+  if (pathname === "/admin/updates") {
+    return (
+      <ProtectedRoute
+        requiredUserType={["admin", "master-admin", "manager"]}
         redirectTo={redirectTo}
         fallback={fallback}
       >

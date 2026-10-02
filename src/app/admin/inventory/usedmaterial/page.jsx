@@ -2,29 +2,1532 @@
 import React, { useState, useEffect, useRef } from "react";
 import AdminShell from "@/components/AdminShell";
 import PaginationFooter from "@/components/PaginationFooter";
+import CustomDropdown from "@/components/CustomDropdown";
+import SearchBar from "@/components/SearchBar";
 import { useAuth } from "@/contexts/AuthContext";
+import useModalFocus from "@/hooks/useModalFocus";
 import axios from "axios";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
-  ChevronDown,
-  ChevronUp,
-  Package,
-  Layers,
-  Image as ImageIcon,
-  Check,
-  X,
   AlertTriangle,
+  Check,
+  ChevronDown,
+  History,
+  ImageIcon,
+  Layers,
+  Package,
   Plus,
+  RotateCcw,
   Search,
   Trash2,
-  History,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import SearchBar from "@/components/SearchBar";
+import {
+  BADGE,
+  BADGE_TONES,
+  COUNT_BADGE,
+  STATUS_COLORS,
+  formatQty,
+} from "@/app/admin/dashboard/lib/format";
+import { formatLabel } from "@/app/admin/employees/punches/lib/punchStyles";
 
-export default function page() {
+const EMPTY = "—";
+const SESSION_ERROR = "Your session has expired. Sign in again to continue.";
+const MTO_LOAD_ERROR =
+  "Couldn't load materials to order. Check your connection and try again.";
+const USAGE_LOAD_ERROR =
+  "Couldn't load recently used materials. Check your connection and try again.";
+const PROJECTS_LOAD_ERROR =
+  "Couldn't load projects. Check your connection and try again.";
+const ITEMS_LOAD_ERROR =
+  "Couldn't load items. Check your connection and try again.";
+const TOAST_OPTIONS = { position: "top-right", autoClose: 3000 };
+// Value of the "No project" option. It differs from the empty selection so the
+// project field shows its placeholder until something is chosen.
+const NO_PROJECT = "__none__";
+
+const TABS = [
+  { id: "recent", label: "Recently used" },
+  { id: "active", label: "Active" },
+  { id: "upcoming", label: "Upcoming" },
+  { id: "completed", label: "Completed" },
+];
+
+const MTO_EMPTY_MESSAGES = {
+  active: "No active materials to order",
+  upcoming: "No upcoming materials to order",
+  completed: "No completed materials to order",
+};
+
+// Category options (values are the API's category slugs).
+const CATEGORY_OPTIONS = [
+  { label: "Sheet", value: "sheet" },
+  { label: "Edging tape", value: "edging_tape" },
+  { label: "Handle", value: "handle" },
+  { label: "Hardware", value: "hardware" },
+  { label: "Accessory", value: "accessory" },
+];
+
+// Attributes listed for an item in the accordion, in display order:
+// [on-screen label, key on the object returned by getItemDetails].
+const ITEM_DETAIL_FIELDS = [
+  ["Brand", "brand"],
+  ["Colour", "color"],
+  ["Finish", "finish"],
+  ["Material", "material"],
+  ["Type", "type"],
+  ["Sub-category", "sub_category"],
+  ["Face", "face"],
+  ["Dimensions", "dimensions"],
+];
+
+const DATE_TIME = new Intl.DateTimeFormat("en-AU", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+// Button, field, menu and table recipes from DESIGN.md 9.1 / 9.2 / 9.5 / 9.8.
+const BTN_PRIMARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_TOOLBAR =
+  "cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY_COMPACT =
+  "cursor-pointer flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const ICON_BTN =
+  "cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const ICON_BTN_ACCENT =
+  "cursor-pointer p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const ICON_BTN_DANGER =
+  "cursor-pointer p-1.5 text-red-600 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const MENU_ITEM =
+  "cursor-pointer w-full text-left px-4 py-2.5 text-sm hover:bg-slate-100 transition-colors flex items-center justify-between gap-2";
+const TH =
+  "px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider";
+const LABEL = "block text-sm font-medium text-slate-700 mb-1.5";
+const SPINNER =
+  "w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin";
+
+// DESIGN.md 9.2 form field recipe. `hasError` flips the border/ring to red.
+const fieldClass = (hasError, extra = "px-4 py-3") =>
+  `w-full text-sm text-slate-800 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-600 disabled:cursor-not-allowed ${extra} ${
+    hasError
+      ? "border-red-500 focus:ring-red-500"
+      : "border-slate-300 focus:ring-primary"
+  }`;
+// Compact numeric field used inside tables.
+const cellInputClass = (hasError) =>
+  `w-24 text-sm text-slate-800 px-3 py-2 text-right font-mono border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-600 disabled:cursor-not-allowed ${
+    hasError
+      ? "border-red-500 focus:ring-red-500"
+      : "border-slate-300 focus:ring-primary"
+  }`;
+
+const tabClass = (isActive) =>
+  `cursor-pointer py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary rounded-t-sm ${
+    isActive
+      ? "border-primary text-primary"
+      : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+  }`;
+
+const dash = (value) =>
+  value === null || value === undefined || value === "" ? EMPTY : value;
+
+// Enter in a dropdown's text field must not submit the whole form.
+const blockEnterSubmit = (e) => {
+  if (e.key === "Enter" && e.target?.getAttribute?.("role") === "combobox") {
+    e.preventDefault();
+  }
+};
+
+// Validate and format image URL
+const getImageUrl = (image) => {
+  // Handle image object (media relation) - extract URL
+  if (image && typeof image === "object" && image.url) {
+    const url = image.url;
+    // If it's already a full URL, return as is
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      return url;
+    }
+    // If it's a relative path, ensure it starts with /
+    if (url.startsWith("/")) {
+      return url;
+    }
+    // Otherwise, add leading slash
+    return `/${url}`;
+  }
+  // Handle string format (backward compatibility)
+  if (
+    !image ||
+    typeof image !== "string" ||
+    image.trim() === "" ||
+    image === "null" ||
+    image === "undefined"
+  ) {
+    return null;
+  }
+  const trimmed = image.trim();
+  // If it's already a full URL, return as is
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  // If it's a relative path, ensure it starts with /
+  if (trimmed.startsWith("/")) {
+    return trimmed;
+  }
+  // Otherwise, add leading slash
+  return `/${trimmed}`;
+};
+
+// Get item details based on category
+const getItemDetails = (item) => {
+  if (!item) return null;
+
+  const category = item.category;
+  const details = {
+    name: item.description || "Unknown item",
+    image: getImageUrl(item.image),
+    brand: null,
+    color: null,
+    finish: null,
+    material: null,
+    type: null,
+    dimensions: null,
+    face: null,
+    sub_category: null,
+  };
+
+  switch (category) {
+    case "SHEET":
+      if (item.sheet) {
+        details.name = item.sheet.brand || details.name;
+        details.brand = item.sheet.brand;
+        details.color = item.sheet.color;
+        details.finish = item.sheet.finish;
+        details.face = item.sheet.face;
+        details.dimensions = item.sheet.dimensions;
+      }
+      break;
+    case "HANDLE":
+      if (item.handle) {
+        details.name = item.handle.brand || details.name;
+        details.brand = item.handle.brand;
+        details.color = item.handle.color;
+        details.type = item.handle.type;
+        details.material = item.handle.material;
+        details.dimensions = item.handle.dimensions;
+      }
+      break;
+    case "HARDWARE":
+      if (item.hardware) {
+        details.name = item.hardware.name || details.name;
+        details.brand = item.hardware.brand;
+        details.type = item.hardware.type;
+        details.sub_category = item.hardware.sub_category;
+        details.dimensions = item.hardware.dimensions;
+      }
+      break;
+    case "ACCESSORY":
+      if (item.accessory) {
+        details.name = item.accessory.name || details.name;
+      }
+      break;
+    case "EDGING_TAPE":
+      if (item.edging_tape) {
+        details.name = item.edging_tape.brand || details.name;
+        details.brand = item.edging_tape.brand;
+        details.color = item.edging_tape.color;
+        details.finish = item.edging_tape.finish;
+        details.dimensions = item.edging_tape.dimensions;
+      }
+      break;
+    default:
+      break;
+  }
+
+  return details;
+};
+
+// Display name for an item picked in the manual add modal.
+const getItemDisplayName = (item) => {
+  const join = (...parts) => parts.filter(Boolean).join(" ");
+  if (item.sheet)
+    return join(item.sheet.brand, item.sheet.color, item.sheet.finish);
+  if (item.handle)
+    return join(item.handle.brand, item.handle.color, item.handle.type);
+  if (item.hardware) return join(item.hardware.brand, item.hardware.name);
+  if (item.accessory) return item.accessory.name || "Item";
+  if (item.edging_tape)
+    return join(item.edging_tape.brand, item.edging_tape.color);
+  return item.description || "Item";
+};
+
+// The attribute rows listed for an item in the manual add modal.
+const getDetailRows = (item) => {
+  const rows = [];
+  if (item.sheet) {
+    rows.push(
+      ["Colour", item.sheet.color],
+      ["Finish", item.sheet.finish],
+      ["Face", item.sheet.face],
+      ["Dimensions", item.sheet.dimensions],
+    );
+  }
+  if (item.handle) {
+    rows.push(
+      ["Colour", item.handle.color],
+      ["Type", item.handle.type],
+      ["Dimensions", item.handle.dimensions],
+      ["Material", item.handle.material],
+    );
+  }
+  if (item.hardware) {
+    rows.push(
+      ["Name", item.hardware.name],
+      ["Type", item.hardware.type],
+      ["Dimensions", item.hardware.dimensions],
+      ["Sub-category", item.hardware.sub_category],
+    );
+  }
+  if (item.accessory) {
+    rows.push(["Name", item.accessory.name]);
+  }
+  if (item.edging_tape) {
+    rows.push(
+      ["Brand", item.edging_tape.brand],
+      ["Colour", item.edging_tape.color],
+      ["Finish", item.edging_tape.finish],
+      ["Dimensions", item.edging_tape.dimensions],
+    );
+  }
+  return rows;
+};
+
+// Group items by category
+const groupItemsByCategory = (items) => {
+  const grouped = {};
+  items.forEach((mtoItem) => {
+    const category = mtoItem.item?.category || "UNCATEGORIZED";
+    if (!grouped[category]) {
+      grouped[category] = [];
+    }
+    grouped[category].push(mtoItem);
+  });
+  return grouped;
+};
+
+const getUsageLocation = (transaction) => {
+  const project =
+    transaction.project || transaction.materials_to_order?.project;
+  const lots = transaction.lot
+    ? [transaction.lot]
+    : transaction.materials_to_order?.lots || [];
+
+  return {
+    project: project?.name || project?.project_id || null,
+    projectId: project?.project_id || null,
+    lots,
+  };
+};
+
+// Inline validation for the "new used" quantity of an MTO item. Returns the
+// message to show under the field, or null when the value can be saved.
+const getUsedQtyError = (inputString, mtoItem) => {
+  if (inputString === undefined) return null;
+  const value = inputString === "" ? 0 : parseFloat(inputString);
+  if (Number.isNaN(value)) return "Enter a valid number.";
+  if (value < 0) return "Can't be negative.";
+  if (value > mtoItem.quantity) {
+    return `Max: ${formatQty(mtoItem.quantity)}`;
+  }
+  const currentUsed = mtoItem.quantity_used || 0;
+  if (value < currentUsed) {
+    return `Can't be below ${formatQty(currentUsed)} used.`;
+  }
+  return null;
+};
+
+// Category pill. A category carries no status meaning, so it takes the
+// sanctioned categorical hue (DESIGN.md 5.5).
+function CategoryBadge({ category }) {
+  if (!category) return <span className="text-sm text-slate-500">{EMPTY}</span>;
+  return (
+    <span className={`${BADGE} ${BADGE_TONES.indigo}`}>
+      {formatLabel(category)}
+    </span>
+  );
+}
+
+function CategoryIcon({ category }) {
+  const Icon = category === "SHEET" ? Layers : Package;
+  return <Icon className="w-4 h-4 text-slate-500" aria-hidden="true" />;
+}
+
+// Item thumbnail with a placeholder when there is no image or it fails to
+// load. The adjacent name carries the accessible name, so the image is
+// decorative.
+function ItemThumb({ image }) {
+  const [failed, setFailed] = useState(false);
+  const src = getImageUrl(image);
+
+  if (!src || failed) {
+    return (
+      <div className="w-10 h-10 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center shrink-0">
+        <ImageIcon className="w-5 h-5 text-slate-400" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      loading="lazy"
+      src={src}
+      alt=""
+      className="w-10 h-10 object-cover rounded-lg border border-slate-200 shrink-0"
+      onError={() => setFailed(true)}
+      width={40}
+      height={40}
+    />
+  );
+}
+
+function LoadingState({ label }) {
+  return (
+    <div className="px-4 py-12 text-center">
+      <div className="flex flex-col items-center gap-2" role="status">
+        <span
+          className="w-6 h-6 border-2 border-slate-200 border-t-primary rounded-full animate-spin"
+          aria-hidden="true"
+        />
+        <p className="text-sm text-slate-600">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }) {
+  return (
+    <div className="px-4 py-12 text-center">
+      <div className="flex flex-col items-center gap-2" role="alert">
+        <AlertTriangle className="w-8 h-8 text-red-500" aria-hidden="true" />
+        <p className="text-sm text-red-600">{message}</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className={BTN_SECONDARY_COMPACT}
+        >
+          Try again
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon = Package, message, action }) {
+  return (
+    <div className="px-4 py-12 text-center">
+      <div className="flex flex-col items-center gap-2">
+        <Icon className="w-8 h-8 text-slate-300" aria-hidden="true" />
+        <p className="text-sm text-slate-600">{message}</p>
+        {action}
+      </div>
+    </div>
+  );
+}
+
+// A toolbar filter menu: one button, a flat list of options below it.
+function FilterMenu({ id, label, value, options, isOpen, onToggle, onSelect }) {
+  const selectedOption = options.find((option) => option.value === value);
+
+  return (
+    <div className="relative" data-recent-filter-dropdown>
+      <button
+        type="button"
+        onClick={() => onToggle(id)}
+        aria-haspopup="true"
+        aria-expanded={isOpen}
+        className={BTN_TOOLBAR}
+      >
+        <span className="max-w-48 truncate">
+          {selectedOption?.label || label}
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />
+      </button>
+      {isOpen && (
+        <div className="absolute top-full right-0 mt-1 w-64 max-h-80 overflow-y-auto bg-white border border-slate-300 rounded-lg z-40">
+          {options.map((option) => {
+            const isSelected = option.value === value;
+            return (
+              <button
+                key={option.value || "all"}
+                type="button"
+                onClick={() => onSelect(id, option.value)}
+                aria-current={isSelected || undefined}
+                className={`${MENU_ITEM} ${
+                  isSelected ? "text-primary font-medium" : "text-slate-700"
+                }`}
+              >
+                <span className="truncate">{option.label}</span>
+                {isSelected && (
+                  <Check className="w-4 h-4 shrink-0" aria-hidden="true" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// One line of an MTO's items table: details, totals and the "new used" editor.
+function MtoItemRow({
+  mtoId,
+  mtoItem,
+  inputValue,
+  readOnly,
+  saving,
+  onChange,
+  onCancel,
+  onSave,
+}) {
+  const details = getItemDetails(mtoItem.item);
+  const unit = mtoItem.item?.measurement_unit;
+  const name = details?.name || "Unknown item";
+  const originalValue = String(mtoItem.quantity_used || 0);
+  const hasChanges = inputValue !== undefined && inputValue !== originalValue;
+  const error = getUsedQtyError(inputValue, mtoItem);
+  const inputId = `used-qty-${mtoItem.id}`;
+  const errorId = `${inputId}-error`;
+
+  const pairs = ITEM_DETAIL_FIELDS.filter(([, key]) => details?.[key]).map(
+    ([label, key]) => [label, details[key]],
+  );
+  if (mtoItem.item?.supplier) {
+    pairs.push(["Supplier", mtoItem.item.supplier.name]);
+  }
+
+  return (
+    <tr className="hover:bg-slate-50 transition-colors">
+      <td className="px-4 py-3">
+        <ItemThumb image={mtoItem.item?.image} />
+      </td>
+      <td className="px-4 py-3">
+        <div className="text-sm font-medium text-slate-800">{name}</div>
+        {pairs.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+            {pairs.map(([label, value]) => (
+              <span key={label}>
+                <span className="font-medium text-slate-500">{label}:</span>{" "}
+                {value}
+              </span>
+            ))}
+          </div>
+        )}
+      </td>
+      <td className="px-4 py-3 text-right text-sm font-mono text-slate-700 whitespace-nowrap">
+        {formatQty(mtoItem.quantity, unit)}
+      </td>
+      <td className="px-4 py-3 text-right text-sm font-mono text-slate-700 whitespace-nowrap">
+        {formatQty(mtoItem.quantity_used || 0, unit)}
+      </td>
+      <td className="px-4 py-3 text-right">
+        <input
+          id={inputId}
+          type="number"
+          min="0"
+          max={mtoItem.quantity}
+          value={inputValue !== undefined ? inputValue : originalValue}
+          onChange={(e) => onChange(mtoItem.id, e.target.value)}
+          aria-label={`New used quantity for ${name}`}
+          aria-invalid={!!error}
+          aria-describedby={error ? errorId : undefined}
+          className={cellInputClass(!!error)}
+          disabled={saving || readOnly}
+        />
+        {error && (
+          <p id={errorId} className="text-xs text-red-600 mt-1">
+            {error}
+          </p>
+        )}
+      </td>
+      <td className="px-4 py-3 text-right whitespace-nowrap">
+        {hasChanges ? (
+          <div className="flex justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => onCancel(mtoItem.id)}
+              disabled={saving || readOnly}
+              className={ICON_BTN}
+              aria-label={`Cancel change for ${name}`}
+              title="Cancel"
+            >
+              <X className="w-4 h-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onSave(mtoId, mtoItem)}
+              disabled={saving || readOnly || !!error}
+              className={ICON_BTN_ACCENT}
+              aria-label={`Save used quantity for ${name}`}
+              title="Save"
+            >
+              <Check className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </div>
+        ) : (
+          <span className="text-sm text-slate-500">{EMPTY}</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+// One materials-to-order accordion card: header (project, lots, status) and,
+// when open, its items grouped by category.
+function MtoCard({
+  mto,
+  tab,
+  isExpanded,
+  onToggle,
+  quantityInputs,
+  saving,
+  isStatusMenuOpen,
+  isUpdatingStatus,
+  onToggleStatusMenu,
+  onMarkCompleted,
+  onQuantityChange,
+  onCancelEdit,
+  onSave,
+}) {
+  const panelId = `used-mto-${mto.id}`;
+  const lotIds =
+    mto.lots && mto.lots.length > 0
+      ? mto.lots.map((lot) => lot.lot_id).join(", ")
+      : EMPTY;
+  const isCompleted = Boolean(mto.used_material_completed);
+  const groupedItems = isExpanded ? groupItemsByCategory(mto.items || []) : {};
+
+  return (
+    <div className="bg-white rounded-lg border border-slate-200">
+      {/* Accordion header */}
+      <div
+        className={`flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50 transition-colors ${
+          isExpanded ? "rounded-t-lg" : "rounded-lg"
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => onToggle(mto.id)}
+          aria-expanded={isExpanded}
+          aria-controls={isExpanded ? panelId : undefined}
+          className="cursor-pointer flex items-center gap-3 flex-1 min-w-0 text-left rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <ChevronDown
+            className={`w-4 h-4 shrink-0 text-slate-500 transition-transform duration-200 ${
+              isExpanded ? "rotate-180" : ""
+            }`}
+            aria-hidden="true"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-slate-800 truncate">
+              {mto.project?.name || "Manually added"}
+            </div>
+            <div className="text-sm text-slate-500 mt-0.5">
+              Lot ID: <span className="font-mono">{lotIds}</span>
+            </div>
+          </div>
+        </button>
+
+        {/* Used material status (one-way: active to completed) */}
+        {tab === "upcoming" ? (
+          <span className={`${BADGE} ${BADGE_TONES.warning} shrink-0`}>
+            Upcoming
+          </span>
+        ) : !isCompleted ? (
+          <div className="relative shrink-0" data-mto-status-dropdown>
+            <button
+              type="button"
+              onClick={() => onToggleStatusMenu(mto.id)}
+              disabled={isUpdatingStatus}
+              aria-haspopup="true"
+              aria-expanded={isStatusMenuOpen}
+              className={BTN_SECONDARY_COMPACT}
+              title="Mark these materials as completed"
+            >
+              <span
+                className="h-2 w-2 rounded-full bg-blue-500"
+                aria-hidden="true"
+              />
+              Active
+              <ChevronDown className="w-4 h-4" aria-hidden="true" />
+            </button>
+
+            {isStatusMenuOpen && (
+              <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-300 rounded-lg z-40 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => onMarkCompleted(mto.id, true)}
+                  disabled={isUpdatingStatus}
+                  className={`${MENU_ITEM} text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  Mark completed
+                  <Check className="w-4 h-4" aria-hidden="true" />
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <span className={`${BADGE} ${STATUS_COLORS.COMPLETED} shrink-0`}>
+            Completed
+          </span>
+        )}
+      </div>
+
+      {/* Accordion content */}
+      {isExpanded && (
+        <div
+          id={panelId}
+          className="border-t border-slate-200 px-4 py-3 bg-slate-50 rounded-b-lg"
+        >
+          {Object.keys(groupedItems).length === 0 ? (
+            <p className="text-sm text-slate-600 text-center py-4">
+              No items in these materials to order
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {Object.entries(groupedItems).map(([category, items]) => (
+                <div
+                  key={category}
+                  className="bg-white rounded-lg border border-slate-200 overflow-x-auto"
+                >
+                  <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200">
+                    <CategoryIcon category={category} />
+                    <h3 className="text-sm font-semibold text-slate-700">
+                      {formatLabel(category)}
+                    </h3>
+                    <span className="text-xs text-slate-500 ml-auto">
+                      {items.length} {items.length === 1 ? "item" : "items"}
+                    </span>
+                  </div>
+                  <table
+                    className="w-full divide-y divide-slate-200"
+                    aria-label={`${formatLabel(category)} items`}
+                  >
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th scope="col" className={`${TH} text-left`}>
+                          Image
+                        </th>
+                        <th scope="col" className={`${TH} text-left`}>
+                          Item
+                        </th>
+                        <th scope="col" className={`${TH} text-right`}>
+                          Total
+                        </th>
+                        <th scope="col" className={`${TH} text-right`}>
+                          Used
+                        </th>
+                        <th scope="col" className={`${TH} text-right`}>
+                          New used
+                        </th>
+                        <th scope="col" className={`${TH} text-right`}>
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {items.map((mtoItem) => (
+                        <MtoItemRow
+                          key={mtoItem.id}
+                          mtoId={mto.id}
+                          mtoItem={mtoItem}
+                          inputValue={quantityInputs[mtoItem.id]}
+                          readOnly={tab === "upcoming"}
+                          saving={saving}
+                          onChange={onQuantityChange}
+                          onCancel={onCancelEdit}
+                          onSave={onSave}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Manual add modal: records USED stock transactions for picked items, with an
+// optional project and lot. Its state lives here so it resets on close.
+function ManualAddModal({
+  projects,
+  loadingProjects,
+  projectsError,
+  onReloadProjects,
+  onClose,
+  onSaved,
+}) {
+  const { getToken } = useAuth();
+  const panelRef = useRef(null);
+  const itemSearchRef = useRef(null);
+
+  // Focus moves into the dialog, stays inside it, and returns to the trigger
+  // on close (DESIGN.md 13.6).
+  useModalFocus(panelRef, true);
+
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [allItems, setAllItems] = useState([]);
+  const [itemSearch, setItemSearch] = useState("");
+  const [showItemSearchResults, setShowItemSearchResults] = useState(false);
+  const [searchNotice, setSearchNotice] = useState("");
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [manualNotes, setManualNotes] = useState("");
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [itemsError, setItemsError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState("");
+  const [selectedLotId, setSelectedLotId] = useState("");
+  // Validate on submit, then on change: errors only exist once a submit was
+  // attempted.
+  const [submitted, setSubmitted] = useState(false);
+
+  const selectedProject = projects.find(
+    (project) => project.project_id === selectedProjectId,
+  );
+  const selectedProjectLots = selectedProject?.lots || [];
+
+  const projectOptions = [
+    { value: NO_PROJECT, label: "No project" },
+    ...projects.map((project) => ({
+      value: project.project_id,
+      label: project.name,
+      description: `Client: ${
+        project.client?.client_name || "No client assigned"
+      }`,
+    })),
+  ];
+  const lotOptions = selectedProjectLots.map((lot) => ({
+    value: lot.lot_id,
+    label: lot.name || lot.lot_id,
+    description: `${lot.lot_id}${
+      lot.status ? ` · ${formatLabel(lot.status)}` : ""
+    }`,
+  }));
+
+  const fetchItemsByCategory = async (category) => {
+    try {
+      setLoadingItems(true);
+      setItemsError(null);
+      setAllItems([]);
+      setItemSearch("");
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        setItemsError(SESSION_ERROR);
+        return;
+      }
+
+      const response = await axios.get(`/api/v1/item/all/${category}`, {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
+
+      if (response.data.status) {
+        setAllItems(response.data.data || []);
+      } else {
+        setItemsError(response.data.message || ITEMS_LOAD_ERROR);
+        setAllItems([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setItemsError(err.response?.data?.message || ITEMS_LOAD_ERROR);
+      setAllItems([]);
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
+  // Fetch items when a category is selected
+  useEffect(() => {
+    if (selectedCategory) {
+      fetchItemsByCategory(selectedCategory);
+    } else {
+      setAllItems([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory]);
+
+  // Close search results on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        itemSearchRef.current &&
+        !itemSearchRef.current.contains(event.target)
+      ) {
+        setShowItemSearchResults(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // A form with typed or chosen input must not close on a stray backdrop click.
+  const isDirty =
+    !!selectedCategory ||
+    !!selectedProjectId ||
+    selectedItems.length > 0 ||
+    manualNotes.trim() !== "";
+
+  // Modals close on Escape (DESIGN.md 9.4). An open dropdown handles its own
+  // Escape; an open result list closes before the modal does.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape" || saving) return;
+      if (e.target?.getAttribute?.("aria-expanded") === "true") return;
+      if (showItemSearchResults && itemSearch && selectedCategory) {
+        setShowItemSearchResults(false);
+        return;
+      }
+      onClose();
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [saving, showItemSearchResults, itemSearch, selectedCategory, onClose]);
+
+  const filteredItems = allItems.filter((item) => {
+    if (!itemSearch) return false;
+    const searchLower = itemSearch.toLowerCase();
+
+    const matchesCategory = item.category?.toLowerCase().includes(searchLower);
+    const matchesDesc = item.description?.toLowerCase().includes(searchLower);
+
+    let matchesDetails = false;
+    if (item.sheet) {
+      matchesDetails =
+        item.sheet.brand?.toLowerCase().includes(searchLower) ||
+        item.sheet.color?.toLowerCase().includes(searchLower) ||
+        item.sheet.finish?.toLowerCase().includes(searchLower);
+    } else if (item.handle) {
+      matchesDetails =
+        item.handle.brand?.toLowerCase().includes(searchLower) ||
+        item.handle.color?.toLowerCase().includes(searchLower) ||
+        item.handle.type?.toLowerCase().includes(searchLower);
+    } else if (item.hardware) {
+      matchesDetails =
+        item.hardware.brand?.toLowerCase().includes(searchLower) ||
+        item.hardware.name?.toLowerCase().includes(searchLower);
+    } else if (item.accessory) {
+      matchesDetails = item.accessory.name?.toLowerCase().includes(searchLower);
+    } else if (item.edging_tape) {
+      matchesDetails =
+        item.edging_tape.brand?.toLowerCase().includes(searchLower) ||
+        item.edging_tape.color?.toLowerCase().includes(searchLower);
+    }
+
+    return matchesCategory || matchesDesc || matchesDetails;
+  });
+
+  const handleProjectChange = (projectId) => {
+    setSelectedProjectId(projectId === NO_PROJECT ? "" : projectId);
+    // A different project has different lots, so the lot choice is dropped.
+    setSelectedLotId("");
+  };
+
+  // Handle add item to table
+  const handleAddItem = (item) => {
+    // Check if already added
+    if (selectedItems.some((i) => i.item_id === item.item_id)) {
+      setSearchNotice("That item is already in the list.");
+      setShowItemSearchResults(false);
+      return;
+    }
+
+    setSelectedItems((prev) => [
+      ...prev,
+      {
+        ...item,
+        item_id: item.item_id,
+        stock_quantity: item.quantity, // Preserve original stock quantity
+        quantity: 1, // Default quantity
+      },
+    ]);
+    setSearchNotice("");
+    setItemSearch("");
+    setShowItemSearchResults(false);
+  };
+
+  // Handle update item quantity
+  const handleUpdateItem = (itemId, field, value) => {
+    setSelectedItems((prev) =>
+      prev.map((item) => {
+        if (item.item_id === itemId) {
+          return { ...item, [field]: value };
+        }
+        return item;
+      }),
+    );
+  };
+
+  // Handle remove item from table
+  const handleRemoveItem = (itemId) => {
+    setSelectedItems((prev) => prev.filter((item) => item.item_id !== itemId));
+  };
+
+  // The message for one row's quantity, or null when it is valid.
+  const getRowError = (item) => {
+    const requestedQty = parseFloat(item.quantity);
+    if (!item.quantity || !(requestedQty > 0)) {
+      return "Enter a quantity above 0.";
+    }
+    const availableQty = item.stock_quantity ?? item.quantity;
+    if (requestedQty > availableQty) {
+      return `Only ${formatQty(availableQty, item.measurement_unit)} in stock.`;
+    }
+    return null;
+  };
+
+  const validate = () => {
+    const errs = {};
+    if (selectedProjectId && !selectedLotId) {
+      errs.lot = "Select a lot for this project.";
+    }
+    if (selectedItems.length === 0) {
+      errs.items = selectedCategory
+        ? "Add at least one item."
+        : "Select a category, then add at least one item.";
+    } else if (selectedItems.some((item) => getRowError(item))) {
+      errs.items = "Fix the quantities marked below.";
+    }
+    return errs;
+  };
+
+  const errors = submitted ? validate() : {};
+
+  // Save manual material used
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitted(true);
+
+    if (Object.keys(validate()).length > 0) {
+      // Move focus to the first invalid field once the errors have rendered.
+      setTimeout(() => {
+        const target =
+          panelRef.current?.querySelector('[aria-invalid="true"]') ||
+          document.getElementById(
+            selectedCategory ? "used-manual-search" : "used-manual-category",
+          );
+        target?.focus();
+      }, 0);
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const sessionToken = getToken();
+      if (!sessionToken) {
+        toast.error(SESSION_ERROR, TOAST_OPTIONS);
+        return;
+      }
+
+      // Create stock transactions for all items
+      const promises = selectedItems.map((item) =>
+        axios.post(
+          `/api/v1/stock_transaction/create`,
+          {
+            item_id: item.item_id,
+            quantity: parseFloat(item.quantity),
+            type: "USED",
+            notes: manualNotes || `Manually recorded used quantity`,
+            project_id: selectedProjectId || null,
+            lot_id: selectedLotId || null,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${sessionToken}`,
+              "Content-Type": "application/json",
+            },
+          },
+        ),
+      );
+
+      const results = await Promise.allSettled(promises);
+      const failed = results.filter(
+        (r) => r.status === "rejected" || !r.value?.data?.status,
+      );
+
+      if (failed.length > 0) {
+        toast.error(
+          `Couldn't record ${failed.length} ${
+            failed.length === 1 ? "item" : "items"
+          }. Try again.`,
+          { position: "top-right", autoClose: 5000 },
+        );
+      } else {
+        toast.success("Material used recorded.", TOAST_OPTIONS);
+        onClose();
+        await onSaved();
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          "Couldn't record the material used. Check your connection and try again.",
+        TOAST_OPTIONS,
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const lotInvalid = !!errors.lot;
+  const categoryInvalid = !!errors.items && !selectedCategory;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
+      onClick={() => {
+        if (!isDirty && !saving) onClose();
+      }}
+    >
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="used-manual-title"
+        className="bg-white w-full max-w-6xl rounded-xl border border-slate-200 max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+          <h2
+            id="used-manual-title"
+            className="text-lg font-semibold text-slate-800"
+          >
+            Manually add material used
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className={ICON_BTN}
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" aria-hidden="true" />
+          </button>
+        </div>
+
+        <form
+          noValidate
+          onSubmit={handleSubmit}
+          className="flex flex-col min-h-0 flex-1"
+        >
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            {/* Project and lot */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div onKeyDown={blockEnterSubmit}>
+                <label htmlFor="used-manual-project" className={LABEL}>
+                  Project
+                </label>
+                <CustomDropdown
+                  id="used-manual-project"
+                  options={projectOptions}
+                  value={selectedProjectId}
+                  onChange={handleProjectChange}
+                  placeholder="Search or select a project"
+                  searchable
+                  disabled={saving}
+                  loading={loadingProjects}
+                  loadingText="Loading projects…"
+                  emptyText="No matching projects"
+                  describedBy={
+                    projectsError ? "used-manual-project-error" : undefined
+                  }
+                />
+                {projectsError && (
+                  <div
+                    id="used-manual-project-error"
+                    role="alert"
+                    className="mt-1 flex items-center gap-2 text-xs text-red-600"
+                  >
+                    <span>{projectsError}</span>
+                    <button
+                      type="button"
+                      onClick={onReloadProjects}
+                      className="cursor-pointer font-medium underline rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {selectedProjectId && (
+                <div onKeyDown={blockEnterSubmit}>
+                  <label htmlFor="used-manual-lot" className={LABEL}>
+                    Lot{" "}
+                    <span className="text-red-600" aria-hidden="true">
+                      *
+                    </span>
+                  </label>
+                  <CustomDropdown
+                    id="used-manual-lot"
+                    options={lotOptions}
+                    value={selectedLotId}
+                    onChange={setSelectedLotId}
+                    placeholder="Search or select a lot"
+                    searchable
+                    disabled={saving}
+                    emptyText="No matching lots"
+                    invalid={lotInvalid}
+                    describedBy={
+                      lotInvalid ? "used-manual-lot-error" : undefined
+                    }
+                  />
+                  {lotInvalid && (
+                    <p
+                      id="used-manual-lot-error"
+                      className="text-xs text-red-600 mt-1"
+                    >
+                      {errors.lot}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <hr className="border-slate-200" />
+
+            {/* Item selection and list */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-slate-700">Items</h3>
+                {selectedItems.length > 0 && (
+                  <span className="text-xs text-slate-500">
+                    {selectedItems.length}{" "}
+                    {selectedItems.length === 1 ? "item" : "items"}
+                  </span>
+                )}
+              </div>
+
+              {/* Category dropdown and search bar */}
+              <div className="mb-4 flex flex-col md:flex-row gap-4">
+                <div className="md:w-56 shrink-0" onKeyDown={blockEnterSubmit}>
+                  <label htmlFor="used-manual-category" className={LABEL}>
+                    Category{" "}
+                    <span className="text-red-600" aria-hidden="true">
+                      *
+                    </span>
+                  </label>
+                  <CustomDropdown
+                    id="used-manual-category"
+                    options={CATEGORY_OPTIONS}
+                    value={selectedCategory}
+                    onChange={setSelectedCategory}
+                    placeholder="Select a category"
+                    disabled={saving}
+                    invalid={categoryInvalid}
+                    describedBy={
+                      categoryInvalid ? "used-manual-items-error" : undefined
+                    }
+                  />
+                </div>
+
+                <div className="relative flex-1" ref={itemSearchRef}>
+                  <label htmlFor="used-manual-search" className={LABEL}>
+                    Search items
+                  </label>
+                  <div className="relative">
+                    <Search
+                      className="absolute inset-y-0 left-3 my-auto w-4 h-4 text-slate-500 pointer-events-none"
+                      aria-hidden="true"
+                    />
+                    <input
+                      id="used-manual-search"
+                      type="text"
+                      placeholder={
+                        selectedCategory
+                          ? "Search items by name, category or brand"
+                          : "Select a category to search items"
+                      }
+                      value={itemSearch}
+                      onChange={(e) => {
+                        setItemSearch(e.target.value);
+                        setSearchNotice("");
+                        setShowItemSearchResults(true);
+                      }}
+                      onFocus={() => {
+                        if (selectedCategory) {
+                          setShowItemSearchResults(true);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.preventDefault();
+                      }}
+                      disabled={!selectedCategory || saving}
+                      className={fieldClass(false, "py-3 pr-4 pl-10")}
+                    />
+                  </div>
+                  {searchNotice && (
+                    <p role="status" className="text-xs text-slate-500 mt-1">
+                      {searchNotice}
+                    </p>
+                  )}
+
+                  {/* Search results */}
+                  {showItemSearchResults && itemSearch && selectedCategory && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg z-40 max-h-60 overflow-y-auto">
+                      {loadingItems ? (
+                        <div
+                          role="status"
+                          className="p-4 text-center text-slate-600 text-sm"
+                        >
+                          Loading items…
+                        </div>
+                      ) : itemsError ? (
+                        <div
+                          role="alert"
+                          className="p-4 text-center text-red-600 text-sm"
+                        >
+                          {itemsError}
+                        </div>
+                      ) : filteredItems.length === 0 ? (
+                        <div className="p-4 text-center text-slate-600 text-sm">
+                          No items found
+                        </div>
+                      ) : (
+                        <ul className="divide-y divide-slate-200">
+                          {filteredItems.map((item) => (
+                            <li key={item.item_id}>
+                              <button
+                                type="button"
+                                onClick={() => handleAddItem(item)}
+                                className="cursor-pointer w-full text-left p-3 hover:bg-slate-50 transition-colors duration-200 flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                              >
+                                <ItemThumb image={item.image} />
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-slate-800">
+                                    {getItemDisplayName(item)}
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    {formatLabel(item.category) || EMPTY} •
+                                    Stock:{" "}
+                                    {formatQty(
+                                      item.quantity,
+                                      item.measurement_unit,
+                                    )}
+                                  </p>
+                                </div>
+                                <Plus
+                                  className="w-4 h-4 text-primary ml-auto shrink-0"
+                                  aria-hidden="true"
+                                />
+                                <span className="sr-only">Add to list</span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Selected items table */}
+              <div className="border border-slate-200 rounded-lg overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th scope="col" className={`${TH} text-left`}>
+                        Image
+                      </th>
+                      <th scope="col" className={`${TH} text-left`}>
+                        Category
+                      </th>
+                      <th scope="col" className={`${TH} text-left`}>
+                        Details
+                      </th>
+                      <th scope="col" className={`${TH} text-right`}>
+                        In stock
+                      </th>
+                      <th scope="col" className={`${TH} text-right`}>
+                        Quantity
+                      </th>
+                      <th scope="col" className={`${TH} text-right`}>
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {selectedItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-12 text-center">
+                          <Package
+                            className="w-8 h-8 mx-auto mb-2 text-slate-300"
+                            aria-hidden="true"
+                          />
+                          <p className="text-sm text-slate-600">
+                            No items selected. Search and add items above.
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      selectedItems.map((item) => {
+                        const itemName = getItemDisplayName(item);
+                        const detailRows = getDetailRows(item);
+                        const rowError = submitted ? getRowError(item) : null;
+                        const qtyId = `used-manual-qty-${item.item_id}`;
+                        return (
+                          <tr
+                            key={item.item_id}
+                            className="hover:bg-slate-50 transition-colors"
+                          >
+                            <td className="px-4 py-3">
+                              <ItemThumb image={item.image} />
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <CategoryBadge category={item.category} />
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="text-xs text-slate-600 space-y-1">
+                                {detailRows.map(([label, value], index) => (
+                                  <div key={`${label}-${index}`}>
+                                    <span className="font-medium">
+                                      {label}:
+                                    </span>{" "}
+                                    {dash(value)}
+                                  </div>
+                                ))}
+                                {detailRows.length === 0 && (
+                                  <div>{dash(item.description)}</div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-mono text-slate-700">
+                              {formatQty(
+                                item.stock_quantity ?? item.quantity,
+                                item.measurement_unit,
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <input
+                                id={qtyId}
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) =>
+                                  handleUpdateItem(
+                                    item.item_id,
+                                    "quantity",
+                                    e.target.value,
+                                  )
+                                }
+                                aria-label={`Quantity for ${itemName}`}
+                                aria-invalid={!!rowError}
+                                aria-describedby={
+                                  rowError ? `${qtyId}-error` : undefined
+                                }
+                                className={cellInputClass(!!rowError)}
+                                disabled={saving}
+                              />
+                              {rowError && (
+                                <p
+                                  id={`${qtyId}-error`}
+                                  className="text-xs text-red-600 mt-1"
+                                >
+                                  {rowError}
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveItem(item.item_id)}
+                                className={ICON_BTN_DANGER}
+                                disabled={saving}
+                                aria-label={`Remove ${itemName}`}
+                                title="Remove item"
+                              >
+                                <Trash2
+                                  className="w-4 h-4"
+                                  aria-hidden="true"
+                                />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              {errors.items && (
+                <p
+                  id="used-manual-items-error"
+                  className="text-xs text-red-600 mt-1"
+                >
+                  {errors.items}
+                </p>
+              )}
+            </div>
+
+            <hr className="border-slate-200" />
+
+            {/* Notes */}
+            <div>
+              <label htmlFor="used-manual-notes" className={LABEL}>
+                Notes
+              </label>
+              <textarea
+                id="used-manual-notes"
+                rows={5}
+                value={manualNotes}
+                onChange={(e) => setManualNotes(e.target.value)}
+                className={`${fieldClass(false)} resize-none`}
+                placeholder="e.g. Offcuts used on the island bench"
+                disabled={saving}
+              />
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className={BTN_SECONDARY}
+            >
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className={BTN_PRIMARY}>
+              {saving ? (
+                <span className={SPINNER} aria-hidden="true" />
+              ) : (
+                <Check className="w-4 h-4" aria-hidden="true" />
+              )}
+              Save material used
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default function UsedMaterialPage() {
   const { getToken } = useAuth();
   const [mtos, setMtos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +1537,7 @@ export default function page() {
   const [saving, setSaving] = useState(false);
   const [recentUsage, setRecentUsage] = useState([]);
   const [loadingRecentUsage, setLoadingRecentUsage] = useState(false);
+  const [recentError, setRecentError] = useState(null);
   const [recentSearch, setRecentSearch] = useState("");
   const [recentCategoryFilter, setRecentCategoryFilter] = useState("");
   const [recentProjectFilter, setRecentProjectFilter] = useState("");
@@ -41,57 +1545,36 @@ export default function page() {
   const [recentPage, setRecentPage] = useState(1);
   const [recentItemsPerPage, setRecentItemsPerPage] = useState(50);
   const [openRecentFilter, setOpenRecentFilter] = useState(null);
+  const [mtoPage, setMtoPage] = useState(1);
+  const [mtoItemsPerPage, setMtoItemsPerPage] = useState(50);
 
-  // Used material MTO completion (Active/Completed) UI
-  const [mtoTab, setMtoTab] = useState("active"); // active | completed
+  // Used material MTO completion (active / upcoming / completed) UI
+  const [mtoTab, setMtoTab] = useState("active"); // recent | active | upcoming | completed
   const [openMtoStatusDropdownId, setOpenMtoStatusDropdownId] = useState(null);
   const [updatingMtoStatusId, setUpdatingMtoStatusId] = useState(null);
 
-  // Manual add modal states
+  // Manual add modal
   const [showManualAddModal, setShowManualAddModal] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
-  const [allItems, setAllItems] = useState([]);
-  const [itemSearch, setItemSearch] = useState("");
-  const [showItemSearchResults, setShowItemSearchResults] = useState(false);
-  const [selectedItems, setSelectedItems] = useState([]);
-  const [manualNotes, setManualNotes] = useState("");
-  const [loadingItems, setLoadingItems] = useState(false);
-  const [savingManual, setSavingManual] = useState(false);
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState("");
-  const [selectedProjectName, setSelectedProjectName] = useState("");
-  const [selectedProjectLots, setSelectedProjectLots] = useState([]);
-  const [selectedLotId, setSelectedLotId] = useState("");
-  const [lotSearchTerm, setLotSearchTerm] = useState("");
-  const [isLotDropdownOpen, setIsLotDropdownOpen] = useState(false);
-  const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState(false);
-  const [projectSearchTerm, setProjectSearchTerm] = useState("");
-  const projectDropdownRef = useRef(null);
-  const lotDropdownRef = useRef(null);
-  const categoryDropdownRef = useRef(null);
-
-  // Category options
-  const categoryOptions = [
-    { label: "Sheet", value: "sheet" },
-    { label: "Edging Tape", value: "edging_tape" },
-    { label: "Handle", value: "handle" },
-    { label: "Hardware", value: "hardware" },
-    { label: "Accessory", value: "accessory" },
-  ];
+  const [projectsError, setProjectsError] = useState(null);
 
   useEffect(() => {
     fetchMTOs();
     fetchProjectsWithAllActiveLots();
     fetchRecentUsage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchRecentUsage = async () => {
     try {
       setLoadingRecentUsage(true);
+      setRecentError(null);
       const sessionToken = getToken();
-      if (!sessionToken) return;
+      if (!sessionToken) {
+        setRecentError(SESSION_ERROR);
+        return;
+      }
 
       const response = await axios.get("/api/v1/stock_transaction/used", {
         headers: { Authorization: `Bearer ${sessionToken}` },
@@ -100,11 +1583,11 @@ export default function page() {
       if (response.data.status) {
         setRecentUsage(response.data.data || []);
       } else {
-        toast.error(response.data.message || "Failed to fetch usage logs");
+        setRecentError(response.data.message || USAGE_LOAD_ERROR);
       }
     } catch (error) {
       console.error("Error fetching recent material usage:", error);
-      toast.error("Error fetching recent material usage");
+      setRecentError(error.response?.data?.message || USAGE_LOAD_ERROR);
     } finally {
       setLoadingRecentUsage(false);
     }
@@ -113,8 +1596,12 @@ export default function page() {
   const fetchProjectsWithAllActiveLots = async () => {
     try {
       setLoadingProjects(true);
+      setProjectsError(null);
       const sessionToken = getToken();
-      if (!sessionToken) return;
+      if (!sessionToken) {
+        setProjectsError(SESSION_ERROR);
+        return;
+      }
 
       const response = await axios.get("/api/v1/project/all", {
         headers: {
@@ -130,13 +1617,12 @@ export default function page() {
           return true;
         });
         setProjects(filteredProjects);
+      } else {
+        setProjectsError(response.data.message || PROJECTS_LOAD_ERROR);
       }
     } catch (error) {
       console.error("Error fetching projects:", error);
-      toast.error("Error fetching projects", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      setProjectsError(error.response?.data?.message || PROJECTS_LOAD_ERROR);
     } finally {
       setLoadingProjects(false);
     }
@@ -148,11 +1634,7 @@ export default function page() {
       setError(null);
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        setError(SESSION_ERROR);
         return;
       }
 
@@ -171,21 +1653,11 @@ export default function page() {
         // Combine both for compatibility with existing code
         setMtos([...ready_to_use, ...upcoming]);
       } else {
-        setError(response.data.message || "Failed to fetch materials to order");
-        toast.error(response.data.message || "Failed to fetch MTOs", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        setError(response.data.message || MTO_LOAD_ERROR);
       }
     } catch (error) {
       console.error("Error fetching MTOs:", error);
-      toast.error("Error fetching MTOs. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-      });
-      setError(
-        error.response?.data?.message || "Failed to fetch materials to order",
-      );
+      setError(error.response?.data?.message || MTO_LOAD_ERROR);
     } finally {
       setLoading(false);
     }
@@ -195,17 +1667,28 @@ export default function page() {
     setExpandedMto(expandedMto === mtoId ? null : mtoId);
   };
 
-  // Close MTO status dropdown on outside click
+  // Close the status and filter menus when clicking outside or pressing Escape.
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (!event.target.closest("[data-mto-status-dropdown]")) {
         setOpenMtoStatusDropdownId(null);
       }
+      if (!event.target.closest("[data-recent-filter-dropdown]")) {
+        setOpenRecentFilter(null);
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setOpenMtoStatusDropdownId(null);
+        setOpenRecentFilter(null);
+      }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
 
@@ -214,10 +1697,7 @@ export default function page() {
       setUpdatingMtoStatusId(mtoId);
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(SESSION_ERROR, TOAST_OPTIONS);
         return;
       }
 
@@ -239,62 +1719,26 @@ export default function page() {
         );
         if (expandedMto === mtoId) setExpandedMto(null);
         setOpenMtoStatusDropdownId(null);
-        toast.success(`MTO marked as ${completed ? "completed" : "active"}`, {
-          position: "top-right",
-          autoClose: 2500,
-        });
+        toast.success(
+          `Materials to order marked as ${completed ? "completed" : "active"}.`,
+          { position: "top-right", autoClose: 2500 },
+        );
       } else {
-        toast.error(response.data.message || "Failed to update MTO status", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(
+          response.data.message ||
+            "Couldn't update the status. Check your connection and try again.",
+          TOAST_OPTIONS,
+        );
       }
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-          "Error updating MTO status. Please try again.",
-        {
-          position: "top-right",
-          autoClose: 3000,
-        },
+          "Couldn't update the status. Check your connection and try again.",
+        TOAST_OPTIONS,
       );
     } finally {
       setUpdatingMtoStatusId(null);
     }
-  };
-
-  // Group items by category
-  const groupItemsByCategory = (items) => {
-    const grouped = {};
-    items.forEach((mtoItem) => {
-      const category = mtoItem.item?.category || "UNCATEGORIZED";
-      if (!grouped[category]) {
-        grouped[category] = [];
-      }
-      grouped[category].push(mtoItem);
-    });
-    return grouped;
-  };
-
-  const getCategoryIcon = (category) => {
-    switch (category) {
-      case "SHEET":
-        return <Layers className="w-4 h-4" />;
-      case "HANDLE":
-      case "HARDWARE":
-      case "ACCESSORY":
-      case "EDGING_TAPE":
-        return <Package className="w-4 h-4" />;
-      default:
-        return <Package className="w-4 h-4" />;
-    }
-  };
-
-  const formatCategoryName = (category) => {
-    return category
-      .split("_")
-      .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
-      .join(" ");
   };
 
   const handleQuantityInputChange = (mtoItemId, value) => {
@@ -336,86 +1780,35 @@ export default function page() {
       setSaving(true);
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(SESSION_ERROR, TOAST_OPTIONS);
         return;
       }
+
+      // The field shows its own inline error (invalid number, below the
+      // quantity already used, or above the total) and keeps Save disabled, so
+      // an invalid value never gets this far.
+      if (getUsedQtyError(quantityInputs[mtoItem.id], mtoItem)) return;
 
       // Parse string input to number, treating empty string as 0
       const inputString = quantityInputs[mtoItem.id] || "";
       const inputValue = inputString === "" ? 0 : parseFloat(inputString);
       const currentUsed = mtoItem.quantity_used || 0;
-      const totalQuantity = mtoItem.quantity;
-
-      // Validate that input is a valid number
-      if (isNaN(inputValue)) {
-        toast.error("Please enter a valid number", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      // Validate: input should not exceed total
-      if (inputValue > totalQuantity) {
-        toast.error(
-          `Used quantity (${inputValue}) cannot exceed total quantity (${totalQuantity})`,
-          {
-            position: "top-right",
-            autoClose: 3000,
-          },
-        );
-        return;
-      }
-
-      if (inputValue < 0) {
-        toast.error("Used quantity cannot be negative", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        return;
-      }
 
       // Calculate the increment (difference between new and current)
       const increment = inputValue - currentUsed;
 
       // If no change, do nothing
-      if (increment === 0) {
-        return;
-      }
-
-      // Stock transaction API only handles increments (positive changes)
-      // If user tries to decrease, show an error
-      if (increment < 0) {
-        toast.error(
-          "Cannot decrease used quantity. Stock transactions only support increments.",
-          {
-            position: "top-right",
-            autoClose: 3000,
-          },
-        );
+      if (increment <= 0) {
         return;
       }
 
       // Validate that item has item_id
       const itemId = mtoItem.item?.item_id;
       if (!itemId) {
-        toast.error("Item ID not found. Cannot create stock transaction.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      // Ensure quantity is a number
-      const quantityToUse = parseFloat(increment);
-      if (isNaN(quantityToUse) || quantityToUse <= 0) {
-        toast.error("Invalid quantity. Please enter a valid number.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(
+          "Couldn't find the item ID, so the stock transaction wasn't created.",
+          TOAST_OPTIONS,
+        );
         return;
       }
 
@@ -424,7 +1817,7 @@ export default function page() {
         `/api/v1/stock_transaction/create`,
         {
           item_id: itemId,
-          quantity: quantityToUse,
+          quantity: parseFloat(increment),
           type: "USED",
           materials_to_order_id: mtoId,
         },
@@ -437,504 +1830,26 @@ export default function page() {
       );
 
       if (response.data.status) {
-        toast.success("Quantity used updated successfully", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.success("Quantity used updated.", TOAST_OPTIONS);
         // Refresh MTOs
         await fetchMTOs();
         await fetchRecentUsage();
       } else {
-        toast.error(response.data.message || "Failed to update quantity used", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(
+          response.data.message ||
+            "Couldn't update the quantity used. Check your connection and try again.",
+          TOAST_OPTIONS,
+        );
       }
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-          "Error updating quantity used. Please try again.",
-        {
-          position: "top-right",
-          autoClose: 3000,
-        },
+          "Couldn't update the quantity used. Check your connection and try again.",
+        TOAST_OPTIONS,
       );
     } finally {
       setSaving(false);
     }
-  };
-
-  // Validate and format image URL
-  const getImageUrl = (image) => {
-    // Handle image object (media relation) - extract URL
-    if (image && typeof image === "object" && image.url) {
-      const url = image.url;
-      // If it's already a full URL, return as is
-      if (url.startsWith("http://") || url.startsWith("https://")) {
-        return url;
-      }
-      // If it's a relative path, ensure it starts with /
-      if (url.startsWith("/")) {
-        return url;
-      }
-      // Otherwise, add leading slash
-      return `/${url}`;
-    }
-    // Handle string format (backward compatibility)
-    if (
-      !image ||
-      typeof image !== "string" ||
-      image.trim() === "" ||
-      image === "null" ||
-      image === "undefined"
-    ) {
-      return null;
-    }
-    const trimmed = image.trim();
-    // If it's already a full URL, return as is
-    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-      return trimmed;
-    }
-    // If it's a relative path, ensure it starts with /
-    if (trimmed.startsWith("/")) {
-      return trimmed;
-    }
-    // Otherwise, add leading slash
-    return `/${trimmed}`;
-  };
-
-  // Fetch items when category is selected
-  useEffect(() => {
-    if (selectedCategory && showManualAddModal) {
-      fetchItemsByCategory(selectedCategory);
-    } else {
-      setAllItems([]);
-    }
-  }, [selectedCategory, showManualAddModal]);
-
-  // Close search results on click outside
-  useEffect(() => {
-    if (!showManualAddModal) return;
-
-    const handleClickOutside = (event) => {
-      const searchElement = document.querySelector("[data-search-container]");
-      if (searchElement && !searchElement.contains(event.target)) {
-        setShowItemSearchResults(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showManualAddModal]);
-
-  // Close project dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        projectDropdownRef.current &&
-        !projectDropdownRef.current.contains(event.target)
-      ) {
-        setIsProjectDropdownOpen(false);
-      }
-      if (
-        lotDropdownRef.current &&
-        !lotDropdownRef.current.contains(event.target)
-      ) {
-        setIsLotDropdownOpen(false);
-      }
-      if (
-        categoryDropdownRef.current &&
-        !categoryDropdownRef.current.contains(event.target)
-      ) {
-        setIsCategoryDropdownOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  // Filter projects based on search term
-  const filteredProjects = projects.filter((project) => {
-    if (!projectSearchTerm) return true;
-    const searchLower = projectSearchTerm.toLowerCase();
-    const projectName = project.name?.toLowerCase() || "";
-    const clientName = project.client?.client_name?.toLowerCase() || "";
-    return (
-      projectName.includes(searchLower) || clientName.includes(searchLower)
-    );
-  });
-
-  const handleProjectSelect = (project) => {
-    setSelectedProjectId(project.project_id);
-    setSelectedProjectName(project.name);
-    setSelectedProjectLots(project.lots || []);
-    setSelectedLotId("");
-    setLotSearchTerm("");
-    setProjectSearchTerm(
-      `${project.name}${
-        project.client ? ` (${project.client.client_name})` : ""
-      }`,
-    );
-    setIsProjectDropdownOpen(false);
-  };
-
-  const handleProjectSearchChange = (e) => {
-    const value = e.target.value;
-    setProjectSearchTerm(value);
-    setIsProjectDropdownOpen(true);
-    // If user clears the input, clear the selection
-    if (!value.trim()) {
-      setSelectedProjectId("");
-      setSelectedProjectName("");
-      setSelectedProjectLots([]);
-      setSelectedLotId("");
-      setLotSearchTerm("");
-    }
-  };
-
-  const filteredLots = selectedProjectLots.filter((lot) => {
-    const search = lotSearchTerm.toLowerCase();
-    return (
-      !search ||
-      lot.name?.toLowerCase().includes(search) ||
-      lot.lot_id?.toLowerCase().includes(search) ||
-      lot.status?.toLowerCase().includes(search)
-    );
-  });
-
-  const handleLotSelect = (lot) => {
-    setSelectedLotId(lot.lot_id);
-    setLotSearchTerm(`${lot.name || lot.lot_id} (${lot.lot_id})`);
-    setIsLotDropdownOpen(false);
-  };
-
-  const handleLotSearchChange = (e) => {
-    setLotSearchTerm(e.target.value);
-    setSelectedLotId("");
-    setIsLotDropdownOpen(true);
-  };
-
-  const handleCategorySelect = (category) => {
-    setSelectedCategory(category);
-    setIsCategoryDropdownOpen(false);
-  };
-
-  const fetchItemsByCategory = async (category) => {
-    try {
-      setLoadingItems(true);
-      setAllItems([]);
-      setItemSearch("");
-      const sessionToken = getToken();
-      if (!sessionToken) return;
-
-      const response = await axios.get(`/api/v1/item/all/${category}`, {
-        headers: { Authorization: `Bearer ${sessionToken}` },
-      });
-
-      if (response.data.status) {
-        setAllItems(response.data.data || []);
-      } else {
-        toast.error("Failed to fetch items");
-        setAllItems([]);
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Error fetching items");
-      setAllItems([]);
-    } finally {
-      setLoadingItems(false);
-    }
-  };
-
-  // Filter items based on search
-  const filteredItems = allItems.filter((item) => {
-    if (!itemSearch) return false;
-    const searchLower = itemSearch.toLowerCase();
-
-    const matchesCategory = item.category?.toLowerCase().includes(searchLower);
-    const matchesDesc = item.description?.toLowerCase().includes(searchLower);
-
-    let matchesDetails = false;
-    if (item.sheet) {
-      matchesDetails =
-        item.sheet.brand?.toLowerCase().includes(searchLower) ||
-        item.sheet.color?.toLowerCase().includes(searchLower) ||
-        item.sheet.finish?.toLowerCase().includes(searchLower);
-    } else if (item.handle) {
-      matchesDetails =
-        item.handle.brand?.toLowerCase().includes(searchLower) ||
-        item.handle.color?.toLowerCase().includes(searchLower) ||
-        item.handle.type?.toLowerCase().includes(searchLower);
-    } else if (item.hardware) {
-      matchesDetails =
-        item.hardware.brand?.toLowerCase().includes(searchLower) ||
-        item.hardware.name?.toLowerCase().includes(searchLower);
-    } else if (item.accessory) {
-      matchesDetails = item.accessory.name?.toLowerCase().includes(searchLower);
-    } else if (item.edging_tape) {
-      matchesDetails =
-        item.edging_tape.brand?.toLowerCase().includes(searchLower) ||
-        item.edging_tape.color?.toLowerCase().includes(searchLower);
-    }
-
-    return matchesCategory || matchesDesc || matchesDetails;
-  });
-
-  // Reset modal state when closed
-  const handleCloseManualModal = () => {
-    setShowManualAddModal(false);
-    setSelectedCategory("");
-    setIsCategoryDropdownOpen(false);
-    setAllItems([]);
-    setItemSearch("");
-    setShowItemSearchResults(false);
-    setSelectedItems([]);
-    setManualNotes("");
-    setSelectedProjectId("");
-    setSelectedProjectName("");
-    setSelectedProjectLots([]);
-    setSelectedLotId("");
-    setLotSearchTerm("");
-    setProjectSearchTerm("");
-    setIsProjectDropdownOpen(false);
-    setIsLotDropdownOpen(false);
-  };
-
-  // Handle add item to table
-  const handleAddItem = (item) => {
-    // Check if already added
-    if (selectedItems.some((i) => i.item_id === item.item_id)) {
-      toast.info("Item already added");
-      return;
-    }
-
-    setSelectedItems((prev) => [
-      ...prev,
-      {
-        ...item,
-        item_id: item.item_id,
-        stock_quantity: item.quantity, // Preserve original stock quantity
-        quantity: 1, // Default quantity
-      },
-    ]);
-    setItemSearch("");
-    setShowItemSearchResults(false);
-  };
-
-  // Handle update item quantity
-  const handleUpdateItem = (itemId, field, value) => {
-    setSelectedItems((prev) =>
-      prev.map((item) => {
-        if (item.item_id === itemId) {
-          return { ...item, [field]: value };
-        }
-        return item;
-      }),
-    );
-  };
-
-  // Handle remove item from table
-  const handleRemoveItem = (itemId) => {
-    setSelectedItems((prev) => prev.filter((item) => item.item_id !== itemId));
-  };
-
-  // Get item display name
-  const getItemDisplayName = (item) => {
-    if (item.sheet)
-      return `${item.sheet.brand} ${item.sheet.color} ${item.sheet.finish}`;
-    if (item.handle)
-      return `${item.handle.brand} ${item.handle.color} ${item.handle.type}`;
-    if (item.hardware) return `${item.hardware.brand} ${item.hardware.name}`;
-    if (item.accessory) return item.accessory.name;
-    if (item.edging_tape)
-      return `${item.edging_tape.brand} ${item.edging_tape.color}`;
-    return item.description || "Item";
-  };
-
-  // Save manual material used
-  const handleSaveManualMaterial = async () => {
-    if (selectedItems.length === 0) {
-      toast.error("Please add at least one item", {
-        position: "top-right",
-        autoClose: 3000,
-      });
-      return;
-    }
-
-    if (selectedProjectId && !selectedLotId) {
-      toast.error("Please select a lot for the selected project");
-      return;
-    }
-
-    // Validate quantities
-    const invalidItems = selectedItems.some(
-      (item) => !item.quantity || item.quantity <= 0,
-    );
-    if (invalidItems) {
-      toast.error("All items must have a quantity greater than 0", {
-        position: "top-right",
-        autoClose: 3000,
-      });
-      return;
-    }
-
-    // Check if sufficient quantity is available for all items
-    const insufficientItems = selectedItems.filter((item) => {
-      const requestedQty = parseFloat(item.quantity);
-      const availableQty = item.stock_quantity ?? item.quantity;
-      return requestedQty > availableQty;
-    });
-
-    if (insufficientItems.length > 0) {
-      const itemNames = insufficientItems
-        .map((item) => getItemDisplayName(item))
-        .join(", ");
-      toast.error(`Insufficient quantity for: ${itemNames}`, {
-        position: "top-right",
-        autoClose: 5000,
-      });
-      return;
-    }
-
-    try {
-      setSavingManual(true);
-      const sessionToken = getToken();
-      if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        return;
-      }
-
-      // Create stock transactions for all items
-      const promises = selectedItems.map((item) =>
-        axios.post(
-          `/api/v1/stock_transaction/create`,
-          {
-            item_id: item.item_id,
-            quantity: parseFloat(item.quantity),
-            type: "USED",
-            notes: manualNotes || `Manually recorded used quantity`,
-            project_id: selectedProjectId || null,
-            lot_id: selectedLotId || null,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${sessionToken}`,
-              "Content-Type": "application/json",
-            },
-          },
-        ),
-      );
-
-      const results = await Promise.allSettled(promises);
-      const failed = results.filter(
-        (r) => r.status === "rejected" || !r.value?.data?.status,
-      );
-
-      if (failed.length > 0) {
-        toast.error(
-          `Failed to record ${failed.length} item(s). Please try again.`,
-          {
-            position: "top-right",
-            autoClose: 5000,
-          },
-        );
-      } else {
-        toast.success("All materials used recorded successfully", {
-          position: "top-right",
-          autoClose: 3000,
-        });
-        handleCloseManualModal();
-        await fetchRecentUsage();
-      }
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
-          "Error recording material used. Please try again.",
-        {
-          position: "top-right",
-          autoClose: 3000,
-        },
-      );
-    } finally {
-      setSavingManual(false);
-    }
-  };
-
-  // Get item details based on category
-  const getItemDetails = (item) => {
-    if (!item) return null;
-
-    const category = item.category;
-    const details = {
-      name: item.description || "Unknown Item",
-      image: getImageUrl(item.image),
-      brand: null,
-      color: null,
-      finish: null,
-      material: null,
-      type: null,
-      dimensions: null,
-      face: null,
-      sub_category: null,
-    };
-
-    switch (category) {
-      case "SHEET":
-        if (item.sheet) {
-          details.name = item.sheet.brand || details.name;
-          details.brand = item.sheet.brand;
-          details.color = item.sheet.color;
-          details.finish = item.sheet.finish;
-          details.face = item.sheet.face;
-          details.dimensions = item.sheet.dimensions;
-        }
-        break;
-      case "HANDLE":
-        if (item.handle) {
-          details.name = item.handle.brand || details.name;
-          details.brand = item.handle.brand;
-          details.color = item.handle.color;
-          details.type = item.handle.type;
-          details.material = item.handle.material;
-          details.dimensions = item.handle.dimensions;
-        }
-        break;
-      case "HARDWARE":
-        if (item.hardware) {
-          details.name = item.hardware.name || details.name;
-          details.brand = item.hardware.brand;
-          details.type = item.hardware.type;
-          details.sub_category = item.hardware.sub_category;
-          details.dimensions = item.hardware.dimensions;
-        }
-        break;
-      case "ACCESSORY":
-        if (item.accessory) {
-          details.name = item.accessory.name || details.name;
-        }
-        break;
-      case "EDGING_TAPE":
-        if (item.edging_tape) {
-          details.name = item.edging_tape.brand || details.name;
-          details.brand = item.edging_tape.brand;
-          details.color = item.edging_tape.color;
-          details.finish = item.edging_tape.finish;
-          details.dimensions = item.edging_tape.dimensions;
-        }
-        break;
-      default:
-        break;
-    }
-
-    return details;
   };
 
   // Filter MTOs by status and readiness
@@ -955,18 +1870,17 @@ export default function page() {
         ? upcomingMtos
         : activeMtos;
 
-  const getUsageLocation = (transaction) => {
-    const project =
-      transaction.project || transaction.materials_to_order?.project;
-    const lots = transaction.lot
-      ? [transaction.lot]
-      : transaction.materials_to_order?.lots || [];
+  const mtoStart = mtoItemsPerPage === 0 ? 0 : (mtoPage - 1) * mtoItemsPerPage;
+  const paginatedMtos = displayedMtos.slice(
+    mtoStart,
+    mtoItemsPerPage === 0 ? undefined : mtoStart + mtoItemsPerPage,
+  );
 
-    return {
-      project: project?.name || project?.project_id || "Not linked",
-      projectId: project?.project_id || null,
-      lots,
-    };
+  const tabCounts = {
+    recent: recentUsage.length,
+    active: activeMtos.length,
+    upcoming: upcomingMtos.length,
+    completed: completedMtos.length,
   };
 
   const recentCategoryOptions = [
@@ -1026,6 +1940,12 @@ export default function page() {
     recentItemsPerPage === 0 ? 0 : (recentPage - 1) * recentItemsPerPage,
     recentItemsPerPage === 0 ? undefined : recentPage * recentItemsPerPage,
   );
+  const hasRecentFilters = !!(
+    recentSearch ||
+    recentCategoryFilter ||
+    recentProjectFilter ||
+    recentLotFilter
+  );
 
   useEffect(() => {
     setRecentPage(1);
@@ -1038,1571 +1958,414 @@ export default function page() {
   ]);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (!event.target.closest("[data-recent-filter-dropdown]")) {
-        setOpenRecentFilter(null);
-      }
-    };
+    setMtoPage(1);
+  }, [mtoTab, mtoItemsPerPage]);
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const clearRecentFilters = () => {
+    setRecentSearch("");
+    setRecentCategoryFilter("");
+    setRecentProjectFilter("");
+    setRecentLotFilter("");
+  };
 
-  const renderRecentFilterDropdown = ({
-    id,
-    label,
-    value,
-    options,
-    onChange,
-  }) => {
-    const selectedOption = options.find((option) => option.value === value);
+  const recentFilters = [
+    {
+      id: "category",
+      label: "All categories",
+      value: recentCategoryFilter,
+      options: [
+        { value: "", label: "All categories" },
+        ...recentCategoryOptions.map((category) => ({
+          value: category,
+          label: formatLabel(category),
+        })),
+      ],
+      onChange: setRecentCategoryFilter,
+    },
+    {
+      id: "project",
+      label: "All projects",
+      value: recentProjectFilter,
+      options: [
+        { value: "", label: "All projects" },
+        ...recentProjectOptions.map((project) => ({
+          value: project.projectId,
+          label: `${project.project} (${project.projectId})`,
+        })),
+      ],
+      onChange: setRecentProjectFilter,
+    },
+    {
+      id: "lot",
+      label: "All lots",
+      value: recentLotFilter,
+      options: [
+        { value: "", label: "All lots" },
+        ...recentLotOptions.map((lot) => ({
+          value: lot.lot_id,
+          label: `${lot.name || lot.lot_id} (${lot.lot_id})`,
+        })),
+      ],
+      onChange: setRecentLotFilter,
+    },
+  ];
+
+  const openManualAddModal = () => setShowManualAddModal(true);
+
+  const renderRecentTab = () => {
+    if (loadingRecentUsage) {
+      return <LoadingState label="Loading usage logs…" />;
+    }
+    if (recentError) {
+      return <ErrorState message={recentError} onRetry={fetchRecentUsage} />;
+    }
+    if (recentUsage.length === 0) {
+      return (
+        <EmptyState
+          icon={History}
+          message="No materials have been used yet"
+          action={
+            <button
+              type="button"
+              onClick={openManualAddModal}
+              className={BTN_SECONDARY_COMPACT}
+            >
+              <Plus className="w-4 h-4" aria-hidden="true" />
+              Manually add material used
+            </button>
+          }
+        />
+      );
+    }
 
     return (
-      <div className="relative" data-recent-filter-dropdown>
-        <button
-          type="button"
-          onClick={() =>
-            setOpenRecentFilter((current) => (current === id ? null : id))
-          }
-          className="cursor-pointer flex items-center gap-2 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-100 transition-all duration-200 whitespace-nowrap"
-        >
-          <span>{selectedOption?.label || label}</span>
-          <ChevronDown className="h-4 w-4" />
-        </button>
-        {openRecentFilter === id && (
-          <div className="absolute top-full right-0 mt-1 w-64 max-h-80 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg z-50">
-            {options.map((option) => (
-              <button
-                key={option.value || "all"}
-                type="button"
-                onClick={() => {
-                  onChange(option.value);
-                  setOpenRecentFilter(null);
-                }}
-                className={`cursor-pointer w-full text-left px-3 py-2 text-sm hover:bg-slate-100 transition-colors ${
-                  option.value === value
-                    ? "text-primary font-medium"
-                    : "text-slate-600"
-                }`}
-              >
-                {option.label}
-              </button>
+      <>
+        <div className="p-4 shrink-0 border-b border-slate-200">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-1 min-w-64 max-w-2xl relative">
+              <Search
+                className="h-4 w-4 absolute left-3 text-slate-400 pointer-events-none"
+                aria-hidden="true"
+              />
+              <input
+                type="text"
+                aria-label="Search recently used materials"
+                value={recentSearch}
+                onChange={(event) => setRecentSearch(event.target.value)}
+                placeholder="Search by material, project or lot"
+                className="w-full text-sm text-slate-800 py-2 pr-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {hasRecentFilters && (
+                <button
+                  type="button"
+                  onClick={clearRecentFilters}
+                  className={BTN_TOOLBAR}
+                >
+                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                  <span>Clear filters</span>
+                </button>
+              )}
+              {recentFilters.map(({ onChange, ...filter }) => (
+                <FilterMenu
+                  key={filter.id}
+                  {...filter}
+                  isOpen={openRecentFilter === filter.id}
+                  onToggle={(id) =>
+                    setOpenRecentFilter((current) =>
+                      current === id ? null : id,
+                    )
+                  }
+                  onSelect={(id, value) => {
+                    onChange(value);
+                    setOpenRecentFilter(null);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto">
+          {filteredRecentUsage.length === 0 ? (
+            <EmptyState
+              message="No materials match your filters"
+              action={
+                <button
+                  type="button"
+                  onClick={clearRecentFilters}
+                  className={BTN_SECONDARY_COMPACT}
+                >
+                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                  Clear filters
+                </button>
+              }
+            />
+          ) : (
+            <table className="min-w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50 sticky top-0 z-10">
+                <tr>
+                  <th scope="col" className={`${TH} text-left`}>
+                    Image
+                  </th>
+                  <th scope="col" className={`${TH} text-left`}>
+                    Material
+                  </th>
+                  <th scope="col" className={`${TH} text-left`}>
+                    Category
+                  </th>
+                  <th scope="col" className={`${TH} text-right`}>
+                    Quantity
+                  </th>
+                  <th scope="col" className={`${TH} text-left`}>
+                    Used at
+                  </th>
+                  <th scope="col" className={`${TH} text-left`}>
+                    Project
+                  </th>
+                  <th scope="col" className={`${TH} text-left`}>
+                    Lot
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-slate-200">
+                {paginatedRecentUsage.map((transaction) => {
+                  const itemDetails = getItemDetails(transaction.item);
+                  const location = getUsageLocation(transaction);
+                  const description =
+                    [
+                      itemDetails?.brand,
+                      itemDetails?.color,
+                      itemDetails?.finish,
+                      itemDetails?.type,
+                      itemDetails?.dimensions,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") ||
+                    transaction.item?.description ||
+                    EMPTY;
+                  return (
+                    <tr
+                      key={transaction.id}
+                      className="hover:bg-slate-50 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <ItemThumb image={transaction.item?.image} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-sm font-medium text-slate-700">
+                          {itemDetails?.name || EMPTY}
+                        </div>
+                        <div className="text-xs text-slate-500">
+                          {description}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <CategoryBadge category={transaction.item?.category} />
+                      </td>
+                      <td className="px-4 py-3 text-right text-sm font-mono font-medium text-slate-700 whitespace-nowrap">
+                        {formatQty(
+                          transaction.quantity,
+                          transaction.item?.measurement_unit,
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+                        {transaction.createdAt
+                          ? DATE_TIME.format(new Date(transaction.createdAt))
+                          : EMPTY}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
+                        {location.projectId ? (
+                          <>
+                            <Link
+                              href={`/admin/projects/${location.projectId}`}
+                              className="font-medium text-primary rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            >
+                              {location.project}
+                            </Link>
+                            <div className="text-xs font-mono text-slate-500">
+                              ID: {location.projectId}
+                            </div>
+                          </>
+                        ) : (
+                          <span
+                            className="text-slate-500"
+                            title="Not linked to a project"
+                          >
+                            {EMPTY}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
+                        {location.lots.length > 0 ? (
+                          <div className="space-y-1">
+                            {location.lots.map((lot) => (
+                              <div key={lot.lot_id}>
+                                <div>{lot.name || lot.lot_id}</div>
+                                <div className="text-xs font-mono text-slate-500">
+                                  ID: {lot.lot_id}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span
+                            className="text-slate-500"
+                            title="Not linked to a lot"
+                          >
+                            {EMPTY}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {filteredRecentUsage.length > 0 && (
+          <PaginationFooter
+            totalItems={filteredRecentUsage.length}
+            itemsPerPage={recentItemsPerPage}
+            currentPage={recentPage}
+            onPageChange={setRecentPage}
+            onItemsPerPageChange={setRecentItemsPerPage}
+          />
+        )}
+      </>
+    );
+  };
+
+  const renderMtoTab = () => {
+    if (loading) {
+      return <LoadingState label="Loading materials to order…" />;
+    }
+    if (error) {
+      return <ErrorState message={error} onRetry={fetchMTOs} />;
+    }
+    if (mtos.length === 0) {
+      return <EmptyState message="No materials to order yet" />;
+    }
+    if (displayedMtos.length === 0) {
+      return <EmptyState message={MTO_EMPTY_MESSAGES[mtoTab]} />;
+    }
+
+    return (
+      <>
+        <div className="flex-1 overflow-auto p-4">
+          <div className="space-y-2">
+            {paginatedMtos.map((mto) => (
+              <MtoCard
+                key={mto.id}
+                mto={mto}
+                tab={mtoTab}
+                isExpanded={expandedMto === mto.id}
+                onToggle={toggleAccordion}
+                quantityInputs={quantityInputs}
+                saving={saving}
+                isStatusMenuOpen={openMtoStatusDropdownId === mto.id}
+                isUpdatingStatus={updatingMtoStatusId === mto.id}
+                onToggleStatusMenu={(id) =>
+                  setOpenMtoStatusDropdownId((prev) =>
+                    prev === id ? null : id,
+                  )
+                }
+                onMarkCompleted={handleUpdateMtoUsedMaterialStatus}
+                onQuantityChange={handleQuantityInputChange}
+                onCancelEdit={handleCancelEdit}
+                onSave={handleSaveUsage}
+              />
             ))}
           </div>
-        )}
-      </div>
+        </div>
+
+        <PaginationFooter
+          totalItems={displayedMtos.length}
+          itemsPerPage={mtoItemsPerPage}
+          currentPage={mtoPage}
+          onPageChange={setMtoPage}
+          onItemsPerPageChange={setMtoItemsPerPage}
+        />
+      </>
     );
   };
 
   return (
     <AdminShell>
       <main className="flex h-full min-h-0 flex-col overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-              <p className="text-sm text-slate-600 font-medium">
-                Loading used material details...
-              </p>
-            </div>
+        <div className="px-4 py-2 shrink-0 flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-slate-800">
+            Used material
+          </h1>
+          <div className="flex items-center gap-2">
+            <SearchBar />
+            <button
+              type="button"
+              onClick={openManualAddModal}
+              className={BTN_PRIMARY}
+            >
+              <Plus className="w-4 h-4" aria-hidden="true" />
+              Manually add material used
+            </button>
           </div>
-        ) : error ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+        </div>
+
+        <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
+          <div className="bg-white rounded-lg border border-slate-200 flex flex-col h-full overflow-hidden">
+            {/* Tabs section */}
+            <div className="px-4 shrink-0 border-b border-slate-200">
+              <div
+                className="flex space-x-6 overflow-x-auto"
+                role="tablist"
+                aria-label="Used material view"
               >
-                Try Again
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="px-4 py-2 shrink-0 flex items-center justify-between">
-              <h1 className="text-xl font-bold text-slate-700">
-                Used Material
-              </h1>
-              <div className="flex items-center gap-2">
-                <SearchBar />
-                <button
-                  onClick={() => setShowManualAddModal(true)}
-                  className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 font-medium text-sm shadow-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  Manually Add Material Used
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
-              <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-                {loading ? (
-                  <div className="flex justify-center items-center h-full">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                      <p className="text-sm text-slate-600 font-medium">
-                        Loading MTOs...
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {/* Tabs Section */}
-                    <div className="px-4 shrink-0 border-b border-slate-200">
-                      <nav className="flex space-x-6">
-                        <button
-                          onClick={() => setMtoTab("recent")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            mtoTab === "recent"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                          }`}
-                        >
-                          Recently Used ({recentUsage.length})
-                        </button>
-                        <button
-                          onClick={() => setMtoTab("active")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            mtoTab === "active"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                          }`}
-                        >
-                          Active ({activeMtos.length})
-                        </button>
-                        <button
-                          onClick={() => setMtoTab("upcoming")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            mtoTab === "upcoming"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                          }`}
-                        >
-                          Upcoming ({upcomingMtos.length})
-                        </button>
-                        <button
-                          onClick={() => setMtoTab("completed")}
-                          className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                            mtoTab === "completed"
-                              ? "border-primary text-primary"
-                              : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                          }`}
-                        >
-                          Completed ({completedMtos.length})
-                        </button>
-                      </nav>
-                    </div>
-
-                    {/* Scrollable Content */}
-                    <div className="flex-1 overflow-auto p-4">
-                      {mtoTab === "recent" ? (
-                        loadingRecentUsage ? (
-                          <div className="flex justify-center items-center py-10">
-                            <div className="text-center">
-                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4" />
-                              <p className="text-sm text-slate-500 font-medium">
-                                Loading usage logs...
-                              </p>
-                            </div>
-                          </div>
-                        ) : recentUsage.length === 0 ? (
-                          <div className="flex justify-center items-center py-10">
-                            <div className="text-center">
-                              <History className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-                              <p className="text-sm text-slate-500 font-medium">
-                                No recently used materials
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col h-full overflow-hidden">
-                            <div className="p-3 shrink-0 border-b border-slate-200">
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="relative flex-1 min-w-[220px] max-w-2xl">
-                                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                  <input
-                                    type="text"
-                                    value={recentSearch}
-                                    onChange={(event) =>
-                                      setRecentSearch(event.target.value)
-                                    }
-                                    placeholder="Search material, project, or lot..."
-                                    className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
-                                  />
-                                </div>
-                                <div className="ml-auto flex items-center gap-2 shrink-0">
-                                  {(recentSearch ||
-                                    recentCategoryFilter ||
-                                    recentProjectFilter ||
-                                    recentLotFilter) && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setRecentSearch("");
-                                        setRecentCategoryFilter("");
-                                        setRecentProjectFilter("");
-                                        setRecentLotFilter("");
-                                      }}
-                                      className="rounded-lg px-3 py-2 text-sm font-medium text-primary hover:bg-red-50"
-                                    >
-                                      Clear filters
-                                    </button>
-                                  )}
-                                  {renderRecentFilterDropdown({
-                                    id: "category",
-                                    label: "All categories",
-                                    value: recentCategoryFilter,
-                                    options: [
-                                      {
-                                        value: "",
-                                        label: "All categories",
-                                      },
-                                      ...recentCategoryOptions.map(
-                                        (category) => ({
-                                          value: category,
-                                          label: formatCategoryName(category),
-                                        }),
-                                      ),
-                                    ],
-                                    onChange: setRecentCategoryFilter,
-                                  })}
-                                  {renderRecentFilterDropdown({
-                                    id: "project",
-                                    label: "All projects",
-                                    value: recentProjectFilter,
-                                    options: [
-                                      { value: "", label: "All projects" },
-                                      ...recentProjectOptions.map(
-                                        (project) => ({
-                                          value: project.projectId,
-                                          label: `${project.project} (${project.projectId})`,
-                                        }),
-                                      ),
-                                    ],
-                                    onChange: setRecentProjectFilter,
-                                  })}
-                                  {renderRecentFilterDropdown({
-                                    id: "lot",
-                                    label: "All lots",
-                                    value: recentLotFilter,
-                                    options: [
-                                      { value: "", label: "All lots" },
-                                      ...recentLotOptions.map((lot) => ({
-                                        value: lot.lot_id,
-                                        label: `${lot.name || lot.lot_id} (${lot.lot_id})`,
-                                      })),
-                                    ],
-                                    onChange: setRecentLotFilter,
-                                  })}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex-1 overflow-auto">
-                              {filteredRecentUsage.length === 0 ? (
-                                <div className="rounded-lg border border-slate-200 bg-white py-10 text-center text-sm text-slate-500 m-3">
-                                  No materials match the selected filters.
-                                </div>
-                              ) : (
-                                <div className="overflow-x-auto">
-                                  <table className="min-w-full divide-y divide-slate-200">
-                                    <thead className="bg-slate-50 sticky top-0 z-10">
-                                      <tr>
-                                        <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                          Image
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                          Material
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                          Category
-                                        </th>
-                                        <th className="px-4 py-2 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                          Quantity
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                          Used At
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                          Project
-                                        </th>
-                                        <th className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                                          Lot
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-slate-200">
-                                      {paginatedRecentUsage.map(
-                                        (transaction) => {
-                                          const itemDetails = getItemDetails(
-                                            transaction.item,
-                                          );
-                                          const location =
-                                            getUsageLocation(transaction);
-                                          return (
-                                            <tr
-                                              key={transaction.id}
-                                              className="hover:bg-slate-50"
-                                            >
-                                              <td className="px-4 py-3">
-                                                {getImageUrl(
-                                                  transaction.item?.image,
-                                                ) ? (
-                                                  <Image
-                                                    src={getImageUrl(
-                                                      transaction.item.image,
-                                                    )}
-                                                    alt={
-                                                      itemDetails?.name ||
-                                                      "Material"
-                                                    }
-                                                    width={40}
-                                                    height={40}
-                                                    className="h-10 w-10 rounded object-cover border border-slate-200"
-                                                  />
-                                                ) : (
-                                                  <div className="h-10 w-10 rounded border border-slate-200 bg-slate-50 flex items-center justify-center">
-                                                    <Package className="h-5 w-5 text-slate-300" />
-                                                  </div>
-                                                )}
-                                              </td>
-                                              <td className="px-4 py-3">
-                                                <div className="text-sm font-medium text-slate-700">
-                                                  {itemDetails?.name}
-                                                </div>
-                                                <div className="text-xs text-slate-500">
-                                                  {[
-                                                    itemDetails?.brand,
-                                                    itemDetails?.color,
-                                                    itemDetails?.finish,
-                                                    itemDetails?.type,
-                                                    itemDetails?.dimensions,
-                                                  ]
-                                                    .filter(Boolean)
-                                                    .join(" · ") ||
-                                                    transaction.item
-                                                      ?.description ||
-                                                    "No additional details"}
-                                                </div>
-                                              </td>
-                                              <td className="px-4 py-3 text-sm text-slate-600">
-                                                <span className="inline-flex items-center gap-1.5">
-                                                  {getCategoryIcon(
-                                                    transaction.item?.category,
-                                                  )}
-                                                  {formatCategoryName(
-                                                    transaction.item
-                                                      ?.category ||
-                                                      "UNCATEGORIZED",
-                                                  )}
-                                                </span>
-                                              </td>
-                                              <td className="px-4 py-3 text-right text-sm font-semibold text-slate-800">
-                                                {transaction.quantity}
-                                                {transaction.item
-                                                  ?.measurement_unit
-                                                  ? ` ${transaction.item.measurement_unit}`
-                                                  : ""}
-                                              </td>
-                                              <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
-                                                {new Date(
-                                                  transaction.createdAt,
-                                                ).toLocaleString("en-AU", {
-                                                  dateStyle: "medium",
-                                                  timeStyle: "short",
-                                                })}
-                                              </td>
-                                              <td className="px-4 py-3 text-sm text-slate-700">
-                                                {location.projectId ? (
-                                                  <Link
-                                                    href={`/admin/projects/${location.projectId}`}
-                                                    className="font-medium text-primary hover:underline"
-                                                  >
-                                                    {location.project}
-                                                  </Link>
-                                                ) : (
-                                                  <span>
-                                                    {location.project}
-                                                  </span>
-                                                )}
-                                                {location.projectId && (
-                                                  <div className="text-xs text-slate-500">
-                                                    ID: {location.projectId}
-                                                  </div>
-                                                )}
-                                              </td>
-                                              <td className="px-4 py-3 text-sm text-slate-700">
-                                                {location.lots.length > 0 ? (
-                                                  <div className="space-y-1">
-                                                    {location.lots.map(
-                                                      (lot) => (
-                                                        <div key={lot.lot_id}>
-                                                          <div>
-                                                            {lot.name ||
-                                                              lot.lot_id}
-                                                          </div>
-                                                          <div className="text-xs text-slate-500">
-                                                            ID: {lot.lot_id}
-                                                          </div>
-                                                        </div>
-                                                      ),
-                                                    )}
-                                                  </div>
-                                                ) : (
-                                                  "Not linked"
-                                                )}
-                                              </td>
-                                            </tr>
-                                          );
-                                        },
-                                      )}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              )}
-                            </div>
-
-                            <PaginationFooter
-                              totalItems={filteredRecentUsage.length}
-                              itemsPerPage={recentItemsPerPage}
-                              currentPage={recentPage}
-                              onPageChange={setRecentPage}
-                              onItemsPerPageChange={setRecentItemsPerPage}
-                            />
-                          </div>
-                        )
-                      ) : mtos.length === 0 ? (
-                        <div className="flex justify-center items-center py-10">
-                          <div className="text-center">
-                            <div className="h-12 w-12 text-slate-400 mx-auto mb-4">
-                              📦
-                            </div>
-                            <p className="text-sm text-slate-500 font-medium">
-                              No Jobs found
-                            </p>
-                          </div>
-                        </div>
-                      ) : displayedMtos.length === 0 ? (
-                        <div className="flex justify-center items-center py-10">
-                          <p className="text-sm text-slate-500 font-medium">
-                            {mtoTab === "active"
-                              ? "No Active MTOs"
-                              : mtoTab === "upcoming"
-                                ? "No Upcoming MTOs"
-                                : "No Completed MTOs"}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {displayedMtos.map((mto) => {
-                            const isExpanded = expandedMto === mto.id;
-                            const groupedItems = groupItemsByCategory(
-                              mto.items || [],
-                            );
-                            const lotIds =
-                              mto.lots && mto.lots.length > 0
-                                ? mto.lots.map((lot) => lot.lot_id).join(", ")
-                                : "N/A";
-
-                            return (
-                              <div
-                                key={mto.id}
-                                className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden"
-                              >
-                                {/* Accordion Header */}
-                                <div className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleAccordion(mto.id)}
-                                    className="flex items-center gap-3 flex-1 text-left"
-                                  >
-                                    <div className="shrink-0">
-                                      {isExpanded ? (
-                                        <ChevronUp className="w-4 h-4 text-slate-500" />
-                                      ) : (
-                                        <ChevronDown className="w-4 h-4 text-slate-500" />
-                                      )}
-                                    </div>
-                                    <div className="flex-1">
-                                      <div className="text-sm font-semibold text-slate-700">
-                                        {mto.project?.name || "Manually Added"}
-                                      </div>
-                                      <div className="text-sm text-slate-500 mt-0.5">
-                                        Lot ID: {lotIds}
-                                      </div>
-                                    </div>
-                                  </button>
-
-                                  {/* Used Material Status (one-way: Active -> Completed) */}
-                                  {mtoTab === "upcoming" ? (
-                                    <div className="shrink-0 ml-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-orange-50 text-sm font-semibold text-orange-700">
-                                      <span className="h-2 w-2 rounded-full bg-orange-500" />
-                                      Upcoming
-                                    </div>
-                                  ) : !Boolean(mto.used_material_completed) ? (
-                                    <div
-                                      className="relative shrink-0 ml-4"
-                                      data-mto-status-dropdown
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setOpenMtoStatusDropdownId((prev) =>
-                                            prev === mto.id ? null : mto.id,
-                                          );
-                                        }}
-                                        disabled={
-                                          updatingMtoStatusId === mto.id
-                                        }
-                                        className="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                                        title="Mark this MTO as completed"
-                                      >
-                                        <span className="inline-flex items-center gap-2">
-                                          <span className="h-2 w-2 rounded-full bg-blue-500" />
-                                          Active
-                                        </span>
-                                        <ChevronDown className="w-4 h-4 text-slate-500" />
-                                      </button>
-
-                                      {openMtoStatusDropdownId === mto.id && (
-                                        <div className="absolute right-0 mt-2 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-30 overflow-hidden">
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleUpdateMtoUsedMaterialStatus(
-                                                mto.id,
-                                                true,
-                                              );
-                                            }}
-                                            className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center justify-between"
-                                          >
-                                            <span className="font-medium text-slate-700">
-                                              Mark Completed
-                                            </span>
-                                            <Check className="w-4 h-4 text-green-600" />
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="shrink-0 ml-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700">
-                                      <span className="h-2 w-2 rounded-full bg-green-500" />
-                                      Completed
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Accordion Content */}
-                                {isExpanded && (
-                                  <div className="border-t border-slate-200 px-4 py-3 bg-slate-50">
-                                    {Object.keys(groupedItems).length === 0 ? (
-                                      <div className="text-sm text-slate-500 text-center py-4 font-medium">
-                                        No items in this MTO
-                                      </div>
-                                    ) : (
-                                      <div className="space-y-3">
-                                        {Object.entries(groupedItems).map(
-                                          ([category, items]) => (
-                                            <div
-                                              key={category}
-                                              className="bg-white rounded-lg p-3 border border-slate-200"
-                                            >
-                                              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-200">
-                                                {getCategoryIcon(category)}
-                                                <h3 className="text-sm font-semibold text-slate-700">
-                                                  {formatCategoryName(category)}
-                                                </h3>
-                                                <span className="text-sm text-slate-500 ml-auto font-medium">
-                                                  {items.length} item(s)
-                                                </span>
-                                              </div>
-                                              <div className="space-y-3">
-                                                {items.map((mtoItem) => {
-                                                  const itemDetails =
-                                                    getItemDetails(
-                                                      mtoItem.item,
-                                                    );
-                                                  // Compare string input with original number value
-                                                  const inputString =
-                                                    quantityInputs[mtoItem.id];
-                                                  const originalValue = String(
-                                                    mtoItem.quantity_used || 0,
-                                                  );
-                                                  const hasChanges =
-                                                    inputString !== undefined &&
-                                                    inputString !==
-                                                      originalValue;
-                                                  return (
-                                                    <div
-                                                      key={mtoItem.id}
-                                                      className="bg-slate-50 rounded-lg p-3 border border-slate-200 hover:bg-slate-100 transition-colors"
-                                                    >
-                                                      {/* Single Row: Item Details + Quantity Columns */}
-                                                      <div className="flex gap-4 items-center">
-                                                        {/* Item Image */}
-                                                        <div className="shrink-0">
-                                                          {itemDetails?.image ? (
-                                                            <div className="w-16 h-16 rounded-lg overflow-hidden border border-slate-300 bg-white flex items-center justify-center relative">
-                                                              <Image
-                                                                loading="lazy"
-                                                                src={
-                                                                  itemDetails.image
-                                                                }
-                                                                alt={
-                                                                  itemDetails.name ||
-                                                                  "Item"
-                                                                }
-                                                                className="object-cover w-full h-full"
-                                                                width={64}
-                                                                height={64}
-                                                                onError={(
-                                                                  e,
-                                                                ) => {
-                                                                  e.target.style.display =
-                                                                    "none";
-                                                                  const fallback =
-                                                                    e.target.parentElement?.querySelector(
-                                                                      ".image-fallback",
-                                                                    );
-                                                                  if (
-                                                                    fallback
-                                                                  ) {
-                                                                    fallback.style.display =
-                                                                      "flex";
-                                                                  }
-                                                                }}
-                                                              />
-                                                              <div className="hidden image-fallback absolute inset-0 w-16 h-16 rounded-lg border border-slate-300 bg-slate-200 items-center justify-center">
-                                                                <ImageIcon className="w-6 h-6 text-slate-400" />
-                                                              </div>
-                                                            </div>
-                                                          ) : (
-                                                            <div className="w-16 h-16 rounded-lg border border-slate-300 bg-slate-200 flex items-center justify-center">
-                                                              <ImageIcon className="w-6 h-6 text-slate-400" />
-                                                            </div>
-                                                          )}
-                                                        </div>
-
-                                                        {/* Item Details */}
-                                                        <div className="flex-1 min-w-0">
-                                                          <div className="text-sm font-semibold text-slate-800 mb-1.5">
-                                                            {itemDetails?.name ||
-                                                              "Unknown Item"}
-                                                          </div>
-
-                                                          <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm">
-                                                            {itemDetails?.brand && (
-                                                              <div>
-                                                                <span className="text-slate-500 font-bold">
-                                                                  Brand:
-                                                                </span>{" "}
-                                                                <span className="text-slate-700">
-                                                                  {
-                                                                    itemDetails.brand
-                                                                  }
-                                                                </span>
-                                                              </div>
-                                                            )}
-                                                            {itemDetails?.color && (
-                                                              <div>
-                                                                <span className="text-slate-500 font-bold">
-                                                                  Color:
-                                                                </span>{" "}
-                                                                <span className="text-slate-700">
-                                                                  {
-                                                                    itemDetails.color
-                                                                  }
-                                                                </span>
-                                                              </div>
-                                                            )}
-                                                            {itemDetails?.finish && (
-                                                              <div>
-                                                                <span className="text-slate-500 font-bold">
-                                                                  Finish:
-                                                                </span>{" "}
-                                                                <span className="text-slate-700">
-                                                                  {
-                                                                    itemDetails.finish
-                                                                  }
-                                                                </span>
-                                                              </div>
-                                                            )}
-                                                            {itemDetails?.material && (
-                                                              <div>
-                                                                <span className="text-slate-500 font-bold">
-                                                                  Material:
-                                                                </span>{" "}
-                                                                <span className="text-slate-700">
-                                                                  {
-                                                                    itemDetails.material
-                                                                  }
-                                                                </span>
-                                                              </div>
-                                                            )}
-                                                            {itemDetails?.type && (
-                                                              <div>
-                                                                <span className="text-slate-500 font-bold">
-                                                                  Type:
-                                                                </span>{" "}
-                                                                <span className="text-slate-700">
-                                                                  {
-                                                                    itemDetails.type
-                                                                  }
-                                                                </span>
-                                                              </div>
-                                                            )}
-                                                            {itemDetails?.sub_category && (
-                                                              <div>
-                                                                <span className="text-slate-500 font-bold">
-                                                                  Sub Category:
-                                                                </span>{" "}
-                                                                <span className="text-slate-700">
-                                                                  {
-                                                                    itemDetails.sub_category
-                                                                  }
-                                                                </span>
-                                                              </div>
-                                                            )}
-                                                            {itemDetails?.face && (
-                                                              <div>
-                                                                <span className="text-slate-500 font-bold">
-                                                                  Face:
-                                                                </span>{" "}
-                                                                <span className="text-slate-700">
-                                                                  {
-                                                                    itemDetails.face
-                                                                  }
-                                                                </span>
-                                                              </div>
-                                                            )}
-                                                            {itemDetails?.dimensions && (
-                                                              <div>
-                                                                <span className="text-slate-500 font-bold">
-                                                                  Dimensions:
-                                                                </span>{" "}
-                                                                <span className="text-slate-700">
-                                                                  {
-                                                                    itemDetails.dimensions
-                                                                  }
-                                                                </span>
-                                                              </div>
-                                                            )}
-                                                            {mtoItem.item
-                                                              ?.supplier && (
-                                                              <div>
-                                                                <span className="text-slate-500 font-bold">
-                                                                  Supplier:
-                                                                </span>{" "}
-                                                                <span className="text-slate-700">
-                                                                  {
-                                                                    mtoItem.item
-                                                                      .supplier
-                                                                      .name
-                                                                  }
-                                                                </span>
-                                                              </div>
-                                                            )}
-                                                          </div>
-                                                        </div>
-
-                                                        {/* Total Quantity Column */}
-                                                        <div className="text-center min-w-[90px]">
-                                                          <div className="text-sm text-slate-500 mb-1.5 font-medium">
-                                                            Total
-                                                          </div>
-                                                          <div className="text-base font-bold text-slate-700">
-                                                            {mtoItem.quantity}
-                                                          </div>
-                                                          {mtoItem.item
-                                                            ?.measurement_unit && (
-                                                            <div className="text-xs text-slate-500 mt-1">
-                                                              {
-                                                                mtoItem.item
-                                                                  .measurement_unit
-                                                              }
-                                                            </div>
-                                                          )}
-                                                        </div>
-
-                                                        {/* Used Count Column */}
-                                                        <div className="text-center min-w-20">
-                                                          <div className="text-sm text-slate-500 mb-1.5 font-medium">
-                                                            Used
-                                                          </div>
-                                                          <div className="text-base font-bold text-slate-700">
-                                                            {mtoItem.quantity_used ||
-                                                              0}
-                                                          </div>
-                                                          {mtoItem.item
-                                                            ?.measurement_unit && (
-                                                            <div className="text-xs text-slate-500 mt-1">
-                                                              {
-                                                                mtoItem.item
-                                                                  .measurement_unit
-                                                              }
-                                                            </div>
-                                                          )}
-                                                        </div>
-
-                                                        {/* Input Field Column */}
-                                                        <div className="text-center min-w-[100px]">
-                                                          <div className="text-sm text-slate-500 mb-1.5 font-medium">
-                                                            New Used
-                                                          </div>
-                                                          <div className="space-y-1">
-                                                            <input
-                                                              type="number"
-                                                              min="0"
-                                                              max={
-                                                                mtoItem.quantity
-                                                              }
-                                                              value={
-                                                                quantityInputs[
-                                                                  mtoItem.id
-                                                                ] !== undefined
-                                                                  ? quantityInputs[
-                                                                      mtoItem.id
-                                                                    ]
-                                                                  : String(
-                                                                      mtoItem.quantity_used ||
-                                                                        0,
-                                                                    )
-                                                              }
-                                                              onChange={(e) => {
-                                                                // Store raw string value to allow empty input
-                                                                const value =
-                                                                  e.target
-                                                                    .value;
-                                                                handleQuantityInputChange(
-                                                                  mtoItem.id,
-                                                                  value,
-                                                                );
-                                                              }}
-                                                              className="w-full px-2.5 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none text-center font-medium"
-                                                              disabled={
-                                                                saving ||
-                                                                mtoTab ===
-                                                                  "upcoming"
-                                                              }
-                                                            />
-                                                            {mtoItem.item
-                                                              ?.measurement_unit && (
-                                                              <div className="text-xs text-slate-500 mt-1">
-                                                                {
-                                                                  mtoItem.item
-                                                                    .measurement_unit
-                                                                }
-                                                              </div>
-                                                            )}
-                                                            {(() => {
-                                                              const inputString =
-                                                                quantityInputs[
-                                                                  mtoItem.id
-                                                                ];
-                                                              if (
-                                                                inputString ===
-                                                                undefined
-                                                              )
-                                                                return null;
-                                                              const inputValue =
-                                                                inputString ===
-                                                                ""
-                                                                  ? 0
-                                                                  : parseFloat(
-                                                                      inputString,
-                                                                    );
-                                                              if (
-                                                                !isNaN(
-                                                                  inputValue,
-                                                                ) &&
-                                                                inputValue >
-                                                                  mtoItem.quantity
-                                                              ) {
-                                                                return (
-                                                                  <div className="text-xs text-red-600 font-medium">
-                                                                    Max:{" "}
-                                                                    {
-                                                                      mtoItem.quantity
-                                                                    }
-                                                                  </div>
-                                                                );
-                                                              }
-                                                              return null;
-                                                            })()}
-                                                          </div>
-                                                        </div>
-
-                                                        {/* Actions Column */}
-                                                        <div className="text-center min-w-20">
-                                                          <div className="text-sm text-slate-500 mb-1.5 font-medium">
-                                                            Actions
-                                                          </div>
-                                                          {hasChanges ? (
-                                                            <div className="flex gap-1.5 justify-center">
-                                                              <button
-                                                                onClick={() =>
-                                                                  handleCancelEdit(
-                                                                    mtoItem.id,
-                                                                  )
-                                                                }
-                                                                disabled={
-                                                                  saving ||
-                                                                  mtoTab ===
-                                                                    "upcoming"
-                                                                }
-                                                                className="cursor-pointer p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50"
-                                                                title="Cancel"
-                                                              >
-                                                                <X className="w-4 h-4" />
-                                                              </button>
-                                                              <button
-                                                                onClick={() =>
-                                                                  handleSaveUsage(
-                                                                    mto.id,
-                                                                    mtoItem,
-                                                                  )
-                                                                }
-                                                                disabled={(() => {
-                                                                  if (
-                                                                    saving ||
-                                                                    mtoTab ===
-                                                                      "upcoming"
-                                                                  )
-                                                                    return true;
-                                                                  const inputString =
-                                                                    quantityInputs[
-                                                                      mtoItem.id
-                                                                    ];
-                                                                  if (
-                                                                    inputString ===
-                                                                    undefined
-                                                                  )
-                                                                    return false;
-                                                                  const inputValue =
-                                                                    inputString ===
-                                                                    ""
-                                                                      ? 0
-                                                                      : parseFloat(
-                                                                          inputString,
-                                                                        );
-                                                                  return (
-                                                                    !isNaN(
-                                                                      inputValue,
-                                                                    ) &&
-                                                                    inputValue >
-                                                                      mtoItem.quantity
-                                                                  );
-                                                                })()}
-                                                                className="cursor-pointer p-1.5 rounded-lg hover:bg-green-50 text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                                title="Save"
-                                                              >
-                                                                <Check className="w-4 h-4" />
-                                                              </button>
-                                                            </div>
-                                                          ) : (
-                                                            <div className="text-sm text-slate-400">
-                                                              -
-                                                            </div>
-                                                          )}
-                                                        </div>
-                                                      </div>
-                                                    </div>
-                                                  );
-                                                })}
-                                              </div>
-                                            </div>
-                                          ),
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-      </main>
-
-      {/* Manual Add Material Modal */}
-      {showManualAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
-          <div
-            className="absolute inset-0 bg-slate-900/40"
-            onClick={handleCloseManualModal}
-          />
-
-          <div className="relative bg-white w-full max-w-6xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <h2 className="text-xl font-semibold text-slate-800">
-                Manually Add Material Used
-              </h2>
-              <button
-                onClick={handleCloseManualModal}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                disabled={savingManual}
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Project Selection */}
-              <div className="relative" ref={projectDropdownRef}>
-                <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                  Project (Optional)
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={projectSearchTerm}
-                    onChange={handleProjectSearchChange}
-                    onFocus={() => setIsProjectDropdownOpen(true)}
-                    className="w-full text-sm text-slate-800 px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
-                    placeholder="Search or select a project..."
-                    disabled={savingManual || loadingProjects}
-                  />
+                {TABS.map((tab) => (
                   <button
+                    key={tab.id}
                     type="button"
-                    onClick={() =>
-                      setIsProjectDropdownOpen(!isProjectDropdownOpen)
-                    }
-                    className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
-                    disabled={savingManual || loadingProjects}
+                    role="tab"
+                    id={`used-tab-${tab.id}`}
+                    aria-selected={mtoTab === tab.id}
+                    aria-controls="used-panel"
+                    onClick={() => setMtoTab(tab.id)}
+                    className={tabClass(mtoTab === tab.id)}
                   >
-                    <ChevronDown
-                      className={`w-5 h-5 transition-transform ${
-                        isProjectDropdownOpen ? "rotate-180" : ""
-                      }`}
-                    />
+                    <span className="flex items-center gap-2">
+                      {tab.label}
+                      {tabCounts[tab.id] > 0 && (
+                        <span className={COUNT_BADGE}>{tabCounts[tab.id]}</span>
+                      )}
+                    </span>
                   </button>
-                </div>
-
-                {isProjectDropdownOpen && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                    {loadingProjects ? (
-                      <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                        Loading projects...
-                      </div>
-                    ) : filteredProjects.length > 0 ? (
-                      filteredProjects.map((project) => {
-                        const displayText = `${project.name}${
-                          project.client ? ` ${project.client.client_name}` : ""
-                        }`;
-                        return (
-                          <button
-                            key={project.project_id}
-                            type="button"
-                            onClick={() => handleProjectSelect(project)}
-                            className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                          >
-                            <span>
-                              <p className="font-bold">{project.name}</p>
-                              <p className="text-xs text-slate-500">
-                                Client:{" "}
-                                {project.client?.client_name ||
-                                  "No client assigned"}
-                              </p>
-                            </span>
-                          </button>
-                        );
-                      })
-                    ) : (
-                      <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                        {projectSearchTerm
-                          ? "No matching projects found"
-                          : "No projects with all active lots available"}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {selectedProjectId && (
-                <div className="relative mt-4" ref={lotDropdownRef}>
-                  <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                    Lot <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={lotSearchTerm}
-                      onChange={handleLotSearchChange}
-                      onFocus={() => setIsLotDropdownOpen(true)}
-                      placeholder="Search or select a lot..."
-                      disabled={savingManual}
-                      className="w-full text-sm text-slate-800 px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none disabled:bg-slate-50"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setIsLotDropdownOpen(!isLotDropdownOpen)}
-                      disabled={savingManual}
-                      className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 disabled:opacity-50"
-                    >
-                      <ChevronDown
-                        className={`w-5 h-5 transition-transform ${isLotDropdownOpen ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                  </div>
-                  {isLotDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                      {filteredLots.length > 0 ? (
-                        filteredLots.map((lot) => (
-                          <button
-                            key={lot.lot_id}
-                            type="button"
-                            onClick={() => handleLotSelect(lot)}
-                            className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                          >
-                            <p className="font-medium">
-                              {lot.name || lot.lot_id}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {lot.lot_id}
-                              {lot.status ? ` · ${lot.status}` : ""}
-                            </p>
-                          </button>
-                        ))
-                      ) : (
-                        <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                          {lotSearchTerm
-                            ? "No matching lots found"
-                            : "No lots available"}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <hr className="border-slate-100" />
-
-              {/* Item Selection & List */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
-                    Items
-                  </h3>
-                </div>
-
-                {/* Category Dropdown and Search Bar */}
-                <div className="mb-6 flex gap-3">
-                  {/* Category Dropdown */}
-                  <div className="relative shrink-0" ref={categoryDropdownRef}>
-                    <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                      Category <span className="text-red-500">*</span>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setIsCategoryDropdownOpen(!isCategoryDropdownOpen)
-                      }
-                      disabled={savingManual}
-                      className="w-48 px-4 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-800 focus:ring-1 focus:ring-primary focus:border-primary outline-none bg-white flex items-center justify-between disabled:bg-slate-50 disabled:text-slate-400"
-                    >
-                      <span>
-                        {categoryOptions.find(
-                          (option) => option.value === selectedCategory,
-                        )?.label || "-- Select --"}
-                      </span>
-                      <ChevronDown
-                        className={`w-4 h-4 text-slate-400 transition-transform ${isCategoryDropdownOpen ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                    {isCategoryDropdownOpen && (
-                      <div className="absolute z-20 w-48 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => handleCategorySelect("")}
-                          className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-500 hover:bg-slate-100"
-                        >
-                          -- Select --
-                        </button>
-                        {categoryOptions.map((option) => (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => handleCategorySelect(option.value)}
-                            className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-100"
-                          >
-                            {option.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Search Bar */}
-                  <div className="relative flex-1" data-search-container>
-                    <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                      Search Items
-                    </label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder={
-                          selectedCategory
-                            ? "Search items by name, category, brand..."
-                            : "Please select a category first"
-                        }
-                        value={itemSearch}
-                        onChange={(e) => {
-                          setItemSearch(e.target.value);
-                          setShowItemSearchResults(true);
-                        }}
-                        onFocus={() => {
-                          if (selectedCategory) {
-                            setShowItemSearchResults(true);
-                          }
-                        }}
-                        disabled={!selectedCategory || savingManual}
-                        className="w-full p-2.5 pl-10 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
-                      />
-                    </div>
-
-                    {/* Search Results Dropdown */}
-                    {showItemSearchResults &&
-                      itemSearch &&
-                      selectedCategory && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto">
-                          {loadingItems ? (
-                            <div className="p-4 text-center text-slate-500 text-sm">
-                              Loading items...
-                            </div>
-                          ) : filteredItems.length === 0 ? (
-                            <div className="p-4 text-center text-slate-500 text-sm">
-                              No items found
-                            </div>
-                          ) : (
-                            filteredItems.map((item) => (
-                              <div
-                                key={item.item_id}
-                                onClick={() => handleAddItem(item)}
-                                className="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 flex items-center gap-3"
-                              >
-                                <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 shrink-0 flex items-center justify-center overflow-hidden">
-                                  {item.image?.url ? (
-                                    <Image
-                                      src={`/${item.image.url}`}
-                                      alt="Item"
-                                      width={40}
-                                      height={40}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <Package className="w-5 h-5 text-slate-400" />
-                                  )}
-                                </div>
-                                <div>
-                                  <p className="text-sm font-medium text-slate-800">
-                                    {getItemDisplayName(item)}
-                                  </p>
-                                  <p className="text-xs text-slate-500">
-                                    {item.category} • Stock: {item.quantity}{" "}
-                                    {item.measurement_unit}
-                                  </p>
-                                </div>
-                                <Plus className="w-4 h-4 text-primary ml-auto" />
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      )}
-                  </div>
-                </div>
-
-                {/* Selected Items Table */}
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-slate-50 border-b border-slate-200">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                          Image
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                          Category
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                          Details
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                          In Stock
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase">
-                          Quantity
-                        </th>
-                        <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {selectedItems.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={6}
-                            className="px-4 py-8 text-center text-slate-500 text-sm"
-                          >
-                            No items selected. Search and add items above.
-                          </td>
-                        </tr>
-                      ) : (
-                        selectedItems.map((item) => (
-                          <tr key={item.item_id} className="hover:bg-slate-50">
-                            {/* Image Column */}
-                            <td className="px-4 py-3">
-                              <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 shrink-0 flex items-center justify-center overflow-hidden">
-                                {item.image?.url ? (
-                                  <Image
-                                    src={`/${item.image.url}`}
-                                    alt="Item"
-                                    width={40}
-                                    height={40}
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : (
-                                  <Package className="w-5 h-5 text-slate-400" />
-                                )}
-                              </div>
-                            </td>
-
-                            {/* Category Column */}
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                                {item.category}
-                              </span>
-                            </td>
-
-                            {/* Details Column */}
-                            <td className="px-4 py-3">
-                              <div className="text-xs text-slate-600 space-y-1">
-                                {item.sheet && (
-                                  <>
-                                    <div>
-                                      <span className="font-medium">
-                                        Color:
-                                      </span>{" "}
-                                      {item.sheet.color}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">
-                                        Finish:
-                                      </span>{" "}
-                                      {item.sheet.finish}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">Face:</span>{" "}
-                                      {item.sheet.face || "-"}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">
-                                        Dimensions:
-                                      </span>{" "}
-                                      {item.sheet.dimensions}
-                                    </div>
-                                  </>
-                                )}
-                                {item.handle && (
-                                  <>
-                                    <div>
-                                      <span className="font-medium">
-                                        Color:
-                                      </span>{" "}
-                                      {item.handle.color}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">Type:</span>{" "}
-                                      {item.handle.type}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">
-                                        Dimensions:
-                                      </span>{" "}
-                                      {item.handle.dimensions}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">
-                                        Material:
-                                      </span>{" "}
-                                      {item.handle.material || "-"}
-                                    </div>
-                                  </>
-                                )}
-                                {item.hardware && (
-                                  <>
-                                    <div>
-                                      <span className="font-medium">Name:</span>{" "}
-                                      {item.hardware.name}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">Type:</span>{" "}
-                                      {item.hardware.type}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">
-                                        Dimensions:
-                                      </span>{" "}
-                                      {item.hardware.dimensions}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">
-                                        Sub Category:
-                                      </span>{" "}
-                                      {item.hardware.sub_category}
-                                    </div>
-                                  </>
-                                )}
-                                {item.accessory && (
-                                  <>
-                                    <div>
-                                      <span className="font-medium">Name:</span>{" "}
-                                      {item.accessory.name}
-                                    </div>
-                                  </>
-                                )}
-                                {item.edging_tape && (
-                                  <>
-                                    <div>
-                                      <span className="font-medium">
-                                        Brand:
-                                      </span>{" "}
-                                      {item.edging_tape.brand || "-"}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">
-                                        Color:
-                                      </span>{" "}
-                                      {item.edging_tape.color || "-"}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">
-                                        Finish:
-                                      </span>{" "}
-                                      {item.edging_tape.finish || "-"}
-                                    </div>
-                                    <div>
-                                      <span className="font-medium">
-                                        Dimensions:
-                                      </span>{" "}
-                                      {item.edging_tape.dimensions || "-"}
-                                    </div>
-                                  </>
-                                )}
-                                {!item.sheet &&
-                                  !item.handle &&
-                                  !item.hardware &&
-                                  !item.accessory &&
-                                  !item.edging_tape && (
-                                    <div>{item.description || "-"}</div>
-                                  )}
-                              </div>
-                            </td>
-
-                            {/* In Stock Column */}
-                            <td className="px-4 py-3 text-sm text-slate-600">
-                              {item.stock_quantity ?? item.quantity}{" "}
-                              {item.measurement_unit}
-                            </td>
-
-                            {/* Quantity Column */}
-                            <td className="px-4 py-3">
-                              <input
-                                type="number"
-                                min="1"
-                                value={item.quantity}
-                                onChange={(e) =>
-                                  handleUpdateItem(
-                                    item.item_id,
-                                    "quantity",
-                                    e.target.value,
-                                  )
-                                }
-                                className="w-20 p-1.5 border border-slate-300 rounded text-sm focus:ring-1 focus:ring-primary outline-none"
-                                disabled={savingManual}
-                              />
-                            </td>
-
-                            {/* Actions Column */}
-                            <td className="px-4 py-3 text-center">
-                              <button
-                                onClick={() => handleRemoveItem(item.item_id)}
-                                className="cursor-pointer p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"
-                                disabled={savingManual}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <hr className="border-slate-100" />
-
-              {/* Notes */}
-              <div>
-                <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                  Notes
-                </label>
-                <textarea
-                  rows={5}
-                  value={manualNotes}
-                  onChange={(e) => setManualNotes(e.target.value)}
-                  className="w-full p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none resize-none"
-                  placeholder="Add any additional notes..."
-                  disabled={savingManual}
-                />
+                ))}
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="p-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
-              <button
-                onClick={handleCloseManualModal}
-                disabled={savingManual}
-                className="cursor-pointer px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-white transition-colors text-sm font-medium disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveManualMaterial}
-                disabled={savingManual || selectedItems.length === 0}
-                className="cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
-              >
-                {savingManual ? (
-                  <>
-                    <div className="cursor-pointer animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4" />
-                    Save Material Used
-                  </>
-                )}
-              </button>
+            {/* Tab panel */}
+            <div
+              id="used-panel"
+              role="tabpanel"
+              aria-labelledby={`used-tab-${mtoTab}`}
+              className="flex-1 min-h-0 flex flex-col overflow-hidden"
+            >
+              {mtoTab === "recent" ? renderRecentTab() : renderMtoTab()}
             </div>
           </div>
         </div>
+      </main>
+
+      {showManualAddModal && (
+        <ManualAddModal
+          projects={projects}
+          loadingProjects={loadingProjects}
+          projectsError={projectsError}
+          onReloadProjects={fetchProjectsWithAllActiveLots}
+          onClose={() => setShowManualAddModal(false)}
+          onSaved={fetchRecentUsage}
+        />
       )}
     </AdminShell>
   );

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, getUserFromToken } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
+import { publishUpdate, formatAdelaide } from "@/lib/updates";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -128,6 +129,14 @@ export async function POST(request) {
         `Failed to log meeting creation: ${meeting.id} - ${meeting.title}`,
       );
     }
+
+    await publishUpdate({
+      req: request,
+      type: "CALENDAR_EVENT_CREATED",
+      title: "Calendar event created",
+      message: `"${meeting.title}" on ${formatAdelaide(meeting.date_time)}`,
+      url: `/admin/calendar?event=${meeting.id}`,
+    });
 
     // Send meeting notifications to participants
     try {

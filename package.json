@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed:demo": "node scripts/seed-demo.mjs"
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "seed:mock": "node scripts/seed-mock.mjs"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
@@ -84,7 +85,7 @@
     "sharp": "^0.35.5",
     "tailwind-merge": "^3.3.1",
     "uuid": "^13.0.0",
-    "xlsx": "^0.18.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.1.13"
   },
   "devDependencies": {
@@ -102,6 +103,8 @@
   },
   "overrides": {
     "mariadb": "$mariadb",
-    "mysql2": "^3.24.5"
+    "mysql2": "^3.24.5",
+    "postcss": "^8.5.28",
+    "deepmerge-ts": "^8.0.2"
   }
 }

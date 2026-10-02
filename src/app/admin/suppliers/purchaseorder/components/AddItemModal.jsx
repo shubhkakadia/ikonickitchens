@@ -4,7 +4,503 @@ import { toast } from "react-toastify";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import Image from "next/image";
-import { X, ChevronDown, Upload, Package, Plus } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Upload, Plus, Trash2 } from "lucide-react";
+import CustomDropdown from "@/components/CustomDropdown";
+import useModalFocus from "@/hooks/useModalFocus";
+
+// DESIGN.md 9.2 form field recipe. `hasError` flips the border/ring to red.
+const INPUT_BASE =
+  "w-full text-sm text-slate-800 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent";
+const inputClass = (hasError, extra = "px-4 py-3") =>
+  `${INPUT_BASE} ${extra} ${
+    hasError
+      ? "border-red-500 focus:ring-red-500"
+      : "border-slate-300 focus:ring-primary"
+  }`;
+
+const LABEL = "block text-sm font-medium text-slate-700 mb-1.5";
+const CHECKBOX =
+  "h-4 w-4 accent-primary border-slate-300 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer";
+
+// DESIGN.md 9.1 button recipes. Only one primary button per modal.
+const BTN_PRIMARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_ICON =
+  "cursor-pointer p-1.5 rounded-lg hover:bg-slate-100 transition-colors duration-200";
+const SPINNER =
+  "w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin";
+
+// Enter in a dropdown's text field must not submit the whole form.
+const blockEnterSubmit = (e) => {
+  if (e.key === "Enter" && e.target?.getAttribute?.("role") === "combobox") {
+    e.preventDefault();
+  }
+};
+
+// Category options (values are the API's category slugs)
+const categoryOptions = [
+  { label: "Sheet", value: "sheet" },
+  { label: "Handle", value: "handle" },
+  { label: "Hardware", value: "hardware" },
+  { label: "Accessory", value: "accessory" },
+  { label: "Edging tape", value: "edging_tape" },
+];
+
+const hardwareSubCategories = [
+  "Legs with plates",
+  "Hinges",
+  "Hinge Plates",
+  "Screws",
+  "Hangin Rode",
+  "Hanging Rode Support & Ends",
+  "Cutlery Tray",
+  "Bin",
+  "Drawer set (Runners)",
+  "Screw Caps (White & Color)",
+  "Plastic Wraps",
+  "Shelf Support",
+  "LED",
+];
+
+const faceOptions = ["single side", "double side"];
+
+// Plain text inputs per category. A string entry is a combobox field
+// (finish, face, sub_category) rendered by renderCombo below.
+const textField = (name, label, placeholder, mono = false) => ({
+  name,
+  label,
+  placeholder,
+  mono,
+});
+const CATEGORY_FIELDS = {
+  sheet: [
+    textField("brand", "Brand", "e.g. Polytec"),
+    textField("color", "Colour", "e.g. Natural oak"),
+    "finish",
+    "face",
+    textField("dimensions", "Dimensions", "e.g. 2400 x 1200 x 18 mm", true),
+  ],
+  handle: [
+    textField("brand", "Brand", "e.g. Polytec"),
+    textField("color", "Colour", "e.g. Brushed nickel"),
+    textField("type", "Type", "e.g. Bar handle"),
+    textField("material", "Material", "e.g. Aluminium"),
+    textField("dimensions", "Dimensions", "e.g. 160 mm", true),
+  ],
+  hardware: [
+    "sub_category",
+    textField("brand", "Brand", "e.g. Blum"),
+    textField("name", "Name", "e.g. Soft-close hinge"),
+    textField("type", "Type", "e.g. Concealed"),
+    textField("dimensions", "Dimensions", "e.g. 35 mm", true),
+  ],
+  accessory: [textField("name", "Item name", "e.g. Marker pen")],
+  edging_tape: [
+    textField("brand", "Brand", "e.g. Polytec"),
+    textField("color", "Colour", "e.g. Natural oak"),
+    "finish",
+    textField("dimensions", "Dimensions", "e.g. 22 x 1 mm", true),
+  ],
+};
+
+// Fields that count as typed input for the dirty-form backdrop guard.
+const TEXT_KEYS = [
+  "description",
+  "quantity",
+  "price",
+  "brand",
+  "color",
+  "finish",
+  "face",
+  "dimensions",
+  "type",
+  "material",
+  "sub_category",
+  "name",
+  "measurement_unit",
+  "supplier_reference",
+  "supplier_product_link",
+];
+
+// Config values (finishes, measuring units) live behind one API.
+const readConfigValues = async (sessionToken, category) => {
+  const response = await axios.request({
+    method: "post",
+    maxBodyLength: Infinity,
+    url: `/api/v1/config/read_all_by_category`,
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+      "Content-Type": "application/json",
+    },
+    data: { category },
+  });
+  if (response.data.status && response.data.data) {
+    // Extract the value field from each config item
+    return response.data.data.map((item) => item.value);
+  }
+  return null;
+};
+
+const createConfigValue = (sessionToken, category, value) =>
+  axios.request({
+    method: "post",
+    maxBodyLength: Infinity,
+    url: `/api/v1/config/create`,
+    headers: {
+      Authorization: `Bearer ${sessionToken}`,
+      "Content-Type": "application/json",
+    },
+    data: { category, value },
+  });
+
+// Labelled text input with inline error (DESIGN.md 9.2, 15.3).
+function TextField({
+  id,
+  name,
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  mono = false,
+  prefix,
+  step,
+  error,
+}) {
+  const errorId = `${id}-error`;
+  return (
+    <div>
+      <label htmlFor={id} className={LABEL}>
+        {label}
+      </label>
+      <div className="relative">
+        {prefix && (
+          <span
+            className="absolute inset-y-0 left-4 flex items-center text-sm text-slate-500"
+            aria-hidden="true"
+          >
+            {prefix}
+          </span>
+        )}
+        <input
+          id={id}
+          type={type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          step={step}
+          placeholder={placeholder}
+          aria-invalid={!!error || undefined}
+          aria-describedby={error ? errorId : undefined}
+          className={`${inputClass(!!error, prefix ? "pl-8 pr-4 py-3" : "px-4 py-3")} ${
+            mono ? "font-mono" : ""
+          }`}
+        />
+      </div>
+      {error && (
+        <p id={errorId} className="text-xs text-red-600 mt-1">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Free-text combobox: the user can pick a suggestion or type their own value,
+// and (when onCreate is given) save a typed value as a new option.
+function FreeformCombobox({
+  id,
+  label,
+  noun,
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled = false,
+  loading = false,
+  loadingText = "Loading...",
+  emptyText = "No matching options found",
+  onCreate,
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+  const listId = `${id}-list`;
+
+  useEffect(() => {
+    const onMouseDown = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, []);
+
+  useEffect(() => {
+    if (disabled) setOpen(false);
+  }, [disabled]);
+
+  const filtered = options.filter((option) =>
+    option.toLowerCase().includes(value.toLowerCase()),
+  );
+  const typed = value.trim();
+  const canCreate =
+    !!onCreate &&
+    typed !== "" &&
+    !filtered.some((option) => option.toLowerCase() === typed.toLowerCase());
+  const isOpen = open && !disabled;
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <label htmlFor={id} className={LABEL}>
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          id={id}
+          type="text"
+          value={value}
+          disabled={disabled}
+          placeholder={placeholder}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setOpen(true);
+          }}
+          onClick={() => !disabled && setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              setOpen(false);
+            } else if (e.key === "Escape") {
+              setOpen(false);
+            } else if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setOpen(true);
+            }
+          }}
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+          aria-autocomplete="list"
+          aria-controls={isOpen && filtered.length > 0 ? listId : undefined}
+          autoComplete="off"
+          className={`${inputClass(false, "px-4 py-3 pr-10")} disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed`}
+        />
+        <button
+          type="button"
+          onClick={() => setOpen((previous) => !previous)}
+          disabled={disabled}
+          tabIndex={-1}
+          aria-label={isOpen ? `Close ${noun} options` : `Open ${noun} options`}
+          className="cursor-pointer absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-slate-700 transition-colors duration-200 disabled:cursor-not-allowed"
+        >
+          {isOpen ? (
+            <ChevronUp className="w-4 h-4" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="w-4 h-4" aria-hidden="true" />
+          )}
+        </button>
+      </div>
+
+      {isOpen && (
+        <div className="absolute z-40 w-full mt-1 bg-white border border-slate-300 rounded-lg max-h-60 overflow-auto">
+          {loading ? (
+            <div className="px-4 py-3 text-sm text-slate-500 text-center">
+              {loadingText}
+            </div>
+          ) : (
+            <>
+              {filtered.length > 0 ? (
+                <div role="listbox" id={listId} aria-label={label}>
+                  {filtered.map((option, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      role="option"
+                      aria-selected={option === value}
+                      onClick={() => {
+                        onChange(option);
+                        setOpen(false);
+                      }}
+                      className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-800 hover:bg-slate-100 transition-colors duration-200"
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                  {emptyText}
+                </div>
+              )}
+              {canCreate && (
+                <div className="border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOpen(false);
+                      onCreate(value);
+                    }}
+                    className="cursor-pointer w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-primary hover:bg-slate-100 transition-colors duration-200"
+                  >
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                    Create &quot;{typed}&quot;
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Small modal used to save a new finish / measuring unit to the config list.
+function ConfigValueModal({
+  idPrefix,
+  title,
+  label,
+  placeholder,
+  requiredMessage,
+  initialValue,
+  saving,
+  submitLabel,
+  onSubmit,
+  onClose,
+  returnFocusId,
+}) {
+  const [value, setValue] = useState(initialValue);
+  const [error, setError] = useState("");
+  const panelRef = useRef(null);
+  useModalFocus(panelRef, true);
+
+  // The "Create" row that opened this modal unmounts with the list, so hand
+  // focus back to the field itself when the modal goes away.
+  useEffect(
+    () => () => {
+      document.getElementById(returnFocusId)?.focus({ preventScroll: true });
+    },
+    [returnFocusId],
+  );
+
+  // Modals close on Escape (DESIGN.md 9.4); not while saving.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape" || saving) return;
+      onClose();
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [saving, onClose]);
+
+  const inputId = `${idPrefix}-input`;
+  const errorId = `${idPrefix}-error`;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (saving) return;
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setError(requiredMessage);
+      document.getElementById(inputId)?.focus();
+      return;
+    }
+    onSubmit(trimmed);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!saving && value === initialValue) onClose();
+      }}
+    >
+      <div
+        ref={panelRef}
+        className="bg-white w-full max-w-lg rounded-xl border border-slate-200 max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`${idPrefix}-title`}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+          <h2
+            id={`${idPrefix}-title`}
+            className="text-lg font-semibold text-slate-800"
+          >
+            {title}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" aria-hidden="true" />
+          </button>
+        </div>
+
+        <form
+          noValidate
+          onSubmit={handleSubmit}
+          className="flex flex-col min-h-0 flex-1"
+        >
+          <div className="flex-1 overflow-y-auto p-6">
+            <label htmlFor={inputId} className={LABEL}>
+              {label}{" "}
+              <span className="text-red-600" aria-hidden="true">
+                *
+              </span>
+            </label>
+            <input
+              id={inputId}
+              data-autofocus
+              type="text"
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value);
+                setError("");
+              }}
+              placeholder={placeholder}
+              aria-invalid={!!error || undefined}
+              aria-describedby={error ? errorId : undefined}
+              className={inputClass(!!error, "px-3 py-2")}
+            />
+            {error && (
+              <p id={errorId} className="text-xs text-red-600 mt-1">
+                {error}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className={BTN_SECONDARY}
+            >
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className={BTN_PRIMARY}>
+              {saving ? (
+                <span className={SPINNER} aria-hidden="true" />
+              ) : (
+                <Plus className="w-4 h-4" aria-hidden="true" />
+              )}
+              {submitLabel}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 export default function AddItemModal({
   setShowModal,
@@ -12,24 +508,10 @@ export default function AddItemModal({
   onItemAdded,
 }) {
   const { getToken } = useAuth();
-  const [errors, setErrors] = useState({});
+  // Validate on submit, then on change: errors only exist once a submit was attempted.
+  const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isSubCategoryDropdownOpen, setIsSubCategoryDropdownOpen] =
-    useState(false);
-  const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
-  const [isMeasuringUnitDropdownOpen, setIsMeasuringUnitDropdownOpen] =
-    useState(false);
-  const [isFinishDropdownOpen, setIsFinishDropdownOpen] = useState(false);
-  const [isFaceDropdownOpen, setIsFaceDropdownOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("Sheet");
-  const [subCategorySearchTerm, setSubCategorySearchTerm] = useState("");
-  const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
-  const [measuringUnitSearchTerm, setMeasuringUnitSearchTerm] = useState("");
-  const [finishSearchTerm, setFinishSearchTerm] = useState("");
-  const [faceSearchTerm, setFaceSearchTerm] = useState("");
   const [suppliers, setSuppliers] = useState([]);
-  const [filteredSuppliers, setFilteredSuppliers] = useState([]);
   const [measuringUnitOptions, setMeasuringUnitOptions] = useState([]);
   const [loadingMeasuringUnits, setLoadingMeasuringUnits] = useState(false);
   const [showCreateMeasuringUnitModal, setShowCreateMeasuringUnitModal] =
@@ -41,23 +523,11 @@ export default function AddItemModal({
   const [showCreateFinishModal, setShowCreateFinishModal] = useState(false);
   const [newFinishValue, setNewFinishValue] = useState("");
   const [isCreatingFinish, setIsCreatingFinish] = useState(false);
-  const dropdownRef = useRef(null);
-  const subCategoryDropdownRef = useRef(null);
-  const supplierDropdownRef = useRef(null);
-  const measuringUnitDropdownRef = useRef(null);
-  const finishDropdownRef = useRef(null);
-  const faceDropdownRef = useRef(null);
   const fileInputRef = useRef(null);
   const faceAutoSetRef = useRef(false);
-  const [selectedCategory, setSelectedCategory] = useState("Sheet");
+  const panelRef = useRef(null);
+  useModalFocus(panelRef, true);
   const [imagePreview, setImagePreview] = useState(null);
-  const categories = [
-    "Sheet",
-    "Handle",
-    "Hardware",
-    "Accessory",
-    "Edging Tape",
-  ];
 
   const [formData, setFormData] = useState({
     image: "",
@@ -81,45 +551,20 @@ export default function AddItemModal({
     is_sunmica: false,
   });
 
-  const filteredCategories = categories.filter((category) =>
-    category.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const selectedCategory = formData.category;
+  const selectedCategoryLabel =
+    categoryOptions.find((option) => option.value === selectedCategory)
+      ?.label || "";
 
-  const hardwareSubCategories = [
-    "Legs with plates",
-    "Hinges",
-    "Hinge Plates",
-    "Screws",
-    "Hangin Rode",
-    "Hanging Rode Support & Ends",
-    "Cutlery Tray",
-    "Bin",
-    "Drawer set (Runners)",
-    "Screw Caps (White & Color)",
-    "Plastic Wraps",
-    "Shelf Support",
-    "LED",
-  ];
+  const supplierOptions = suppliers.map((supplier) => ({
+    value: supplier.supplier_id,
+    label: supplier.name,
+  }));
 
-  const filteredSubCategories = hardwareSubCategories.filter((subCategory) =>
-    subCategory.toLowerCase().includes(subCategorySearchTerm.toLowerCase()),
-  );
-
-  // Face options
-  const faceOptions = ["single side", "double side"];
-  const filteredFaces = faceOptions.filter((face) =>
-    face.toLowerCase().includes(faceSearchTerm.toLowerCase()),
-  );
-
-  // Measuring unit handlers
-  const filteredMeasuringUnits = measuringUnitOptions.filter((unit) =>
-    unit.toLowerCase().includes(measuringUnitSearchTerm.toLowerCase()),
-  );
-
-  // Finish handlers
-  const filteredFinishes = finishOptions.filter((finish) =>
-    finish.toLowerCase().includes(finishSearchTerm.toLowerCase()),
-  );
+  // Start on the first field (the dropdown opens its list on focus).
+  useEffect(() => {
+    document.getElementById("add-item-category")?.focus();
+  }, []);
 
   // Fetch suppliers on component mount
   useEffect(() => {
@@ -136,7 +581,6 @@ export default function AddItemModal({
 
         if (response.data.status && response.data.data) {
           setSuppliers(response.data.data);
-          setFilteredSuppliers(response.data.data);
         }
       } catch (error) {
         console.error("Error fetching suppliers:", error);
@@ -157,23 +601,8 @@ export default function AddItemModal({
           return;
         }
 
-        const config = {
-          method: "post",
-          maxBodyLength: Infinity,
-          url: `/api/v1/config/read_all_by_category`,
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
-          data: { category: "measuring_unit" },
-        };
-
-        const response = await axios.request(config);
-        if (response.data.status && response.data.data) {
-          // Extract the value field from each config item
-          const units = response.data.data.map((item) => item.value);
-          setMeasuringUnitOptions(units);
-        }
+        const units = await readConfigValues(sessionToken, "measuring_unit");
+        if (units) setMeasuringUnitOptions(units);
       } catch (error) {
         console.error("Error fetching measuring units:", error);
         // Fallback to empty array if API fails
@@ -197,23 +626,8 @@ export default function AddItemModal({
           return;
         }
 
-        const config = {
-          method: "post",
-          maxBodyLength: Infinity,
-          url: `/api/v1/config/read_all_by_category`,
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            "Content-Type": "application/json",
-          },
-          data: { category: "finish" },
-        };
-
-        const response = await axios.request(config);
-        if (response.data.status && response.data.data) {
-          // Extract the value field from each config item
-          const finishes = response.data.data.map((item) => item.value);
-          setFinishOptions(finishes);
-        }
+        const finishes = await readConfigValues(sessionToken, "finish");
+        if (finishes) setFinishOptions(finishes);
       } catch (error) {
         console.error("Error fetching finishes:", error);
         // Fallback to empty array if API fails
@@ -226,18 +640,6 @@ export default function AddItemModal({
     fetchFinishes();
   }, [getToken]);
 
-  // Filter suppliers based on search term
-  useEffect(() => {
-    if (supplierSearchTerm === "") {
-      setFilteredSuppliers(suppliers);
-    } else {
-      const filtered = suppliers.filter((supplier) =>
-        supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase()),
-      );
-      setFilteredSuppliers(filtered);
-    }
-  }, [supplierSearchTerm, suppliers]);
-
   // Update supplier_id when supplierId prop changes
   useEffect(() => {
     if (supplierId) {
@@ -245,51 +647,8 @@ export default function AddItemModal({
         ...prev,
         supplier_id: supplierId,
       }));
-      // Find supplier name and set search term
-      const supplier = suppliers.find((s) => s.supplier_id === supplierId);
-      if (supplier) {
-        setSupplierSearchTerm(supplier.name);
-      }
     }
-  }, [supplierId, suppliers]);
-
-  // Close dropdowns when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      const dropdowns = [
-        { ref: dropdownRef, setIsOpen: setIsDropdownOpen },
-        {
-          ref: subCategoryDropdownRef,
-          setIsOpen: setIsSubCategoryDropdownOpen,
-        },
-        { ref: supplierDropdownRef, setIsOpen: setIsSupplierDropdownOpen },
-        {
-          ref: measuringUnitDropdownRef,
-          setIsOpen: setIsMeasuringUnitDropdownOpen,
-        },
-        { ref: finishDropdownRef, setIsOpen: setIsFinishDropdownOpen },
-        { ref: faceDropdownRef, setIsOpen: setIsFaceDropdownOpen },
-      ];
-
-      dropdowns.forEach(({ ref, setIsOpen }) => {
-        if (ref.current && !ref.current.contains(event.target)) {
-          setIsOpen(false);
-        }
-      });
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  // Initialize sub-category search term if form data already has a sub_category
-  useEffect(() => {
-    if (formData.sub_category) {
-      setSubCategorySearchTerm(formData.sub_category);
-    }
-  }, [formData.sub_category]);
+  }, [supplierId]);
 
   useEffect(() => {
     return () => {
@@ -297,189 +656,103 @@ export default function AddItemModal({
     };
   }, [imagePreview]);
 
-  const handleCategorySelect = (category) => {
-    const categoryForAPI = category.toLowerCase().replace(/\s+/g, "_");
-    setFormData({
-      ...formData,
-      category: categoryForAPI,
-    });
-    setSelectedCategory(category);
-    setSearchTerm(category);
-    setIsDropdownOpen(false);
+  const closeModal = () => setShowModal(false);
 
-    if (category === "Hardware" && formData.sub_category) {
-      setSubCategorySearchTerm(formData.sub_category);
+  // A form with typed or chosen input must not close on a stray backdrop click.
+  const isDirty =
+    !!formData.image ||
+    formData.category !== "sheet" ||
+    formData.is_sunmica ||
+    (!supplierId && formData.supplier_id !== "") ||
+    TEXT_KEYS.some((key) => String(formData[key]).trim() !== "");
+
+  // Modals close on Escape (DESIGN.md 9.4). The create finish / unit modals
+  // handle their own Escape; an open dropdown closes first.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape" || isSubmitting) return;
+      if (showCreateFinishModal || showCreateMeasuringUnitModal) return;
+      if (e.target?.getAttribute?.("aria-expanded") === "true") return;
+      closeModal();
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [isSubmitting, showCreateFinishModal, showCreateMeasuringUnitModal]);
+
+  const setField = (name, value) =>
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+  const handleCategorySelect = (category) => setField("category", category);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setField(name, value);
+  };
+
+  // If is_sunmica is checked, face is set to "single side" and remembered as
+  // auto-set, so unchecking only clears a value the checkbox put there.
+  const handleSunmicaChange = (e) => {
+    const checked = e.target.checked;
+    let face = formData.face;
+    if (checked) {
+      if (face !== "single side") {
+        face = "single side";
+        faceAutoSetRef.current = true;
+      } else {
+        // Already "single side", so it might be user-entered: don't mark as auto-set
+        faceAutoSetRef.current = false;
+      }
+    } else {
+      if (faceAutoSetRef.current && face === "single side") face = "";
+      faceAutoSetRef.current = false;
     }
+    setFormData((prev) => ({ ...prev, is_sunmica: checked, face }));
   };
 
-  const handleSearchChange = (e) => {
-    setSearchTerm(e.target.value);
-    setIsDropdownOpen(true);
-  };
-
-  const handleSubCategorySelect = (subCategory) => {
-    setFormData({
-      ...formData,
-      sub_category: subCategory,
-    });
-    setSubCategorySearchTerm(subCategory);
-    setIsSubCategoryDropdownOpen(false);
-  };
-
-  const handleSubCategorySearchChange = (e) => {
-    setSubCategorySearchTerm(e.target.value);
-    setIsSubCategoryDropdownOpen(true);
-    setFormData({
-      ...formData,
-      sub_category: e.target.value,
-    });
-  };
-
-  const handleSupplierSelect = (supplierId, supplierName) => {
-    setFormData({
-      ...formData,
-      supplier_id: supplierId,
-    });
-    setSupplierSearchTerm(supplierName);
-    setIsSupplierDropdownOpen(false);
-  };
-
-  const handleSupplierSearchChange = (e) => {
-    setSupplierSearchTerm(e.target.value);
-    setIsSupplierDropdownOpen(true);
-  };
-
-  // Measuring unit handlers
-  const handleMeasuringUnitSelect = (unit) => {
-    setFormData({
-      ...formData,
-      measurement_unit: unit,
-    });
-    setMeasuringUnitSearchTerm(unit);
-    setIsMeasuringUnitDropdownOpen(false);
-  };
-
-  const handleMeasuringUnitSearchChange = (e) => {
-    const value = e.target.value;
-    setMeasuringUnitSearchTerm(value);
-    setIsMeasuringUnitDropdownOpen(true);
-    setFormData({
-      ...formData,
-      measurement_unit: value,
-    });
-  };
-
-  // Finish handlers
-  const handleFinishSelect = (finish) => {
-    setFormData({
-      ...formData,
-      finish: finish,
-    });
-    setFinishSearchTerm(finish);
-    setIsFinishDropdownOpen(false);
-  };
-
-  const handleFinishSearchChange = (e) => {
-    const value = e.target.value;
-    setFinishSearchTerm(value);
-    setIsFinishDropdownOpen(true);
-    setFormData({
-      ...formData,
-      finish: value,
-    });
-  };
-
-  // Face handlers
-  const handleFaceSelect = (face) => {
-    setFormData({
-      ...formData,
-      face: face,
-    });
-    setFaceSearchTerm(face);
-    setIsFaceDropdownOpen(false);
-  };
-
-  const handleFaceSearchChange = (e) => {
-    const value = e.target.value;
-    setFaceSearchTerm(value);
-    setIsFaceDropdownOpen(true);
-    setFormData({
-      ...formData,
-      face: value,
-    });
+  // A manual change to face means it is no longer auto-set.
+  const handleFaceChange = (value) => {
+    faceAutoSetRef.current = false;
+    setField("face", value);
   };
 
   // Handle create new finish
-  const handleCreateNewFinish = async () => {
-    if (!newFinishValue || !newFinishValue.trim()) {
-      toast.error("Finish value is required");
-      return;
-    }
-
+  const handleCreateNewFinish = async (finishValue) => {
     try {
       setIsCreatingFinish(true);
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
+        toast.error("No valid session found. Please sign in again.");
         return;
       }
 
-      const config = {
-        method: "post",
-        maxBodyLength: Infinity,
-        url: `/api/v1/config/create`,
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-          "Content-Type": "application/json",
-        },
-        data: {
-          category: "finish",
-          value: newFinishValue.trim(),
-        },
-      };
-
-      const response = await axios.request(config);
+      const response = await createConfigValue(
+        sessionToken,
+        "finish",
+        finishValue,
+      );
       if (response.data.status) {
-        toast.success("Finish created successfully");
+        toast.success("Finish created.");
         // Refresh finishes list
-        const fetchFinishes = async () => {
-          try {
-            const config = {
-              method: "post",
-              maxBodyLength: Infinity,
-              url: `/api/v1/config/read_all_by_category`,
-              headers: {
-                Authorization: `Bearer ${sessionToken}`,
-                "Content-Type": "application/json",
-              },
-              data: { category: "finish" },
-            };
-            const response = await axios.request(config);
-            if (response.data.status && response.data.data) {
-              const finishes = response.data.data.map((item) => item.value);
-              setFinishOptions(finishes);
-            }
-          } catch (error) {
-            console.error("Error fetching finishes:", error);
-          }
-        };
-        await fetchFinishes();
+        try {
+          const finishes = await readConfigValues(sessionToken, "finish");
+          if (finishes) setFinishOptions(finishes);
+        } catch (error) {
+          console.error("Error fetching finishes:", error);
+        }
         // Set the new finish as selected
-        setFormData({
-          ...formData,
-          finish: newFinishValue.trim(),
-        });
-        setFinishSearchTerm(newFinishValue.trim());
+        setField("finish", finishValue);
         setShowCreateFinishModal(false);
-        setNewFinishValue("");
-        setIsFinishDropdownOpen(false);
       } else {
-        toast.error(response.data.message || "Failed to create finish");
+        toast.error(
+          response.data.message ||
+            "Couldn't create the finish. Check your connection and try again.",
+        );
       }
     } catch (error) {
       console.error("Error creating finish:", error);
       const errorMessage =
-        error.response?.data?.message || "Failed to create finish";
+        error.response?.data?.message ||
+        "Couldn't create the finish. Check your connection and try again.";
       toast.error(errorMessage);
     } finally {
       setIsCreatingFinish(false);
@@ -487,132 +760,103 @@ export default function AddItemModal({
   };
 
   // Handle create new measuring unit
-  const handleCreateNewMeasuringUnit = async () => {
-    if (!newMeasuringUnitValue || !newMeasuringUnitValue.trim()) {
-      toast.error("Measuring unit value is required");
-      return;
-    }
-
+  const handleCreateNewMeasuringUnit = async (unitValue) => {
     try {
       setIsCreatingMeasuringUnit(true);
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
+        toast.error("No valid session found. Please sign in again.");
         return;
       }
 
-      const config = {
-        method: "post",
-        maxBodyLength: Infinity,
-        url: `/api/v1/config/create`,
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-          "Content-Type": "application/json",
-        },
-        data: {
-          category: "measuring_unit",
-          value: newMeasuringUnitValue.trim(),
-        },
-      };
-
-      const response = await axios.request(config);
+      const response = await createConfigValue(
+        sessionToken,
+        "measuring_unit",
+        unitValue,
+      );
       if (response.data.status) {
-        toast.success("Measuring unit created successfully");
+        toast.success("Measuring unit created.");
         // Refresh measuring units list
-        const fetchMeasuringUnits = async () => {
-          try {
-            const config = {
-              method: "post",
-              maxBodyLength: Infinity,
-              url: `/api/v1/config/read_all_by_category`,
-              headers: {
-                Authorization: `Bearer ${sessionToken}`,
-                "Content-Type": "application/json",
-              },
-              data: { category: "measuring_unit" },
-            };
-            const response = await axios.request(config);
-            if (response.data.status && response.data.data) {
-              const units = response.data.data.map((item) => item.value);
-              setMeasuringUnitOptions(units);
-            }
-          } catch (error) {
-            console.error("Error fetching measuring units:", error);
-          }
-        };
-        await fetchMeasuringUnits();
+        try {
+          const units = await readConfigValues(sessionToken, "measuring_unit");
+          if (units) setMeasuringUnitOptions(units);
+        } catch (error) {
+          console.error("Error fetching measuring units:", error);
+        }
         // Set the new measuring unit as selected
-        setFormData({
-          ...formData,
-          measurement_unit: newMeasuringUnitValue.trim(),
-        });
-        setMeasuringUnitSearchTerm(newMeasuringUnitValue.trim());
+        setField("measurement_unit", unitValue);
         setShowCreateMeasuringUnitModal(false);
-        setNewMeasuringUnitValue("");
-        setIsMeasuringUnitDropdownOpen(false);
       } else {
-        toast.error(response.data.message || "Failed to create measuring unit");
+        toast.error(
+          response.data.message ||
+            "Couldn't create the measuring unit. Check your connection and try again.",
+        );
       }
     } catch (error) {
       console.error("Error creating measuring unit:", error);
       const errorMessage =
-        error.response?.data?.message || "Failed to create measuring unit";
+        error.response?.data?.message ||
+        "Couldn't create the measuring unit. Check your connection and try again.";
       toast.error(errorMessage);
     } finally {
       setIsCreatingMeasuringUnit(false);
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    const inputValue = type === "checkbox" ? checked : value;
-
-    setFormData((prev) => {
-      const updated = {
-        ...prev,
-        [name]: inputValue,
-      };
-
-      // If is_sunmica is checked, set face to "single side" and mark it as auto-set
-      if (name === "is_sunmica" && checked) {
-        // Only auto-set if face wasn't already "single side" (preserve user's manual entry)
-        if (prev.face !== "single side") {
-          updated.face = "single side";
-          setFaceSearchTerm("single side");
-          faceAutoSetRef.current = true;
-        } else {
-          // Face was already "single side", so it might be user-entered, don't mark as auto-set
-          faceAutoSetRef.current = false;
-        }
+  // Same rules the browser applied to these inputs before the form became
+  // noValidate: whole-number quantity, price in cents, absolute URL.
+  const validate = () => {
+    const errs = {};
+    if (
+      formData.quantity !== "" &&
+      !Number.isInteger(Number(formData.quantity))
+    ) {
+      errs.quantity = "Enter a whole number, e.g. 100.";
+    }
+    if (formData.price !== "") {
+      const cents = Number(formData.price) * 100;
+      if (
+        !Number.isFinite(cents) ||
+        Math.abs(cents - Math.round(cents)) > 1e-6
+      ) {
+        errs.price = "Enter an amount with up to 2 decimal places, e.g. 49.95.";
       }
-      // If is_sunmica is unchecked, only clear face if it was auto-set by the checkbox
-      if (name === "is_sunmica" && !checked) {
-        if (faceAutoSetRef.current && prev.face === "single side") {
-          updated.face = "";
-          setFaceSearchTerm("");
-        }
-        faceAutoSetRef.current = false;
+    }
+    const link = formData.supplier_product_link.trim();
+    if (link !== "") {
+      try {
+        new URL(link);
+      } catch {
+        errs.supplier_product_link =
+          "Enter a full web address, e.g. https://supplier.com/product/123.";
       }
-
-      // If user manually changes the face field, mark it as not auto-set
-      if (name === "face") {
-        faceAutoSetRef.current = false;
-        setFaceSearchTerm(value);
-      }
-
-      return updated;
-    });
+    }
+    return errs;
   };
+
+  const errors = submitted ? validate() : {};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (isSubmitting) return;
+    setSubmitted(true);
+
+    const currentErrors = validate();
+    const firstInvalid = [
+      ["quantity", "add-item-quantity"],
+      ["price", "add-item-price"],
+      ["supplier_product_link", "add-item-link"],
+    ].find(([key]) => currentErrors[key]);
+    if (firstInvalid) {
+      document.getElementById(firstInvalid[1])?.focus();
+      return;
+    }
+
     setIsSubmitting(true);
-    setErrors({});
     try {
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
+        toast.error("No valid session found. Please sign in again.");
         return;
       }
       const data = new FormData();
@@ -636,18 +880,24 @@ export default function AddItemModal({
         },
       });
       if (response.data.status) {
-        toast.success("Item created successfully");
+        toast.success("Item created.");
         resetForm();
         if (onItemAdded) {
           onItemAdded();
         }
         setShowModal(false);
       } else {
-        toast.error(response.data.message || "Failed to create item");
+        toast.error(
+          response.data.message ||
+            "Couldn't create the item. Check your connection and try again.",
+        );
       }
     } catch (error) {
       console.error(error);
-      toast.error(error?.response?.data?.message || "Failed to create item");
+      toast.error(
+        error?.response?.data?.message ||
+          "Couldn't create the item. Check your connection and try again.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -676,20 +926,7 @@ export default function AddItemModal({
       is_sunmica: false,
     });
     setImagePreview(null);
-    setErrors({});
-    setIsDropdownOpen(false);
-    setIsSubCategoryDropdownOpen(false);
-    setIsSupplierDropdownOpen(false);
-    setIsMeasuringUnitDropdownOpen(false);
-    setIsFinishDropdownOpen(false);
-    setIsFaceDropdownOpen(false);
-    setSearchTerm("Sheet");
-    setSubCategorySearchTerm("");
-    setSupplierSearchTerm("");
-    setMeasuringUnitSearchTerm("");
-    setFinishSearchTerm("");
-    setFaceSearchTerm("");
-    setSelectedCategory("Sheet");
+    setSubmitted(false);
     faceAutoSetRef.current = false;
   };
 
@@ -712,1018 +949,407 @@ export default function AddItemModal({
     setImagePreview(null);
   };
 
-  const validateForm = () => {
-    const errors = {};
-    setErrors(errors);
-    return Object.keys(errors).length === 0;
+  const renderCombo = (key) => {
+    if (key === "finish") {
+      return (
+        <FreeformCombobox
+          key={key}
+          id="add-item-finish"
+          label="Finish"
+          noun="finish"
+          value={formData.finish}
+          onChange={(value) => setField("finish", value)}
+          options={finishOptions}
+          placeholder="e.g. Matt"
+          loading={loadingFinishes}
+          loadingText="Loading finishes..."
+          emptyText="No matching finishes found"
+          onCreate={(seed) => {
+            setNewFinishValue(seed.trim());
+            setShowCreateFinishModal(true);
+          }}
+        />
+      );
+    }
+    if (key === "face") {
+      return (
+        <FreeformCombobox
+          key={key}
+          id="add-item-face"
+          label="Face"
+          noun="face"
+          value={formData.face}
+          onChange={handleFaceChange}
+          options={faceOptions}
+          placeholder="e.g. single side"
+          disabled={formData.is_sunmica}
+        />
+      );
+    }
+    return (
+      <FreeformCombobox
+        key={key}
+        id="add-item-sub-category"
+        label="Sub-category"
+        noun="sub-category"
+        value={formData.sub_category}
+        onChange={(value) => setField("sub_category", value)}
+        options={hardwareSubCategories}
+        placeholder="e.g. Hinges"
+        emptyText={
+          formData.sub_category
+            ? `No matching sub-categories. Press Enter to use "${formData.sub_category}".`
+            : "Type to search or enter a custom sub-category"
+        }
+      />
+    );
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
+    <>
       <div
-        className="absolute inset-0 bg-slate-900/40"
-        onClick={() => setShowModal(false)}
-      />
+        className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
+        onClick={(e) => {
+          // Stop the click reaching the modal that opened this one.
+          e.stopPropagation();
+          if (!isDirty && !isSubmitting) closeModal();
+        }}
+      >
+        <div
+          ref={panelRef}
+          className="bg-white w-full max-w-2xl rounded-xl border border-slate-200 max-h-[90vh] flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-item-title"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+            <h2
+              id="add-item-title"
+              className="text-lg font-semibold text-slate-800"
+            >
+              Add item
+            </h2>
+            <button
+              type="button"
+              onClick={closeModal}
+              className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" aria-hidden="true" />
+            </button>
+          </div>
 
-      <div className="relative bg-white w-full max-w-4xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-100">
-          <h2 className="text-xl font-semibold text-slate-800">Add New Item</h2>
-          <button
-            onClick={() => {
-              resetForm();
-              setShowModal(false);
-            }}
-            className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+          <form
+            noValidate
+            onSubmit={handleSubmit}
+            className="flex flex-col min-h-0 flex-1"
           >
-            <X className="w-5 h-5 text-slate-600" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Item Image Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Package className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-bold text-slate-800">Item Image</h3>
-              </div>
-
-              <div className="flex flex-col items-center">
-                <div className="relative group">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                    id="image-upload"
-                  />
-
-                  {imagePreview ? (
-                    <div className="relative">
-                      <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary shadow-lg">
-                        <Image
-                          loading="lazy"
-                          src={imagePreview}
-                          alt="Preview"
-                          className="w-full h-full object-cover"
-                          width={128}
-                          height={128}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleRemoveImage}
-                        className="absolute top-1 right-1 bg-secondary text-white rounded-full p-2 shadow-lg hover:bg-secondary transition-all duration-200 transform hover:scale-110 cursor-pointer"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Item image */}
+              <div>
+                <span id="add-item-image-label" className={LABEL}>
+                  Item image
+                </span>
+                {/* Always rendered so "Change image" can open it; visually hidden but keyboard-reachable. */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  id="add-item-image"
+                  tabIndex={imagePreview ? -1 : 0}
+                  aria-labelledby="add-item-image-label"
+                  className="peer sr-only"
+                />
+                {imagePreview ? (
+                  <div className="flex items-center gap-4">
+                    <Image
+                      loading="lazy"
+                      src={imagePreview}
+                      alt="Preview of the selected item image"
+                      className="w-24 h-24 rounded-lg object-cover border border-slate-200"
+                      width={96}
+                      height={96}
+                    />
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-primary text-white rounded-full px-4 py-1 text-xs shadow-lg hover:scale-110 transition-all duration-200 cursor-pointer"
+                        className={BTN_SECONDARY}
                       >
-                        Change
+                        Change image
                       </button>
-                    </div>
-                  ) : (
-                    <label
-                      htmlFor="image-upload"
-                      className="w-32 h-32 rounded-full border-4 border-dashed border-slate-300 hover:border-primary bg-slate-50 hover:bg-blue-50 flex flex-col items-center justify-center cursor-pointer transition-all duration-200 group-hover:shadow-lg"
-                    >
-                      <Upload className="w-8 h-8 text-slate-400 group-hover:text-primary transition-colors mb-2" />
-                      <span className="text-xs text-slate-500 group-hover:text-primary font-medium">
-                        Upload Image
-                      </span>
-                    </label>
-                  )}
-                </div>
-                <p className="mt-4 text-sm text-slate-600">
-                  Item Image <span className="text-slate-400">(Optional)</span>
-                </p>
-              </div>
-            </div>
-
-            {/* Basic Information Section */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Package className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-bold text-slate-800">
-                  Basic Information
-                </h3>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="relative" ref={dropdownRef}>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Category
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={handleSearchChange}
-                      onFocus={() => setIsDropdownOpen(true)}
-                      className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                      placeholder="Search or select category..."
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      <ChevronDown
-                        className={`w-5 h-5 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                  </div>
-
-                  {isDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                      {filteredCategories.length > 0 ? (
-                        filteredCategories.map((category, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => handleCategorySelect(category)}
-                            className="w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                          >
-                            {category}
-                          </button>
-                        ))
-                      ) : (
-                        <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                          No matching categories found
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Quantity <span className="text-slate-400">(Optional)</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="quantity"
-                    value={formData.quantity}
-                    onChange={handleInputChange}
-                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                    placeholder="Eg. 100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Price per Unit (including GST){" "}
-                    <span className="text-slate-400">(Optional)</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-500">
-                      $
-                    </span>
-                    <input
-                      type="number"
-                      name="price"
-                      value={formData.price}
-                      onChange={handleInputChange}
-                      className="w-full text-sm text-slate-800 pl-8 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                      placeholder="0.00"
-                      step="0.01"
-                    />
-                  </div>
-                </div>
-
-                {/* Supplier Dropdown - Only show when supplierId is not provided */}
-                {!supplierId && (
-                  <div className="relative" ref={supplierDropdownRef}>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Supplier{" "}
-                      <span className="text-slate-400">(Optional)</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={supplierSearchTerm}
-                        onChange={handleSupplierSearchChange}
-                        onFocus={() => setIsSupplierDropdownOpen(true)}
-                        className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                        placeholder="Search or select supplier..."
-                      />
                       <button
                         type="button"
-                        onClick={() =>
-                          setIsSupplierDropdownOpen(!isSupplierDropdownOpen)
-                        }
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                        onClick={handleRemoveImage}
+                        className={`${BTN_ICON} text-red-600`}
+                        aria-label="Remove image"
+                        title="Remove image"
                       >
-                        <ChevronDown
-                          className={`w-5 h-5 transition-transform duration-200 ${isSupplierDropdownOpen ? "rotate-180" : ""}`}
-                        />
+                        <Trash2 className="w-4 h-4" aria-hidden="true" />
                       </button>
                     </div>
-
-                    {isSupplierDropdownOpen && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                        {filteredSuppliers.length > 0 ? (
-                          filteredSuppliers.map((supplier) => (
-                            <button
-                              key={supplier.supplier_id}
-                              type="button"
-                              onClick={() =>
-                                handleSupplierSelect(
-                                  supplier.supplier_id,
-                                  supplier.name,
-                                )
-                              }
-                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                            >
-                              <div>
-                                <div className="font-medium">
-                                  {supplier.name}
-                                </div>
-                                <div className="text-xs text-slate-500">
-                                  id: {supplier.supplier_id}
-                                </div>
-                              </div>
-                            </button>
-                          ))
-                        ) : (
-                          <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                            No matching suppliers found
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
-                )}
-
-                <div className="relative" ref={measuringUnitDropdownRef}>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Measurement Unit{" "}
-                    <span className="text-slate-400">(Optional)</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={
-                        measuringUnitSearchTerm || formData.measurement_unit
-                      }
-                      onChange={handleMeasuringUnitSearchChange}
-                      onFocus={() => setIsMeasuringUnitDropdownOpen(true)}
-                      className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                      placeholder="Search or type a measuring unit..."
+                ) : (
+                  <label
+                    htmlFor="add-item-image"
+                    className="cursor-pointer flex flex-col items-center text-center w-full border-2 border-dashed border-slate-300 hover:border-primary hover:bg-slate-50 rounded-lg py-6 transition-colors duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-primary"
+                  >
+                    <Upload
+                      className="w-8 h-8 mb-2 text-slate-400"
+                      aria-hidden="true"
                     />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setIsMeasuringUnitDropdownOpen(
-                          !isMeasuringUnitDropdownOpen,
-                        )
-                      }
-                      className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      <ChevronDown
-                        className={`w-5 h-5 transition-transform ${
-                          isMeasuringUnitDropdownOpen ? "rotate-180" : ""
-                        }`}
-                      />
-                    </button>
+                    <span className="text-sm font-medium text-slate-700">
+                      Click to upload an image
+                    </span>
+                  </label>
+                )}
+              </div>
+
+              {/* Basic information */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-slate-700">
+                  Basic information
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div onKeyDown={blockEnterSubmit}>
+                    <label htmlFor="add-item-category" className={LABEL}>
+                      Category
+                    </label>
+                    <CustomDropdown
+                      id="add-item-category"
+                      options={categoryOptions}
+                      value={selectedCategory}
+                      onChange={handleCategorySelect}
+                      placeholder="Select a category"
+                    />
                   </div>
 
-                  {isMeasuringUnitDropdownOpen && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                      {loadingMeasuringUnits ? (
-                        <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                          Loading measuring units...
-                        </div>
-                      ) : filteredMeasuringUnits.length > 0 ? (
-                        <>
-                          {filteredMeasuringUnits.map((unit, index) => (
-                            <button
-                              key={index}
-                              type="button"
-                              onClick={() => handleMeasuringUnitSelect(unit)}
-                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                            >
-                              {unit}
-                            </button>
-                          ))}
-                          {measuringUnitSearchTerm &&
-                            !filteredMeasuringUnits.some(
-                              (u) =>
-                                u.toLowerCase() ===
-                                measuringUnitSearchTerm.toLowerCase(),
-                            ) && (
-                              <div className="border-t border-slate-200">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setNewMeasuringUnitValue(
-                                      measuringUnitSearchTerm,
-                                    );
-                                    setShowCreateMeasuringUnitModal(true);
-                                  }}
-                                  className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                                >
-                                  <Plus className="w-4 h-4" />
-                                  Create "{measuringUnitSearchTerm}"
-                                </button>
-                              </div>
-                            )}
-                        </>
-                      ) : (
-                        <div className="px-4 py-3">
-                          <div className="text-sm text-slate-500 mb-2">
-                            No matching measuring units found
-                          </div>
-                          {measuringUnitSearchTerm && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNewMeasuringUnitValue(
-                                  measuringUnitSearchTerm,
-                                );
-                                setShowCreateMeasuringUnitModal(true);
-                              }}
-                              className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
-                            >
-                              <Plus className="w-4 h-4" />
-                              Create "{measuringUnitSearchTerm}"
-                            </button>
-                          )}
-                        </div>
-                      )}
+                  <TextField
+                    id="add-item-quantity"
+                    name="quantity"
+                    label="Quantity"
+                    type="number"
+                    mono
+                    value={formData.quantity}
+                    onChange={handleInputChange}
+                    placeholder="e.g. 100"
+                    error={errors.quantity}
+                  />
+
+                  <TextField
+                    id="add-item-price"
+                    name="price"
+                    label="Price per unit (including GST)"
+                    type="number"
+                    mono
+                    prefix="$"
+                    step="0.01"
+                    value={formData.price}
+                    onChange={handleInputChange}
+                    placeholder="0.00"
+                    error={errors.price}
+                  />
+
+                  {/* Supplier dropdown - only shown when supplierId is not provided */}
+                  {!supplierId && (
+                    <div onKeyDown={blockEnterSubmit}>
+                      <label htmlFor="add-item-supplier" className={LABEL}>
+                        Supplier
+                      </label>
+                      <CustomDropdown
+                        id="add-item-supplier"
+                        options={supplierOptions}
+                        value={formData.supplier_id}
+                        onChange={(value) => setField("supplier_id", value)}
+                        placeholder="Select a supplier"
+                        searchable
+                        emptyText="No matching suppliers found"
+                      />
                     </div>
+                  )}
+
+                  <FreeformCombobox
+                    id="add-item-measurement-unit"
+                    label="Measurement unit"
+                    noun="measurement unit"
+                    value={formData.measurement_unit}
+                    onChange={(value) => setField("measurement_unit", value)}
+                    options={measuringUnitOptions}
+                    placeholder="e.g. each"
+                    loading={loadingMeasuringUnits}
+                    loadingText="Loading measuring units..."
+                    emptyText="No matching measuring units found"
+                    onCreate={(seed) => {
+                      setNewMeasuringUnitValue(seed.trim());
+                      setShowCreateMeasuringUnitModal(true);
+                    }}
+                  />
+
+                  <TextField
+                    id="add-item-supplier-reference"
+                    name="supplier_reference"
+                    label="Supplier reference"
+                    mono
+                    value={formData.supplier_reference}
+                    onChange={handleInputChange}
+                    placeholder="e.g. SUP-12345"
+                  />
+
+                  <TextField
+                    id="add-item-link"
+                    name="supplier_product_link"
+                    label="Supplier product link"
+                    type="url"
+                    value={formData.supplier_product_link}
+                    onChange={handleInputChange}
+                    placeholder="e.g. https://supplier.com/product/123"
+                    error={errors.supplier_product_link}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="add-item-description" className={LABEL}>
+                    Description
+                  </label>
+                  <textarea
+                    id="add-item-description"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    className={`${inputClass(false)} resize-none`}
+                    placeholder="e.g. 18 mm white melamine, matt finish"
+                    rows={3}
+                  />
+                </div>
+              </div>
+
+              {/* Category details */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-slate-700">
+                  {selectedCategoryLabel} details
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(CATEGORY_FIELDS[selectedCategory] || []).map((field) =>
+                    typeof field === "string" ? (
+                      renderCombo(field)
+                    ) : (
+                      <TextField
+                        key={field.name}
+                        id={`add-item-${field.name}`}
+                        name={field.name}
+                        label={field.label}
+                        mono={field.mono}
+                        value={formData[field.name]}
+                        onChange={handleInputChange}
+                        placeholder={field.placeholder}
+                      />
+                    ),
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Supplier Reference{" "}
-                    <span className="text-slate-400">(Optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="supplier_reference"
-                    value={formData.supplier_reference}
-                    onChange={handleInputChange}
-                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                    placeholder="Eg. SUP-12345"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Supplier Product Link{" "}
-                    <span className="text-slate-400">(Optional)</span>
-                  </label>
-                  <input
-                    type="url"
-                    name="supplier_product_link"
-                    value={formData.supplier_product_link}
-                    onChange={handleInputChange}
-                    className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                    placeholder="Eg. https://supplier.com/product/123"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Description <span className="text-slate-400">(Optional)</span>
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                  placeholder="Eg. This is a description of the item"
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            {/* Category Details Section */}
-            {selectedCategory && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Package className="w-5 h-5 text-primary" />
-                  <h3 className="text-lg font-bold text-slate-800">
-                    {selectedCategory} Details
-                  </h3>
-                </div>
-
-                {selectedCategory.toLowerCase() === "sheet" && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {["brand", "color", "finish", "face", "dimensions"].map(
-                        (field) => (
-                          <div key={field}>
-                            {field === "finish" ? (
-                              <div className="relative" ref={finishDropdownRef}>
-                                <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                  {field}
-                                </label>
-                                <div className="relative">
-                                  <input
-                                    type="text"
-                                    value={finishSearchTerm || formData.finish}
-                                    onChange={handleFinishSearchChange}
-                                    onFocus={() =>
-                                      setIsFinishDropdownOpen(true)
-                                    }
-                                    className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                    placeholder="Search or type a finish..."
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setIsFinishDropdownOpen(
-                                        !isFinishDropdownOpen,
-                                      )
-                                    }
-                                    className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                  >
-                                    <ChevronDown
-                                      className={`w-5 h-5 transition-transform ${
-                                        isFinishDropdownOpen ? "rotate-180" : ""
-                                      }`}
-                                    />
-                                  </button>
-                                </div>
-
-                                {isFinishDropdownOpen && (
-                                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                                    {loadingFinishes ? (
-                                      <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                        Loading finishes...
-                                      </div>
-                                    ) : filteredFinishes.length > 0 ? (
-                                      <>
-                                        {filteredFinishes.map(
-                                          (finish, index) => (
-                                            <button
-                                              key={index}
-                                              type="button"
-                                              onClick={() =>
-                                                handleFinishSelect(finish)
-                                              }
-                                              className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                                            >
-                                              {finish}
-                                            </button>
-                                          ),
-                                        )}
-                                        {finishSearchTerm &&
-                                          !filteredFinishes.some(
-                                            (f) =>
-                                              f.toLowerCase() ===
-                                              finishSearchTerm.toLowerCase(),
-                                          ) && (
-                                            <div className="border-t border-slate-200">
-                                              <button
-                                                type="button"
-                                                onClick={() => {
-                                                  setNewFinishValue(
-                                                    finishSearchTerm,
-                                                  );
-                                                  setShowCreateFinishModal(
-                                                    true,
-                                                  );
-                                                }}
-                                                className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                                              >
-                                                <Plus className="w-4 h-4" />
-                                                Create "{finishSearchTerm}"
-                                              </button>
-                                            </div>
-                                          )}
-                                      </>
-                                    ) : (
-                                      <div className="px-4 py-3">
-                                        <div className="text-sm text-slate-500 mb-2">
-                                          No matching finishes found
-                                        </div>
-                                        {finishSearchTerm && (
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setNewFinishValue(
-                                                finishSearchTerm,
-                                              );
-                                              setShowCreateFinishModal(true);
-                                            }}
-                                            className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
-                                          >
-                                            <Plus className="w-4 h-4" />
-                                            Create "{finishSearchTerm}"
-                                          </button>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ) : field === "face" ? (
-                              <div className="relative" ref={faceDropdownRef}>
-                                <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                  {field}
-                                </label>
-                                <div className="relative">
-                                  <input
-                                    type="text"
-                                    value={
-                                      faceSearchTerm || formData.face || ""
-                                    }
-                                    onChange={handleFaceSearchChange}
-                                    onFocus={() => setIsFaceDropdownOpen(true)}
-                                    disabled={formData.is_sunmica}
-                                    className={`w-full text-sm text-slate-800 px-4 py-3 pr-10 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none ${
-                                      formData.is_sunmica
-                                        ? "bg-slate-100 cursor-not-allowed border-slate-300"
-                                        : "border-slate-300"
-                                    }`}
-                                    placeholder="Select face..."
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setIsFaceDropdownOpen(!isFaceDropdownOpen)
-                                    }
-                                    disabled={formData.is_sunmica}
-                                    className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
-                                  >
-                                    <ChevronDown
-                                      className={`w-5 h-5 transition-transform ${
-                                        isFaceDropdownOpen ? "rotate-180" : ""
-                                      }`}
-                                    />
-                                  </button>
-                                </div>
-
-                                {isFaceDropdownOpen && !formData.is_sunmica && (
-                                  <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                                    {filteredFaces.length > 0 ? (
-                                      filteredFaces.map((face, index) => (
-                                        <button
-                                          key={index}
-                                          type="button"
-                                          onClick={() => handleFaceSelect(face)}
-                                          className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                                        >
-                                          {face}
-                                        </button>
-                                      ))
-                                    ) : (
-                                      <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                        No matching options found
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                                  {field}
-                                </label>
-                                <input
-                                  type="text"
-                                  name={field}
-                                  value={formData[field]}
-                                  onChange={handleInputChange}
-                                  className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                  placeholder={`Enter ${field}`}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        ),
-                      )}
-                    </div>
-                    <div>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          name="is_sunmica"
-                          checked={formData.is_sunmica}
-                          onChange={handleInputChange}
-                          className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-2 focus:ring-primary cursor-pointer"
-                        />
-                        <span className="text-sm font-medium text-slate-700">
-                          Is Sunmica
-                        </span>
-                      </label>
-                      {formData.is_sunmica && (
-                        <p className="mt-1 text-xs text-slate-500">
-                          Face field is automatically set to "single side" for
-                          sunmica items
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {selectedCategory.toLowerCase() === "handle" && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {["brand", "color", "type", "material", "dimensions"].map(
-                      (field) => (
-                        <div key={field}>
-                          <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                            {field}
-                          </label>
-                          <input
-                            type="text"
-                            name={field}
-                            value={formData[field]}
-                            onChange={handleInputChange}
-                            className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                            placeholder={`Enter ${field}`}
-                          />
-                        </div>
-                      ),
+                {selectedCategory === "sheet" && (
+                  <div>
+                    <label
+                      htmlFor="add-item-sunmica"
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <input
+                        id="add-item-sunmica"
+                        type="checkbox"
+                        name="is_sunmica"
+                        checked={formData.is_sunmica}
+                        onChange={handleSunmicaChange}
+                        aria-describedby={
+                          formData.is_sunmica
+                            ? "add-item-sunmica-hint"
+                            : undefined
+                        }
+                        className={CHECKBOX}
+                      />
+                      <span className="text-sm font-medium text-slate-700">
+                        Is Sunmica
+                      </span>
+                    </label>
+                    {formData.is_sunmica && (
+                      <p
+                        id="add-item-sunmica-hint"
+                        className="mt-1 text-xs text-slate-500"
+                      >
+                        Face is set to &quot;single side&quot; automatically for
+                        Sunmica items.
+                      </p>
                     )}
                   </div>
                 )}
-
-                {selectedCategory.toLowerCase() === "hardware" && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="relative" ref={subCategoryDropdownRef}>
-                      <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                        Sub Category
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={subCategorySearchTerm}
-                          onChange={handleSubCategorySearchChange}
-                          onFocus={() => setIsSubCategoryDropdownOpen(true)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              setIsSubCategoryDropdownOpen(false);
-                            }
-                          }}
-                          className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                          placeholder="Search or select sub category..."
-                        />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setIsSubCategoryDropdownOpen(
-                              !isSubCategoryDropdownOpen,
-                            )
-                          }
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                        >
-                          <ChevronDown
-                            className={`w-5 h-5 transition-transform duration-200 ${
-                              isSubCategoryDropdownOpen ? "rotate-180" : ""
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      {isSubCategoryDropdownOpen && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                          {filteredSubCategories.length > 0 ? (
-                            filteredSubCategories.map((subCategory, index) => (
-                              <button
-                                key={index}
-                                type="button"
-                                onClick={() =>
-                                  handleSubCategorySelect(subCategory)
-                                }
-                                className="w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg last:rounded-b-lg"
-                              >
-                                {subCategory}
-                              </button>
-                            ))
-                          ) : (
-                            <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                              {subCategorySearchTerm
-                                ? `No matching sub categories found. Press Enter to use "${subCategorySearchTerm}"`
-                                : "Type to search or add a custom sub category"}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    {["brand", "name", "type", "dimensions"].map((field) => (
-                      <div key={field}>
-                        <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                          {field.replace("_", " ")}
-                        </label>
-                        <input
-                          type="text"
-                          name={field}
-                          value={formData[field]}
-                          onChange={handleInputChange}
-                          className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                          placeholder={`Enter ${field.replace("_", " ")}`}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {selectedCategory.toLowerCase() === "accessory" && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">
-                        Item Name
-                      </label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                        placeholder="Eg. Marker Pen"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {selectedCategory.toLowerCase() === "edging tape" && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {["brand", "color", "finish", "dimensions"].map((field) => (
-                      <div key={field}>
-                        {field === "finish" ? (
-                          <div className="relative" ref={finishDropdownRef}>
-                            <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                              {field}
-                            </label>
-                            <div className="relative">
-                              <input
-                                type="text"
-                                value={finishSearchTerm || formData.finish}
-                                onChange={handleFinishSearchChange}
-                                onFocus={() => setIsFinishDropdownOpen(true)}
-                                className="w-full text-sm text-slate-800 px-4 py-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                                placeholder="Search or type a finish..."
-                              />
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setIsFinishDropdownOpen(!isFinishDropdownOpen)
-                                }
-                                className="cursor-pointer absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                              >
-                                <ChevronDown
-                                  className={`w-5 h-5 transition-transform ${
-                                    isFinishDropdownOpen ? "rotate-180" : ""
-                                  }`}
-                                />
-                              </button>
-                            </div>
-
-                            {isFinishDropdownOpen && (
-                              <div className="absolute z-10 w-full mt-1 bg-white border border-slate-300 rounded-lg shadow-lg max-h-60 overflow-auto">
-                                {loadingFinishes ? (
-                                  <div className="px-4 py-3 text-sm text-slate-500 text-center">
-                                    Loading finishes...
-                                  </div>
-                                ) : filteredFinishes.length > 0 ? (
-                                  <>
-                                    {filteredFinishes.map((finish, index) => (
-                                      <button
-                                        key={index}
-                                        type="button"
-                                        onClick={() =>
-                                          handleFinishSelect(finish)
-                                        }
-                                        className="cursor-pointer w-full text-left px-4 py-3 text-sm text-slate-800 hover:bg-slate-100 transition-colors first:rounded-t-lg"
-                                      >
-                                        {finish}
-                                      </button>
-                                    ))}
-                                    {finishSearchTerm &&
-                                      !filteredFinishes.some(
-                                        (f) =>
-                                          f.toLowerCase() ===
-                                          finishSearchTerm.toLowerCase(),
-                                      ) && (
-                                        <div className="border-t border-slate-200">
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setNewFinishValue(
-                                                finishSearchTerm,
-                                              );
-                                              setShowCreateFinishModal(true);
-                                            }}
-                                            className="cursor-pointer w-full text-left px-4 py-3 text-sm text-primary font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                                          >
-                                            <Plus className="w-4 h-4" />
-                                            Create "{finishSearchTerm}"
-                                          </button>
-                                        </div>
-                                      )}
-                                  </>
-                                ) : (
-                                  <div className="px-4 py-3">
-                                    <div className="text-sm text-slate-500 mb-2">
-                                      No matching finishes found
-                                    </div>
-                                    {finishSearchTerm && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setNewFinishValue(finishSearchTerm);
-                                          setShowCreateFinishModal(true);
-                                        }}
-                                        className="cursor-pointer w-full px-4 py-2 text-sm text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors flex items-center justify-center gap-2"
-                                      >
-                                        <Plus className="w-4 h-4" />
-                                        Create "{finishSearchTerm}"
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2 capitalize">
-                              {field}
-                            </label>
-                            <input
-                              type="text"
-                              name={field}
-                              value={formData[field]}
-                              onChange={handleInputChange}
-                              className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 focus:outline-none"
-                              placeholder={`Enter ${field}`}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
-            )}
+            </div>
 
             {/* Footer */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200">
               <button
                 type="button"
-                onClick={() => {
-                  resetForm();
-                  setShowModal(false);
-                }}
+                onClick={closeModal}
                 disabled={isSubmitting}
-                className="cursor-pointer px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-white transition-colors text-sm font-medium disabled:opacity-50"
+                className={BTN_SECONDARY}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`cursor-pointer px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
-                  isSubmitting
-                    ? "bg-slate-300 text-slate-500 cursor-not-allowed"
-                    : "bg-primary text-white hover:bg-primary/90"
-                }`}
+                className={BTN_PRIMARY}
               >
-                {isSubmitting ? "Adding Item..." : "Add Item"}
+                {isSubmitting ? (
+                  <span className={SPINNER} aria-hidden="true" />
+                ) : (
+                  <Plus className="w-4 h-4" aria-hidden="true" />
+                )}
+                Add item
               </button>
             </div>
           </form>
         </div>
       </div>
 
-      {/* Create Finish Modal */}
+      {/* Create finish modal */}
       {showCreateFinishModal && (
-        <div
-          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-100"
-          onClick={() => setShowCreateFinishModal(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-800">
-                Create New Finish
-              </h2>
-              <button
-                onClick={() => {
-                  setShowCreateFinishModal(false);
-                  setNewFinishValue("");
-                }}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Finish Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newFinishValue}
-                  onChange={(e) => setNewFinishValue(e.target.value)}
-                  placeholder="Enter finish name"
-                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                  autoFocus
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  onClick={() => {
-                    setShowCreateFinishModal(false);
-                    setNewFinishValue("");
-                  }}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateNewFinish}
-                  disabled={isCreatingFinish || !newFinishValue?.trim()}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isCreatingFinish ? "Creating..." : "Create Finish"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ConfigValueModal
+          idPrefix="add-item-new-finish"
+          title="Create new finish"
+          label="Finish name"
+          placeholder="e.g. Matt"
+          requiredMessage="Enter a finish name."
+          initialValue={newFinishValue}
+          saving={isCreatingFinish}
+          submitLabel="Create finish"
+          onSubmit={handleCreateNewFinish}
+          onClose={() => setShowCreateFinishModal(false)}
+          returnFocusId="add-item-finish"
+        />
       )}
 
-      {/* Create Measuring Unit Modal */}
+      {/* Create measuring unit modal */}
       {showCreateMeasuringUnitModal && (
-        <div
-          className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-100"
-          onClick={() => setShowCreateMeasuringUnitModal(false)}
-        >
-          <div
-            className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-800">
-                Create New Measuring Unit
-              </h2>
-              <button
-                onClick={() => {
-                  setShowCreateMeasuringUnitModal(false);
-                  setNewMeasuringUnitValue("");
-                }}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5 text-slate-600" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Measuring Unit Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newMeasuringUnitValue}
-                  onChange={(e) => setNewMeasuringUnitValue(e.target.value)}
-                  placeholder="Enter measuring unit name"
-                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none"
-                  autoFocus
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  onClick={() => {
-                    setShowCreateMeasuringUnitModal(false);
-                    setNewMeasuringUnitValue("");
-                  }}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreateNewMeasuringUnit}
-                  disabled={
-                    isCreatingMeasuringUnit || !newMeasuringUnitValue?.trim()
-                  }
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isCreatingMeasuringUnit
-                    ? "Creating..."
-                    : "Create Measuring Unit"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ConfigValueModal
+          idPrefix="add-item-new-unit"
+          title="Create new measuring unit"
+          label="Measuring unit name"
+          placeholder="e.g. each"
+          requiredMessage="Enter a measuring unit name."
+          initialValue={newMeasuringUnitValue}
+          saving={isCreatingMeasuringUnit}
+          submitLabel="Create measuring unit"
+          onSubmit={handleCreateNewMeasuringUnit}
+          onClose={() => setShowCreateMeasuringUnitModal(false)}
+          returnFocusId="add-item-measurement-unit"
+        />
       )}
-    </div>
+    </>
   );
 }

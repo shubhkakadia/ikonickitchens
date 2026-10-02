@@ -13,6 +13,40 @@ import {
   syncStageUpsert,
   syncStageDelete,
 } from "@/lib/stageSync";
+import { publishUpdate, lotUrl } from "@/lib/updates";
+
+const titleCaseStage = (name) =>
+  String(name || "stage").replace(/\b\w/g, (c) => c.toUpperCase());
+
+const statusLabel = (status) => String(status).replace(/_/g, " ").toLowerCase();
+const timeOf = (date) => (date ? new Date(date).getTime() : null);
+
+function describeStageChanges(before, after) {
+  const changes = [];
+  if (before.status !== after.status) {
+    changes.push(
+      `status ${statusLabel(before.status)} → ${statusLabel(after.status)}`,
+    );
+  }
+  if (before.name !== after.name) changes.push("renamed");
+  if (
+    timeOf(before.startDate) !== timeOf(after.startDate) ||
+    timeOf(before.endDate) !== timeOf(after.endDate)
+  ) {
+    changes.push("dates changed");
+  }
+  if ((before.notes || "") !== (after.notes || ""))
+    changes.push("notes changed");
+  const ids = (rows) =>
+    (rows || [])
+      .map((row) => row.employee_id)
+      .sort()
+      .join(",");
+  if (ids(before.assigned_to) !== ids(after.assigned_to)) {
+    changes.push("assignees changed");
+  }
+  return changes;
+}
 
 export async function PATCH(request, { params }) {
   try {
@@ -39,6 +73,13 @@ export async function PATCH(request, { params }) {
         { status: 404 },
       );
     }
+
+    // Assignees before the update (the transaction replaces them), so the
+    // feed can tell whether they changed
+    const previousAssignees = await prisma.stage_employee.findMany({
+      where: { stage_id: id },
+      select: { employee_id: true },
+    });
 
     const stageStartDate = startDate ? new Date(startDate) : null;
     const stageEndDate = endDate ? new Date(endDate) : null;
@@ -171,6 +212,25 @@ export async function PATCH(request, { params }) {
           : ""
       }`,
     );
+
+    // Feed entry, only when something actually changed (the lot-at-a-glance
+    // drag and the stage table can save repeatedly without changes)
+    const changes = describeStageChanges(
+      { ...existingStage, assigned_to: previousAssignees },
+      updatedStage,
+    );
+    if (changes.length) {
+      const stageLabel = titleCaseStage(updatedStage.name);
+      await publishUpdate({
+        req: request,
+        type: "STAGE_UPDATED",
+        title: "Stage updated",
+        message: `${stageLabel}: ${changes.join(", ")} (${updatedStage.lot?.name || updatedStage.lot_id}, ${updatedStage.lot?.project?.name || "project"})`,
+        url: lotUrl(updatedStage.lot?.project_id, updatedStage.lot_id),
+        dedupeKey: `stage:${id}`,
+        windowMinutes: 5,
+      });
+    }
 
     // Send notification if stage is completed
     if (updatedStage.status === "DONE") {

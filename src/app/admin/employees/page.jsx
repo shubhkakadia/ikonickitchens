@@ -16,7 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import Image from "next/image";
-import TabsController from "@/components/tabscontroller";
+import Link from "next/link";
 import axios from "axios";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "react-toastify";
@@ -29,10 +29,68 @@ import {
   usePersistedTableFilter,
   useTableFilterActions,
 } from "@/hooks/usePersistedTableFilter";
+import {
+  BADGE,
+  BADGE_TONES,
+  BUTTON_COUNT_BADGE,
+} from "@/app/admin/dashboard/lib/format";
 
 const TABLE_KEY = "employees";
+const TABLE_COLUMNS = 7;
 
-export default function page() {
+// Fields the list can be sorted by. Used by both the "Sort by" menu and the
+// column headers so the two never drift apart.
+const SORT_OPTIONS = [
+  { field: "employee_id", label: "Employee ID" },
+  { field: "first_name", label: "First name" },
+  { field: "last_name", label: "Last name" },
+  { field: "role", label: "Role" },
+];
+
+// Excel dates follow the Australian locale (DESIGN.md 15.7).
+const exportDate = (value) =>
+  value ? new Date(value).toLocaleDateString("en-AU") : "";
+
+const MENU_ITEM =
+  "cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between";
+const MENU_CHECK_ROW =
+  "cursor-pointer flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors";
+const CHECKBOX =
+  "h-4 w-4 accent-primary border-slate-300 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+
+// Sortable column header. The label is a real button so the sort is reachable
+// by keyboard (DESIGN.md 13.7); the active column carries the only indicator.
+function SortHeader({ field, label, sortField, sortOrder, onSort, icon }) {
+  const isActive = sortField === field;
+  const ariaSort = isActive
+    ? sortOrder === "asc"
+      ? "ascending"
+      : sortOrder === "desc"
+        ? "descending"
+        : undefined
+    : undefined;
+
+  return (
+    <th
+      scope="col"
+      aria-sort={ariaSort}
+      className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+    >
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className="cursor-pointer flex items-center gap-2 uppercase tracking-wider hover:text-slate-700 transition-colors duration-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-primary"
+      >
+        {label}
+        {icon}
+      </button>
+    </th>
+  );
+}
+
+export default function EmployeesPage() {
   const router = useRouter();
   const { getToken } = useAuth();
   const [employees, setEmployees] = useState([]);
@@ -86,19 +144,25 @@ export default function page() {
 
   const [selectedColumns, setSelectedColumns] = useState([...availableColumns]);
 
-  // Close dropdowns when clicking outside
+  // Close dropdowns when clicking outside or pressing Escape
   useEffect(() => {
+    const closeAll = () => {
+      setShowSortDropdown(false);
+      setShowRoleFilterDropdown(false);
+      setShowColumnDropdown(false);
+    };
     const handleClickOutside = (event) => {
-      if (!event.target.closest(".dropdown-container")) {
-        setShowSortDropdown(false);
-        setShowRoleFilterDropdown(false);
-        setShowColumnDropdown(false);
-      }
+      if (!event.target.closest(".dropdown-container")) closeAll();
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") closeAll();
     };
 
     document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
 
@@ -112,12 +176,8 @@ export default function page() {
       Phone: (employee) => employee.phone || "",
       "Secondary Phone": (employee) => employee.phone_secondary || "",
       Role: (employee) => employee.role || "",
-      "Date of Birth": (employee) =>
-        employee.dob ? new Date(employee.dob).toLocaleDateString() : "",
-      "Join Date": (employee) =>
-        employee.join_date
-          ? new Date(employee.join_date).toLocaleDateString()
-          : "",
+      "Date of Birth": (employee) => exportDate(employee.dob),
+      "Join Date": (employee) => exportDate(employee.join_date),
       Address: (employee) => employee.address || "",
       "Emergency Contact Name": (employee) =>
         employee.emergency_contact_name || "",
@@ -134,14 +194,8 @@ export default function page() {
       Availability: (employee) =>
         employee.availability ? JSON.stringify(employee.availability) : "",
       Notes: (employee) => employee.notes || "",
-      "Created At": (employee) =>
-        employee.createdAt
-          ? new Date(employee.createdAt).toLocaleDateString()
-          : "",
-      "Updated At": (employee) =>
-        employee.updatedAt
-          ? new Date(employee.updatedAt).toLocaleDateString()
-          : "",
+      "Created At": (employee) => exportDate(employee.createdAt),
+      "Updated At": (employee) => exportDate(employee.updatedAt),
     }),
     [],
   );
@@ -232,8 +286,6 @@ export default function page() {
 
   // Pagination logic
   const totalItems = filteredAndSortedEmployees.length;
-  const totalPages =
-    itemsPerPage === 0 ? 1 : Math.ceil(totalItems / itemsPerPage);
   const startIndex = itemsPerPage === 0 ? 0 : (currentPage - 1) * itemsPerPage;
   const endIndex = itemsPerPage === 0 ? totalItems : startIndex + itemsPerPage;
   const paginatedEmployees = filteredAndSortedEmployees.slice(
@@ -320,13 +372,19 @@ export default function page() {
     );
   };
 
+  // Filters that narrow the list (sort does not hide records), used to tell
+  // "no records" apart from "no results for this filter" (DESIGN.md 15.4).
+  const isNarrowingFilterActive =
+    search !== "" ||
+    (selectedRoles.length > 0 && selectedRoles.length !== distinctRoles.length);
+
+  // Only the active column shows a sort indicator (DESIGN.md 15.4).
   const getSortIcon = (field) => {
-    if (sortField !== field)
-      return <ArrowUpDown className="h-4 w-4 text-slate-400" />;
+    if (sortField !== field) return null;
     if (sortOrder === "asc")
-      return <ArrowUp className="h-4 w-4 text-primary" />;
+      return <ArrowUp className="h-4 w-4 text-primary" aria-hidden="true" />;
     if (sortOrder === "desc")
-      return <ArrowDown className="h-4 w-4 text-primary" />;
+      return <ArrowDown className="h-4 w-4 text-primary" aria-hidden="true" />;
     return null; // No icon for relevance
   };
 
@@ -335,17 +393,15 @@ export default function page() {
   }, [activeTab]);
 
   const fetchEmployees = async () => {
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true);
       // Get the session token when needed
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error("Your session has expired. Sign in again.");
+        setError("Your session has expired. Sign in again.");
         return;
       }
 
@@ -366,123 +422,126 @@ export default function page() {
         data: {},
       };
 
-      axios
-        .request(config)
-        .then((response) => {
-          setLoading(false);
-          if (response.data.status) {
-            setEmployees(response.data.data);
-          } else {
-            setError(response.data.message);
-          }
-        })
-        .catch((error) => {
-          setLoading(false);
-          console.error("Error fetching employees:", error);
-          setError(
-            error.response?.data?.message || "Failed to fetch employees",
-          );
-        });
+      const response = await axios.request(config);
+      if (response.data.status) {
+        setEmployees(response.data.data);
+      } else {
+        setError(
+          response.data.message ||
+            "Couldn't load employees. Check your connection and try again.",
+        );
+      }
     } catch (error) {
       console.error("Error fetching employees:", error);
+      setError(
+        error.response?.data?.message ||
+          "Couldn't load employees. Check your connection and try again.",
+      );
+    } finally {
       setLoading(false);
     }
   };
 
+  const goToAddEmployee = () => router.push("/admin/employees/addemployee");
+
+  const exportDisabled =
+    isExporting ||
+    filteredAndSortedEmployees.length === 0 ||
+    selectedColumns.length === 0;
+  const columnPickerDisabled =
+    isExporting || filteredAndSortedEmployees.length === 0;
+
+  const tabClass = (tab) =>
+    `cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-t-sm ${
+      activeTab === tab
+        ? "border-primary text-primary"
+        : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+    }`;
+
   return (
     <AdminShell>
       <main className="flex h-full min-h-0 flex-col overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-sm text-slate-600 font-medium">
-                Loading employees details...
-              </p>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
+        <div className="px-4 py-2 shrink-0">
+          <div className="flex justify-between items-center">
+            <h1 className="text-xl font-semibold text-slate-800">Employees</h1>
+            <div className="flex items-center gap-2">
+              <SearchBar />
               <button
-                onClick={() => window.location.reload()}
-                className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200"
+                type="button"
+                onClick={goToAddEmployee}
+                className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Try Again
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add employee
               </button>
             </div>
           </div>
-        ) : (
-          <>
-            <div className="px-4 py-2 shrink-0">
-              <div className="flex justify-between items-center">
-                <h1 className="text-xl font-semibold text-slate-800">
-                  Employees
-                </h1>
-                <div className="flex items-center gap-2">
-                  <SearchBar />
-                  <TabsController href="/admin/employees/addemployee">
-                    <div className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200">
-                      <Plus className="h-4 w-4" />
-                      Add Employee
-                    </div>
-                  </TabsController>
+        </div>
+
+        <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
+          <div className="bg-white rounded-lg border border-slate-200 flex flex-col h-full overflow-hidden">
+            {/* Fixed header section */}
+            <div className="p-4 shrink-0 border-b border-slate-200">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                {/* Search */}
+                <div className="flex items-center gap-2 flex-1 min-w-64 max-w-2xl relative">
+                  <Search
+                    className="h-4 w-4 absolute left-3 text-slate-400 pointer-events-none"
+                    aria-hidden="true"
+                  />
+                  <input
+                    type="text"
+                    aria-label="Search employees"
+                    placeholder="Search by name, email, phone, role or employee ID"
+                    className="w-full text-sm text-slate-800 py-2 pr-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
                 </div>
-              </div>
-            </div>
+                {/* Reset, filter by, sort by, export to Excel */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {isAnyFilterActive() && (
+                    <button
+                      type="button"
+                      onClick={handleReset}
+                      className={BTN_SECONDARY}
+                    >
+                      <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                      <span>Reset</span>
+                    </button>
+                  )}
 
-            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4">
-              <div className="bg-white rounded-lg border border-slate-200 flex flex-col h-full overflow-hidden">
-                {/* Fixed Header Section */}
-                <div className="p-4 shrink-0 border-b border-slate-200">
-                  <div className="flex items-center justify-between gap-3">
-                    {/* search bar */}
-                    <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
-                      <Search className="h-4 w-4 absolute left-3 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Search Employee with name, email, phone, role, employee id"
-                        className="w-full text-sm text-slate-800 py-2 pr-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                      />
-                    </div>
-                    {/* reset, sort by, filter by, export to excel */}
-                    <div className="flex items-center gap-2">
-                      {isAnyFilterActive() && (
-                        <button
-                          onClick={handleReset}
-                          className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                          <span>Reset</span>
-                        </button>
+                  <div className="relative dropdown-container">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowRoleFilterDropdown(!showRoleFilterDropdown)
+                      }
+                      aria-haspopup="true"
+                      aria-expanded={showRoleFilterDropdown}
+                      className={BTN_SECONDARY}
+                    >
+                      <Funnel className="h-4 w-4" aria-hidden="true" />
+                      <span>Filter by role</span>
+                      {distinctRoles.length - selectedRoles.length > 0 && (
+                        <span className={BUTTON_COUNT_BADGE}>
+                          {distinctRoles.length - selectedRoles.length}
+                        </span>
                       )}
-
-                      <div className="relative dropdown-container">
-                        <button
-                          onClick={() =>
-                            setShowRoleFilterDropdown(!showRoleFilterDropdown)
-                          }
-                          className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
-                        >
-                          <Funnel className="h-4 w-4" />
-                          <span>Filter by Role</span>
-                          {distinctRoles.length - selectedRoles.length > 0 && (
-                            <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                              {distinctRoles.length - selectedRoles.length}
-                            </span>
-                          )}
-                        </button>
-                        {showRoleFilterDropdown && (
-                          <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-300 rounded-lg z-40 max-h-96 overflow-y-auto">
-                            <div className="py-1">
-                              <label className="cursor-pointer flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors sticky top-0 bg-white border-b border-slate-200">
-                                <span className="font-semibold">
-                                  Select All
-                                </span>
+                    </button>
+                    {showRoleFilterDropdown && (
+                      <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-slate-300 rounded-lg z-40 max-h-96 overflow-y-auto">
+                        <div className="py-1">
+                          {distinctRoles.length === 0 ? (
+                            <p className="px-4 py-2.5 text-sm text-slate-500">
+                              No roles to filter by
+                            </p>
+                          ) : (
+                            <>
+                              <label
+                                className={`${MENU_CHECK_ROW} sticky top-0 bg-white border-b border-slate-200`}
+                              >
+                                <span className="font-medium">Select all</span>
                                 <input
                                   type="checkbox"
                                   checked={
@@ -492,337 +551,394 @@ export default function page() {
                                   onChange={() =>
                                     handleRoleToggle("Select All")
                                   }
-                                  className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                  className={CHECKBOX}
                                 />
                               </label>
                               {distinctRoles.map((role) => (
-                                <label
-                                  key={role}
-                                  className="cursor-pointer flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors"
-                                >
+                                <label key={role} className={MENU_CHECK_ROW}>
                                   <span>{role}</span>
                                   <input
                                     type="checkbox"
                                     checked={selectedRoles.includes(role)}
                                     onChange={() => handleRoleToggle(role)}
-                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                    className={CHECKBOX}
                                   />
                                 </label>
                               ))}
-                            </div>
-                          </div>
-                        )}
+                            </>
+                          )}
+                        </div>
                       </div>
-
-                      <div className="relative dropdown-container">
-                        <button
-                          onClick={() => setShowSortDropdown(!showSortDropdown)}
-                          className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200"
-                        >
-                          <ArrowUpDown className="h-4 w-4" />
-                          <span>Sort by</span>
-                        </button>
-                        {showSortDropdown && (
-                          <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-300 rounded-lg z-40">
-                            <div className="py-1">
-                              <button
-                                onClick={() => handleSort("employee_id")}
-                                className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
-                              >
-                                Employee ID {getSortIcon("employee_id")}
-                              </button>
-                              <button
-                                onClick={() => handleSort("first_name")}
-                                className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
-                              >
-                                First Name {getSortIcon("first_name")}
-                              </button>
-                              <button
-                                onClick={() => handleSort("last_name")}
-                                className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
-                              >
-                                Last Name {getSortIcon("last_name")}
-                              </button>
-                              <button
-                                onClick={() => handleSort("role")}
-                                className="cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between"
-                              >
-                                Role {getSortIcon("role")}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      <div className="relative dropdown-container flex items-center">
-                        <button
-                          onClick={handleExportToExcel}
-                          disabled={
-                            isExporting ||
-                            filteredAndSortedEmployees.length === 0 ||
-                            selectedColumns.length === 0
-                          }
-                          className={`flex items-center gap-2 transition-colors duration-200 text-slate-700 bg-white border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                            isExporting ||
-                            filteredAndSortedEmployees.length === 0 ||
-                            selectedColumns.length === 0
-                              ? "opacity-50 cursor-not-allowed"
-                              : "cursor-pointer hover:bg-slate-100"
-                          }`}
-                        >
-                          <Sheet className="h-4 w-4" />
-                          <span>
-                            {isExporting ? "Exporting..." : "Export to Excel"}
-                          </span>
-                        </button>
-                        <button
-                          onClick={() =>
-                            setShowColumnDropdown(!showColumnDropdown)
-                          }
-                          disabled={
-                            isExporting ||
-                            filteredAndSortedEmployees.length === 0
-                          }
-                          className={`flex items-center transition-colors duration-200 text-slate-700 bg-white border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                            isExporting ||
-                            filteredAndSortedEmployees.length === 0
-                              ? "opacity-50 cursor-not-allowed"
-                              : "cursor-pointer hover:bg-slate-100"
-                          }`}
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </button>
-                        {showColumnDropdown && (
-                          <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-300 rounded-lg z-40 max-h-96 overflow-y-auto">
-                            <div className="py-1">
-                              <label className="cursor-pointer flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors sticky top-0 bg-white border-b border-slate-200">
-                                <span className="font-semibold">
-                                  Select All
-                                </span>
-                                <input
-                                  type="checkbox"
-                                  checked={
-                                    selectedColumns.length ===
-                                    availableColumns.length
-                                  }
-                                  onChange={() =>
-                                    handleColumnToggle("Select All")
-                                  }
-                                  className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                />
-                              </label>
-                              {availableColumns.map((column) => (
-                                <label
-                                  key={column}
-                                  className="cursor-pointer flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors"
-                                >
-                                  <span>{column}</span>
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedColumns.includes(column)}
-                                    onChange={() => handleColumnToggle(column)}
-                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                  />
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                    )}
                   </div>
-                </div>
 
-                {/* Tabs Section */}
-                <div className="px-4 shrink-0 border-b border-slate-200">
-                  <nav className="flex space-x-6">
+                  <div className="relative dropdown-container">
                     <button
-                      onClick={() => setActiveTab("active")}
-                      className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "active"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                      }`}
+                      type="button"
+                      onClick={() => setShowSortDropdown(!showSortDropdown)}
+                      aria-haspopup="true"
+                      aria-expanded={showSortDropdown}
+                      className={BTN_SECONDARY}
                     >
-                      Current
+                      <ArrowUpDown className="h-4 w-4" aria-hidden="true" />
+                      <span>Sort by</span>
+                    </button>
+                    {showSortDropdown && (
+                      <div className="absolute top-full left-0 mt-1 w-52 bg-white border border-slate-300 rounded-lg z-40">
+                        <div className="py-1">
+                          {SORT_OPTIONS.map(({ field, label }) => (
+                            <button
+                              type="button"
+                              key={field}
+                              onClick={() => handleSort(field)}
+                              className={MENU_ITEM}
+                            >
+                              {label} {getSortIcon(field)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="relative dropdown-container flex items-stretch">
+                    <button
+                      type="button"
+                      onClick={handleExportToExcel}
+                      disabled={exportDisabled}
+                      className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 border-r-0 hover:bg-slate-100 rounded-l-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Sheet className="h-4 w-4" aria-hidden="true" />
+                      <span>
+                        {isExporting ? "Exporting…" : "Export to Excel"}
+                      </span>
                     </button>
                     <button
-                      onClick={() => setActiveTab("inactive")}
-                      className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                        activeTab === "inactive"
-                          ? "border-primary text-primary"
-                          : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                      }`}
+                      type="button"
+                      onClick={() => setShowColumnDropdown(!showColumnDropdown)}
+                      disabled={columnPickerDisabled}
+                      aria-label="Choose columns to export"
+                      aria-haspopup="true"
+                      aria-expanded={showColumnDropdown}
+                      className="cursor-pointer flex items-center px-2 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-r-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Former
+                      <ChevronDown className="h-4 w-4" aria-hidden="true" />
                     </button>
-                  </nav>
-                </div>
-
-                {/* Scrollable Table Section */}
-                <div className="flex-1 overflow-auto">
-                  <div className="min-w-full">
-                    <table className="min-w-full divide-y divide-slate-200">
-                      <thead className="bg-slate-50 sticky top-0 z-10">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Image
-                          </th>
-                          <th
-                            className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                            onClick={() => handleSort("employee_id")}
+                    {showColumnDropdown && (
+                      <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-300 rounded-lg z-40 max-h-96 overflow-y-auto">
+                        <div className="py-1">
+                          <label
+                            className={`${MENU_CHECK_ROW} sticky top-0 bg-white border-b border-slate-200`}
                           >
-                            <div className="flex items-center gap-2">
-                              Employee ID
-                              {getSortIcon("employee_id")}
-                            </div>
-                          </th>
-                          <th
-                            className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                            onClick={() => handleSort("first_name")}
-                          >
-                            <div className="flex items-center gap-2">
-                              First Name
-                              {getSortIcon("first_name")}
-                            </div>
-                          </th>
-                          <th
-                            className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                            onClick={() => handleSort("last_name")}
-                          >
-                            <div className="flex items-center gap-2">
-                              Last Name
-                              {getSortIcon("last_name")}
-                            </div>
-                          </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Email
-                          </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Phone
-                          </th>
-                          <th
-                            className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                            onClick={() => handleSort("role")}
-                          >
-                            <div className="flex items-center gap-2">
-                              Role
-                              {getSortIcon("role")}
-                            </div>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-slate-200">
-                        {loading ? (
-                          <tr>
-                            <td
-                              className="px-4 py-4 text-sm text-slate-500 text-center"
-                              colSpan={7}
-                            >
-                              Loading employees...
-                            </td>
-                          </tr>
-                        ) : error ? (
-                          <tr>
-                            <td
-                              className="px-4 py-4 text-sm text-red-600 text-center"
-                              colSpan={7}
-                            >
-                              {error}
-                            </td>
-                          </tr>
-                        ) : paginatedEmployees.length === 0 ? (
-                          <tr>
-                            <td className="px-4 py-12 text-center" colSpan={7}>
-                              <Users
-                                className="w-8 h-8 text-slate-300 mx-auto mb-2"
-                                aria-hidden="true"
+                            <span className="font-medium">Select all</span>
+                            <input
+                              type="checkbox"
+                              checked={
+                                selectedColumns.length ===
+                                availableColumns.length
+                              }
+                              onChange={() => handleColumnToggle("Select All")}
+                              className={CHECKBOX}
+                            />
+                          </label>
+                          {availableColumns.map((column) => (
+                            <label key={column} className={MENU_CHECK_ROW}>
+                              <span>{column}</span>
+                              <input
+                                type="checkbox"
+                                checked={selectedColumns.includes(column)}
+                                onChange={() => handleColumnToggle(column)}
+                                className={CHECKBOX}
                               />
-                              <p className="text-sm text-slate-600">
-                                {search
-                                  ? "No employees found matching your search"
-                                  : selectedRoles.length === 0
-                                    ? "No employees found"
-                                    : activeTab === "active"
-                                      ? "No current employees found"
-                                      : "No former employees found"}
-                              </p>
-                            </td>
-                          </tr>
-                        ) : (
-                          paginatedEmployees.map((e) => (
-                            <tr
-                              key={e.id}
-                              onClick={() => {
-                                router.push(
-                                  `/admin/employees/${e.employee_id}`,
-                                );
-                              }}
-                              className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
-                            >
-                              <td className="px-4 py-3">
-                                <div className="w-10 h-10">
-                                  {e.image ? (
-                                    <Image
-                                      src={`/${e.image.url}`}
-                                      alt={e.first_name + " " + e.last_name}
-                                      width={40}
-                                      height={40}
-                                      className="w-full h-full object-cover rounded-lg"
-                                    />
-                                  ) : (
-                                    <div className="w-10 h-10 bg-linear-to-br from-secondary to-primary rounded-lg text-white text-center flex items-center justify-center font-semibold text-sm">
-                                      {e.first_name?.[0] || ""}
-                                      {e.last_name?.[0] || ""}
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium">
-                                {e.employee_id || "-"}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                {e.first_name || "-"}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                {e.last_name || "-"}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-slate-600">
-                                {e.email || "-"}
-                              </td>
-                              <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
-                                {e.phone || "-"}
-                                <br />
-                                {e.phone_secondary || "-"}
-                              </td>
-                              <td className="px-4 py-3 text-sm">
-                                <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 border border-slate-200">
-                                  {e.role || "-"}
-                                </span>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {/* Fixed Pagination Footer */}
-                {!loading && !error && paginatedEmployees.length > 0 && (
-                  <PaginationFooter
-                    totalItems={totalItems}
-                    itemsPerPage={itemsPerPage}
-                    currentPage={currentPage}
-                    onPageChange={handlePageChange}
-                    onItemsPerPageChange={handleItemsPerPageChange}
-                    itemsPerPageOptions={[50, 100, 250, 0]}
-                    showItemsPerPage={true}
-                  />
-                )}
               </div>
             </div>
-          </>
-        )}
+
+            {/* Tabs section */}
+            <div className="px-4 shrink-0 border-b border-slate-200">
+              <div
+                className="flex space-x-6"
+                role="tablist"
+                aria-label="Employment status"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === "active"}
+                  onClick={() => setActiveTab("active")}
+                  className={tabClass("active")}
+                >
+                  Current
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === "inactive"}
+                  onClick={() => setActiveTab("inactive")}
+                  className={tabClass("inactive")}
+                >
+                  Former
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable table section */}
+            <div className="flex-1 overflow-auto">
+              <div className="min-w-full">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50 sticky top-0 z-10">
+                    <tr>
+                      <th
+                        scope="col"
+                        className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                      >
+                        Photo
+                      </th>
+                      {SORT_OPTIONS.slice(0, 3).map(({ field, label }) => (
+                        <SortHeader
+                          key={field}
+                          field={field}
+                          label={label}
+                          sortField={sortField}
+                          sortOrder={sortOrder}
+                          onSort={handleSort}
+                          icon={getSortIcon(field)}
+                        />
+                      ))}
+                      <th
+                        scope="col"
+                        className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                      >
+                        Email
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                      >
+                        Phone
+                      </th>
+                      <SortHeader
+                        field="role"
+                        label="Role"
+                        sortField={sortField}
+                        sortOrder={sortOrder}
+                        onSort={handleSort}
+                        icon={getSortIcon("role")}
+                      />
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {loading ? (
+                      <tr>
+                        <td
+                          className="px-4 py-12 text-center"
+                          colSpan={TABLE_COLUMNS}
+                        >
+                          <div
+                            className="flex flex-col items-center gap-2"
+                            role="status"
+                          >
+                            <span
+                              className="w-6 h-6 border-2 border-slate-200 border-t-primary rounded-full animate-spin"
+                              aria-hidden="true"
+                            />
+                            <p className="text-sm text-slate-600">
+                              Loading employees…
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : error ? (
+                      <tr>
+                        <td
+                          className="px-4 py-12 text-center"
+                          colSpan={TABLE_COLUMNS}
+                        >
+                          <div
+                            className="flex flex-col items-center gap-2"
+                            role="alert"
+                          >
+                            <AlertTriangle
+                              className="w-8 h-8 text-red-500"
+                              aria-hidden="true"
+                            />
+                            <p className="text-sm text-red-600">{error}</p>
+                            <button
+                              type="button"
+                              onClick={fetchEmployees}
+                              className={`${BTN_SECONDARY} py-1.5`}
+                            >
+                              Try again
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : paginatedEmployees.length === 0 ? (
+                      <tr>
+                        <td
+                          className="px-4 py-12 text-center"
+                          colSpan={TABLE_COLUMNS}
+                        >
+                          <div className="flex flex-col items-center gap-2">
+                            <Users
+                              className="w-8 h-8 text-slate-300"
+                              aria-hidden="true"
+                            />
+                            {employees.length > 0 && isNarrowingFilterActive ? (
+                              <>
+                                <p className="text-sm text-slate-600">
+                                  No employees match your filters
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={handleReset}
+                                  className={`${BTN_SECONDARY} py-1.5`}
+                                >
+                                  <RotateCcw
+                                    className="h-4 w-4"
+                                    aria-hidden="true"
+                                  />
+                                  Clear filters
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-sm text-slate-600">
+                                  {activeTab === "active"
+                                    ? "No current employees yet"
+                                    : "No former employees yet"}
+                                </p>
+                                {activeTab === "active" && (
+                                  <button
+                                    type="button"
+                                    onClick={goToAddEmployee}
+                                    className={`${BTN_SECONDARY} py-1.5`}
+                                  >
+                                    <Plus
+                                      className="h-4 w-4"
+                                      aria-hidden="true"
+                                    />
+                                    Add employee
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      paginatedEmployees.map((e) => {
+                        const fullName =
+                          `${e.first_name || ""} ${e.last_name || ""}`.trim();
+                        return (
+                          <tr
+                            key={e.id}
+                            onClick={() => {
+                              router.push(`/admin/employees/${e.employee_id}`);
+                            }}
+                            className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
+                          >
+                            <td className="px-4 py-3">
+                              <div className="w-10 h-10">
+                                {e.image ? (
+                                  <Image
+                                    src={`/${e.image.url}`}
+                                    alt=""
+                                    width={40}
+                                    height={40}
+                                    className="w-full h-full object-cover rounded-full"
+                                  />
+                                ) : (
+                                  <div
+                                    className="w-10 h-10 bg-slate-100 border border-slate-200 rounded-full text-slate-600 uppercase flex items-center justify-center font-medium text-sm"
+                                    aria-hidden="true"
+                                  >
+                                    {e.first_name?.[0] || e.last_name?.[0]
+                                      ? `${e.first_name?.[0] || ""}${e.last_name?.[0] || ""}`
+                                      : "—"}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap font-medium font-mono">
+                              {e.employee_id ? (
+                                <Link
+                                  href={`/admin/employees/${e.employee_id}`}
+                                  onClick={(ev) => ev.stopPropagation()}
+                                  aria-label={
+                                    fullName
+                                      ? `${e.employee_id}, ${fullName}`
+                                      : undefined
+                                  }
+                                  className="rounded-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                >
+                                  {e.employee_id}
+                                </Link>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                              {e.first_name || "—"}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                              {e.last_name || "—"}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-600">
+                              <span
+                                className="block max-w-64 truncate"
+                                title={e.email || undefined}
+                              >
+                                {e.email || "—"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                              {e.phone || "—"}
+                              {e.phone_secondary && (
+                                <span className="block text-xs text-slate-500">
+                                  {e.phone_secondary}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              {e.role ? (
+                                <span
+                                  className={`${BADGE} ${BADGE_TONES.neutral}`}
+                                >
+                                  {e.role}
+                                </span>
+                              ) : (
+                                <span className="text-slate-700">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Fixed pagination footer */}
+            {!loading && !error && paginatedEmployees.length > 0 && (
+              <PaginationFooter
+                totalItems={totalItems}
+                itemsPerPage={itemsPerPage}
+                currentPage={currentPage}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+                showItemsPerPage={true}
+              />
+            )}
+          </div>
+        </div>
       </main>
     </AdminShell>
   );

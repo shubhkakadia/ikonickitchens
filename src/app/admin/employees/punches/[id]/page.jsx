@@ -3,7 +3,6 @@
 import axios from "axios";
 import {
   AlertTriangle,
-  CalendarDays,
   CheckCircle2,
   ChevronLeft,
   CircleCheck,
@@ -19,7 +18,13 @@ import {
   XCircle,
 } from "lucide-react";
 import { useParams } from "next/navigation";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -27,6 +32,7 @@ import AdminShell from "@/components/AdminShell";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
 import TabsController from "@/components/tabscontroller";
 import { useAuth } from "@/contexts/AuthContext";
+import useModalFocus from "@/hooks/useModalFocus";
 import {
   formatClockPunchAction,
   summarizeClockPunchDay,
@@ -43,6 +49,25 @@ import {
 const CLOCK_PUNCH_TIME_ZONE = "Australia/Adelaide";
 const MAX_REVIEW_NOTES_LENGTH = 5000;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+// DESIGN.md 9.1 recipes, kept as constants because several buttons share them.
+const BUTTON_BASE =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const BUTTON_PRIMARY = `${BUTTON_BASE} text-white bg-primary hover:bg-primary/90`;
+const BUTTON_SECONDARY = `${BUTTON_BASE} text-slate-700 bg-white border border-slate-300 hover:bg-slate-100`;
+
+// Icon-only row actions (DESIGN.md 9.1 "Icon-only"); the tone is the hover and
+// resting ink only, the aria-label and title carry the meaning.
+const ICON_BUTTON =
+  "cursor-pointer p-2 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+
+const INPUT_BASE =
+  "w-full text-sm text-slate-800 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent";
+const INPUT_INVALID =
+  "w-full text-sm text-slate-800 border border-red-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent";
+
+const TH =
+  "px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500";
 
 const timeFormatter = new Intl.DateTimeFormat("en-AU", {
   timeZone: CLOCK_PUNCH_TIME_ZONE,
@@ -107,6 +132,22 @@ function employeeName(group) {
   return name || "Unknown employee";
 }
 
+// "Clock In at 08:00 am", used to name a punch in labels, titles and prompts.
+function punchLabel(punch) {
+  return `${formatClockPunchAction(punch.action)} at ${
+    toDisplayTime(punch.punched_at) || "—"
+  }`;
+}
+
+function ButtonSpinner() {
+  return (
+    <span
+      className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+      aria-hidden="true"
+    />
+  );
+}
+
 export default function ClockPunchDetailPage() {
   const { id } = useParams();
   const { userData, isAdmin, isMasterAdmin } = useAuth();
@@ -131,12 +172,23 @@ export default function ClockPunchDetailPage() {
 
   const [isAddingMissing, setIsAddingMissing] = useState(false);
   const [missingDrafts, setMissingDrafts] = useState([]);
+  const [missingError, setMissingError] = useState(null);
   const [isSavingMissing, setIsSavingMissing] = useState(false);
+  const [isApprovingMissing, setIsApprovingMissing] = useState(false);
 
   const [timePunch, setTimePunch] = useState(null);
   const [timeDraft, setTimeDraft] = useState("");
   const [timeNotesDraft, setTimeNotesDraft] = useState("");
+  const [timeError, setTimeError] = useState("");
   const [isSavingTime, setIsSavingTime] = useState(false);
+
+  const missingModalRef = useRef(null);
+  const timeModalRef = useRef(null);
+  const notesModalRef = useRef(null);
+
+  useModalFocus(missingModalRef, isAddingMissing);
+  useModalFocus(timeModalRef, Boolean(timePunch));
+  useModalFocus(notesModalRef, Boolean(notesPunch));
 
   const fetchGroup = useCallback(
     async (signal) => {
@@ -152,7 +204,10 @@ export default function ClockPunchDetailPage() {
         });
 
         if (!response.data.status) {
-          setError(response.data.message || "Failed to load the clock punch");
+          setError(
+            response.data.message ||
+              "Couldn't load this clock punch. Try again.",
+          );
           return;
         }
 
@@ -164,7 +219,7 @@ export default function ClockPunchDetailPage() {
         console.error("Error fetching clock punch:", requestError);
         setError(
           requestError.response?.data?.message ||
-            "Unable to load this clock punch. Please try again.",
+            "Couldn't load this clock punch. Check your connection and try again.",
         );
       } finally {
         if (!signal?.aborted) setLoading(false);
@@ -204,7 +259,10 @@ export default function ClockPunchDetailPage() {
       );
 
       if (!response.data.status) {
-        toast.error(response.data.message || "Failed to update the punch");
+        toast.error(
+          response.data.message ||
+            "Couldn't update the punch. Try again in a moment.",
+        );
         return false;
       }
 
@@ -213,7 +271,7 @@ export default function ClockPunchDetailPage() {
       console.error("Error updating clock punch:", requestError);
       toast.error(
         requestError.response?.data?.message ||
-          "Failed to update the punch. Please try again.",
+          "Couldn't update the punch. Check your connection and try again.",
       );
       return false;
     } finally {
@@ -269,7 +327,10 @@ export default function ClockPunchDetailPage() {
       );
 
       if (!response.data.status) {
-        toast.error(response.data.message || "Failed to reject the punch");
+        toast.error(
+          response.data.message ||
+            "Couldn't reject the punch. Try again in a moment.",
+        );
         return;
       }
 
@@ -280,7 +341,7 @@ export default function ClockPunchDetailPage() {
       console.error("Error rejecting clock punch:", requestError);
       toast.error(
         requestError.response?.data?.message ||
-          "Failed to reject the punch. Please try again.",
+          "Couldn't reject the punch. Check your connection and try again.",
       );
     } finally {
       setIsRejecting(false);
@@ -300,7 +361,10 @@ export default function ClockPunchDetailPage() {
       );
 
       if (!response.data.status) {
-        toast.error(response.data.message || "Failed to save the notes");
+        toast.error(
+          response.data.message ||
+            "Couldn't save the notes. Try again in a moment.",
+        );
         return;
       }
 
@@ -312,7 +376,7 @@ export default function ClockPunchDetailPage() {
       console.error("Error saving review notes:", requestError);
       toast.error(
         requestError.response?.data?.message ||
-          "Failed to save the notes. Please try again.",
+          "Couldn't save the notes. Check your connection and try again.",
       );
     } finally {
       setIsSavingNotes(false);
@@ -335,15 +399,18 @@ export default function ClockPunchDetailPage() {
         time: "",
       })),
     );
+    setMissingError(null);
     setIsAddingMissing(true);
   };
 
   const closeMissingEditor = () => {
     setIsAddingMissing(false);
     setMissingDrafts([]);
+    setMissingError(null);
   };
 
   const updateMissingDraft = (action, time) => {
+    setMissingError(null);
     setMissingDrafts((previous) =>
       previous.map((draft) =>
         draft.action === action ? { ...draft, time } : draft,
@@ -356,27 +423,30 @@ export default function ClockPunchDetailPage() {
     : "";
 
   // Times have to be filled from the top down: the sequence cannot skip a punch
-  // and pick up again at a later one.
+  // and pick up again at a later one. `action` names the field the message
+  // belongs to so the error can sit under it and focus can move there.
   const buildMissingPunches = () => {
     const filled = [];
-    let blankLabel = "";
+    let blankDraft = null;
 
     for (const draft of missingDrafts) {
       if (!draft.time) {
-        if (!blankLabel) blankLabel = draft.label;
+        if (!blankDraft) blankDraft = draft;
         continue;
       }
 
-      if (blankLabel) {
+      if (blankDraft) {
         return {
-          error: `Set a time for ${blankLabel} before adding ${draft.label}`,
+          error: `Set a time for ${blankDraft.label} before adding ${draft.label}`,
+          action: blankDraft.action,
           punches: null,
         };
       }
 
       if (!TIME_PATTERN.test(draft.time)) {
         return {
-          error: `${draft.label} needs a valid time in HH:mm format`,
+          error: `${draft.label} needs a valid time`,
+          action: draft.action,
           punches: null,
         };
       }
@@ -385,6 +455,7 @@ export default function ClockPunchDetailPage() {
       if (previous && draft.time <= previous.time) {
         return {
           error: `${draft.label} must be later than ${previous.label} at ${previous.time}`,
+          action: draft.action,
           punches: null,
         };
       }
@@ -393,7 +464,11 @@ export default function ClockPunchDetailPage() {
     }
 
     if (filled.length === 0) {
-      return { error: "Set a time for at least one punch", punches: null };
+      return {
+        error: "Set a time for at least one punch",
+        action: missingDrafts[0]?.action ?? null,
+        punches: null,
+      };
     }
 
     if (lastPunchTime && filled[0].time <= lastPunchTime) {
@@ -401,22 +476,31 @@ export default function ClockPunchDetailPage() {
         error: `${filled[0].label} must be later than the last punch at ${toDisplayTime(
           summary.lastPunch.punched_at,
         )}`,
+        action: filled[0].action,
         punches: null,
       };
     }
 
-    return { error: null, punches: filled };
+    return { error: null, action: null, punches: filled };
   };
 
   const handleSaveMissing = async (approve) => {
-    const { error: draftError, punches: draftPunches } = buildMissingPunches();
+    const {
+      error: draftError,
+      action: draftErrorAction,
+      punches: draftPunches,
+    } = buildMissingPunches();
     if (draftError) {
-      toast.error(draftError);
+      setMissingError({ message: draftError, action: draftErrorAction });
+      if (draftErrorAction) {
+        document.getElementById(`missing-time-${draftErrorAction}`)?.focus();
+      }
       return;
     }
 
     try {
       setIsSavingMissing(true);
+      setIsApprovingMissing(approve);
 
       const response = await axios.post(
         "/api/v1/clock_punch/manual",
@@ -433,7 +517,10 @@ export default function ClockPunchDetailPage() {
       );
 
       if (!response.data.status) {
-        toast.error(response.data.message || "Failed to add the missing punch");
+        toast.error(
+          response.data.message ||
+            "Couldn't add the missing punch. Try again in a moment.",
+        );
         return;
       }
 
@@ -444,10 +531,11 @@ export default function ClockPunchDetailPage() {
       console.error("Error adding missing clock punches:", requestError);
       toast.error(
         requestError.response?.data?.message ||
-          "Failed to add the missing punch. Please try again.",
+          "Couldn't add the missing punch. Check your connection and try again.",
       );
     } finally {
       setIsSavingMissing(false);
+      setIsApprovingMissing(false);
     }
   };
 
@@ -455,13 +543,27 @@ export default function ClockPunchDetailPage() {
     setTimePunch(punch);
     setTimeDraft(toInputTime(punch.punched_at));
     setTimeNotesDraft(punch.review_notes || "");
+    setTimeError("");
   };
 
   const closeTimeEditor = () => {
     setTimePunch(null);
     setTimeDraft("");
     setTimeNotesDraft("");
+    setTimeError("");
   };
+
+  // A form with typed-in work does not close on a stray backdrop click
+  // (DESIGN.md 15.1); Escape and the buttons still do.
+  const isMissingDirty = missingDrafts.some((draft) => draft.time);
+  const isTimeDirty = Boolean(
+    timePunch &&
+    (timeDraft !== toInputTime(timePunch.punched_at) ||
+      timeNotesDraft !== (timePunch.review_notes || "")),
+  );
+  const isNotesDirty = Boolean(
+    notesPunch && notesDraft !== (notesPunch.review_notes || ""),
+  );
 
   // DESIGN.md 9.4: modals close on Escape. Only the topmost open one responds,
   // and a save in flight is left alone so Escape can't strand a half-written
@@ -491,7 +593,8 @@ export default function ClockPunchDetailPage() {
     const originalNotes = timePunch.review_notes || "";
 
     if (!TIME_PATTERN.test(timeDraft)) {
-      toast.error("Enter a valid time in HH:mm format");
+      setTimeError("Enter a valid time");
+      document.getElementById("punch-time")?.focus();
       return;
     }
 
@@ -515,7 +618,10 @@ export default function ClockPunchDetailPage() {
       );
 
       if (!response.data.status) {
-        toast.error(response.data.message || "Failed to update the punch time");
+        toast.error(
+          response.data.message ||
+            "Couldn't update the punch time. Try again in a moment.",
+        );
         return;
       }
 
@@ -530,49 +636,97 @@ export default function ClockPunchDetailPage() {
       console.error("Error updating punch time:", requestError);
       toast.error(
         requestError.response?.data?.message ||
-          "Failed to update the punch time. Please try again.",
+          "Couldn't update the punch time. Check your connection and try again.",
       );
     } finally {
       setIsSavingTime(false);
     }
   };
 
-  const actionButtonClasses = (disabled, tone) => {
-    if (disabled) {
-      return "border-slate-200 text-slate-300 cursor-not-allowed";
-    }
-
-    return `cursor-pointer ${tone}`;
-  };
+  const showHeaderActions =
+    canReview &&
+    !loading &&
+    !error &&
+    employeeGroup &&
+    (pendingCount > 0 || summary.missing.length > 0);
 
   return (
     <AdminShell>
-      <div className="h-full w-full overflow-y-auto">
-        <div className="px-4 py-2">
-          {/* Header */}
-          <div className="flex items-center gap-2 mb-4">
+      <main className="h-full w-full overflow-y-auto">
+        <div className="p-4">
+          {/* Header: back, record name, status badge, record actions */}
+          <div className="flex flex-wrap items-center gap-3 mb-4">
             <TabsController back={true}>
-              <div
-                className="cursor-pointer p-1.5 hover:bg-slate-100 rounded-lg transition-colors duration-200"
-                aria-label="Back"
-              >
-                <ChevronLeft
-                  aria-hidden="true"
-                  className="w-5 h-5 text-slate-600"
-                />
-              </div>
+              <span className="cursor-pointer flex p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200">
+                <ChevronLeft className="w-5 h-5" aria-hidden="true" />
+                <span className="sr-only">Back</span>
+              </span>
             </TabsController>
-            <h1 className="text-xl font-semibold text-slate-800">
-              Clock Punch Details
-            </h1>
+            <div className="flex-1 flex flex-wrap items-center gap-3 min-w-0">
+              <h1 className="text-xl font-semibold text-slate-800 truncate">
+                {!loading && !error && employeeGroup
+                  ? employeeName(employeeGroup)
+                  : "Clock punch"}
+              </h1>
+              {!loading && !error && employeeGroup && (
+                <span
+                  className={`${BADGE} ${
+                    reviewStyles[employeeGroup.review_status] ||
+                    reviewStyles.PENDING
+                  }`}
+                >
+                  {formatLabel(employeeGroup.review_status) || "—"}
+                </span>
+              )}
+            </div>
+
+            {showHeaderActions && (
+              <div className="flex flex-wrap items-center gap-2">
+                {summary.missing.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={openMissingEditor}
+                    className={BUTTON_SECONDARY}
+                  >
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                    {`Add missing punch${
+                      summary.missing.length === 1 ? "" : "es"
+                    }`}
+                  </button>
+                )}
+                {pendingCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleApproveAll}
+                    disabled={isBulkApproving}
+                    className={BUTTON_PRIMARY}
+                  >
+                    {isBulkApproving ? (
+                      <ButtonSpinner />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                    )}
+                    {isBulkApproving
+                      ? "Approving..."
+                      : `Approve all pending (${pendingCount})`}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {loading ? (
             <div className="bg-white rounded-lg border border-slate-200 p-6">
-              <div className="flex items-center justify-center py-16">
+              <div
+                className="flex items-center justify-center py-12"
+                role="status"
+              >
                 <div className="text-center">
-                  <div className="animate-spin rounded-full w-8 h-8 border-2 border-primary border-t-transparent mx-auto mb-4" />
-                  <p className="text-sm text-slate-600 font-medium">
+                  <div
+                    className="animate-spin rounded-full w-8 h-8 border-2 border-primary border-t-transparent mx-auto mb-4"
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm text-slate-600">
                     Loading clock punch...
                   </p>
                 </div>
@@ -580,38 +734,49 @@ export default function ClockPunchDetailPage() {
             </div>
           ) : error ? (
             <div className="bg-white rounded-lg border border-slate-200 p-6">
-              <div className="flex flex-col items-center justify-center py-16">
+              <div className="flex flex-col items-center justify-center py-12">
                 <AlertTriangle
                   aria-hidden="true"
                   className="w-8 h-8 text-red-500 mb-4"
                 />
-                <p className="text-sm text-red-600 font-medium mb-4">{error}</p>
+                <p className="text-sm text-red-600 mb-4" role="alert">
+                  {error}
+                </p>
                 <button
                   type="button"
                   onClick={() => fetchGroup()}
-                  className="cursor-pointer bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+                  className={BUTTON_PRIMARY}
                 >
-                  Try Again
+                  Try again
                 </button>
               </div>
             </div>
           ) : !employeeGroup ? (
             <div className="bg-white rounded-lg border border-slate-200 p-6">
-              <p className="text-sm text-slate-600 text-center py-16">
-                This clock punch could not be found.
-              </p>
+              <div className="flex flex-col items-center justify-center py-12">
+                <Clock
+                  aria-hidden="true"
+                  className="w-8 h-8 text-slate-300 mb-4"
+                />
+                <p className="text-sm text-slate-600">
+                  This clock punch could not be found.
+                </p>
+              </div>
             </div>
           ) : (
             <div className="bg-white rounded-lg border border-slate-200 p-6 space-y-8">
-              {/* Summary Section */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-4">
+              {/* Summary section */}
+              <section className="space-y-4" aria-labelledby="shift-summary">
+                <div className="flex items-center gap-2">
                   <UserRound
                     aria-hidden="true"
                     className="w-5 h-5 text-primary"
                   />
-                  <h2 className="text-lg font-semibold text-slate-800">
-                    Shift Summary
+                  <h2
+                    id="shift-summary"
+                    className="text-lg font-semibold text-slate-800"
+                  >
+                    Shift summary
                   </h2>
                 </div>
 
@@ -624,10 +789,13 @@ export default function ClockPunchDetailPage() {
                       {employeeName(employeeGroup)}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {[employeeGroup.employee_id, employeeGroup.employee?.role]
-                        .filter(Boolean)
-                        .join(" • ")}
+                      {employeeGroup.employee?.role || "—"}
                     </p>
+                    {employeeGroup.employee_id && (
+                      <p className="text-xs font-mono text-slate-500 break-all">
+                        {employeeGroup.employee_id}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -635,14 +803,16 @@ export default function ClockPunchDetailPage() {
                       Date
                     </p>
                     <p className="text-sm text-slate-800 font-semibold">
-                      {formatLongDate(groupDate)}
+                      {formatLongDate(groupDate) || "—"}
                     </p>
-                    <p className="text-xs text-slate-500">{groupDate}</p>
+                    <p className="text-xs text-slate-500">
+                      Times shown in Adelaide time
+                    </p>
                   </div>
 
                   <div>
                     <p className="text-sm font-medium text-slate-700 mb-1">
-                      Working Hours
+                      Working hours
                     </p>
                     <p className="text-sm text-slate-800 font-semibold">
                       {Number(employeeGroup.hours || 0).toFixed(2)} hours
@@ -654,25 +824,17 @@ export default function ClockPunchDetailPage() {
                   </div>
 
                   <div>
-                    <p className="text-sm font-medium text-slate-700 mb-2">
-                      Status
+                    <p className="text-sm font-medium text-slate-700 mb-1.5">
+                      Shift status
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      <span
-                        className={`${BADGE} ${
-                          reviewStyles[employeeGroup.review_status] ||
-                          reviewStyles.PENDING
-                        }`}
-                      >
-                        {formatLabel(employeeGroup.review_status)}
-                      </span>
                       <span
                         className={`${BADGE} ${
                           breakStyles[employeeGroup.break_status] ||
                           breakStyles.NO_BREAK
                         }`}
                       >
-                        {formatLabel(employeeGroup.break_status)}
+                        {formatLabel(employeeGroup.break_status) || "—"}
                       </span>
                       <span
                         className={`${BADGE} ${
@@ -680,44 +842,35 @@ export default function ClockPunchDetailPage() {
                           workingStyles.NOT_WORKING
                         }`}
                       >
-                        {formatLabel(employeeGroup.working_status)}
+                        {formatLabel(employeeGroup.working_status) || "—"}
                       </span>
                     </div>
                   </div>
                 </div>
-              </div>
+              </section>
 
-              {/* Day Status Section */}
-              <div className="space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                  <div className="flex items-center gap-2">
-                    <ListChecks
-                      aria-hidden="true"
-                      className="w-5 h-5 text-primary"
-                    />
-                    <h2 className="text-lg font-semibold text-slate-800">
-                      Day Status
-                    </h2>
-                  </div>
-
-                  {canReview && summary.missing.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={openMissingEditor}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors duration-200"
-                    >
-                      <Plus className="w-4 h-4" />
-                      {`Add Missing Punch${
-                        summary.missing.length === 1 ? "" : "es"
-                      }`}
-                    </button>
-                  )}
+              {/* Day status section */}
+              <section className="space-y-4" aria-labelledby="day-status">
+                <div className="flex items-center gap-2">
+                  <ListChecks
+                    aria-hidden="true"
+                    className="w-5 h-5 text-primary"
+                  />
+                  <h2
+                    id="day-status"
+                    className="text-lg font-semibold text-slate-800"
+                  >
+                    Day status
+                  </h2>
                 </div>
 
                 {summary.missing.length > 0 ? (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
                     <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      <AlertTriangle
+                        className="w-4 h-4 text-amber-600"
+                        aria-hidden="true"
+                      />
                       <p className="text-sm font-semibold text-amber-800">
                         {summary.isEmpty
                           ? "No active punches for this day"
@@ -732,7 +885,10 @@ export default function ClockPunchDetailPage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-4">
-                    <CircleCheck className="h-4 w-4 text-green-600" />
+                    <CircleCheck
+                      className="w-4 h-4 text-green-600"
+                      aria-hidden="true"
+                    />
                     <p className="text-sm font-semibold text-green-800">
                       The shift is complete for this day
                     </p>
@@ -744,38 +900,25 @@ export default function ClockPunchDetailPage() {
                     key={warning.code + warning.label}
                     className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-4"
                   >
-                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+                    <Info
+                      className="mt-0.5 w-4 h-4 shrink-0 text-blue-600"
+                      aria-hidden="true"
+                    />
                     <p className="text-sm text-blue-800">{warning.label}</p>
                   </div>
                 ))}
-              </div>
+              </section>
 
-              {/* Punch Timeline Section */}
-              <div className="space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Clock
-                      aria-hidden="true"
-                      className="w-5 h-5 text-primary"
-                    />
-                    <h2 className="text-lg font-semibold text-slate-800">
-                      Punch Timeline
-                    </h2>
-                  </div>
-
-                  {canReview && pendingCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleApproveAll}
-                      disabled={isBulkApproving}
-                      className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-medium transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      {isBulkApproving
-                        ? "Approving..."
-                        : `Approve All Pending (${pendingCount})`}
-                    </button>
-                  )}
+              {/* Punch timeline section */}
+              <section className="space-y-4" aria-labelledby="punch-timeline">
+                <div className="flex items-center gap-2">
+                  <Clock aria-hidden="true" className="w-5 h-5 text-primary" />
+                  <h2
+                    id="punch-timeline"
+                    className="text-lg font-semibold text-slate-800"
+                  >
+                    Punch timeline
+                  </h2>
                 </div>
 
                 <div className="border border-slate-200 rounded-lg overflow-hidden">
@@ -783,26 +926,29 @@ export default function ClockPunchDetailPage() {
                     <table className="min-w-full divide-y divide-slate-200">
                       <thead className="bg-slate-50">
                         <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                          <th scope="col" className={TH}>
                             Time
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                          <th scope="col" className={TH}>
                             Action
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                          <th scope="col" className={TH}>
                             Source
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                            Review Status
+                          <th scope="col" className={TH}>
+                            Review status
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                          <th scope="col" className={TH}>
                             Reviewed
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
+                          <th scope="col" className={TH}>
                             Notes
                           </th>
                           {canReview && (
-                            <th className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-slate-500">
+                            <th
+                              scope="col"
+                              className="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-slate-500"
+                            >
                               Actions
                             </th>
                           )}
@@ -811,21 +957,30 @@ export default function ClockPunchDetailPage() {
                       <tbody className="divide-y divide-slate-200 bg-white">
                         {punches.length === 0 ? (
                           <tr>
-                            <td
-                              colSpan={canReview ? 7 : 6}
-                              className="px-4 py-6 text-center text-sm text-slate-500"
-                            >
-                              No punches recorded for this day.
+                            <td colSpan={canReview ? 7 : 6} className="py-12">
+                              <div className="flex flex-col items-center justify-center">
+                                <Clock
+                                  aria-hidden="true"
+                                  className="w-8 h-8 text-slate-300 mb-4"
+                                />
+                                <p className="text-sm text-slate-600">
+                                  No punches recorded for this day.
+                                </p>
+                              </div>
                             </td>
                           </tr>
                         ) : (
                           punches.map((punch) => {
                             const isBusy = pendingPunchId === punch.id;
+                            const label = punchLabel(punch);
 
                             return (
-                              <tr key={punch.id} className="hover:bg-slate-50">
-                                <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-slate-700">
-                                  {toDisplayTime(punch.punched_at)}
+                              <tr
+                                key={punch.id}
+                                className="hover:bg-slate-50 transition-colors"
+                              >
+                                <td className="whitespace-nowrap px-4 py-3 text-sm font-medium font-mono tabular-nums text-slate-700">
+                                  {toDisplayTime(punch.punched_at) || "—"}
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3">
                                   <span
@@ -834,10 +989,11 @@ export default function ClockPunchDetailPage() {
                                       actionStyles.CLOCK_OUT
                                     }`}
                                   >
-                                    {formatClockPunchAction(punch.action)}
+                                    {formatClockPunchAction(punch.action) ||
+                                      "—"}
                                   </span>
                                 </td>
-                                <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
+                                <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">
                                   {punch.punch_type === "MANUAL"
                                     ? "Manual"
                                     : punch.punch_type === "NFC"
@@ -856,53 +1012,61 @@ export default function ClockPunchDetailPage() {
                                       reviewStyles.PENDING
                                     }`}
                                   >
-                                    {formatLabel(punch.review_status)}
+                                    {formatLabel(punch.review_status) || "—"}
                                   </span>
                                 </td>
-                                <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
+                                <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700">
                                   {punch.reviewed_by?.username ? (
                                     <>
                                       {punch.reviewed_by.username}
                                       <span className="block text-xs text-slate-500">
-                                        {toDisplayStamp(punch.reviewed_at)}
+                                        {toDisplayStamp(punch.reviewed_at) ||
+                                          "—"}
                                       </span>
                                     </>
                                   ) : (
-                                    <span className="text-slate-500">—</span>
+                                    "—"
                                   )}
                                 </td>
-                                <td className="px-4 py-3 text-sm text-slate-600 max-w-xs">
+                                <td className="px-4 py-3 text-sm text-slate-700 max-w-xs">
                                   {punch.review_notes ? (
-                                    <span className="line-clamp-2">
+                                    <span
+                                      className="line-clamp-2"
+                                      title={punch.review_notes}
+                                    >
                                       {punch.review_notes}
                                     </span>
                                   ) : (
-                                    <span className="text-slate-500">—</span>
+                                    "—"
                                   )}
                                 </td>
                                 {canReview && (
                                   <td className="whitespace-nowrap px-4 py-3">
-                                    <div className="flex items-center justify-end gap-1.5">
+                                    <div className="flex items-center justify-end gap-2">
                                       {canEditTime && (
                                         <button
                                           type="button"
                                           title="Edit punch time"
-                                          aria-label="Edit punch time"
+                                          aria-label={`Edit time for ${label}`}
                                           onClick={() => openTimeEditor(punch)}
                                           disabled={isBusy}
-                                          className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${actionButtonClasses(
-                                            isBusy,
-                                            "border-primary/40 text-primary hover:bg-primary/10",
-                                          )}`}
+                                          className={`${ICON_BUTTON} text-primary hover:bg-primary/10`}
                                         >
-                                          <PencilLine className="h-4 w-4" />
+                                          <PencilLine
+                                            className="w-4 h-4"
+                                            aria-hidden="true"
+                                          />
                                         </button>
                                       )}
 
                                       <button
                                         type="button"
-                                        title="Approve"
-                                        aria-label="Approve punch"
+                                        title={
+                                          punch.review_status === "APPROVED"
+                                            ? "Already approved"
+                                            : "Approve"
+                                        }
+                                        aria-label={`Approve ${label}`}
                                         onClick={() =>
                                           handleReviewStatusChange(
                                             punch.id,
@@ -913,37 +1077,43 @@ export default function ClockPunchDetailPage() {
                                           isBusy ||
                                           punch.review_status === "APPROVED"
                                         }
-                                        className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${actionButtonClasses(
-                                          isBusy ||
-                                            punch.review_status === "APPROVED",
-                                          "border-green-200 text-green-600 hover:bg-green-50",
-                                        )}`}
+                                        className={`${ICON_BUTTON} text-green-700 hover:bg-green-50`}
                                       >
-                                        <CheckCircle2 className="h-4 w-4" />
+                                        <CheckCircle2
+                                          className="w-4 h-4"
+                                          aria-hidden="true"
+                                        />
                                       </button>
 
                                       <button
                                         type="button"
-                                        title="Reject"
-                                        aria-label="Reject punch"
+                                        title={
+                                          punch.review_status === "REJECTED"
+                                            ? "Already rejected"
+                                            : "Reject"
+                                        }
+                                        aria-label={`Reject ${label}`}
                                         onClick={() => setPunchToReject(punch)}
                                         disabled={
                                           isBusy ||
                                           punch.review_status === "REJECTED"
                                         }
-                                        className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${actionButtonClasses(
-                                          isBusy ||
-                                            punch.review_status === "REJECTED",
-                                          "border-red-200 text-red-600 hover:bg-red-50",
-                                        )}`}
+                                        className={`${ICON_BUTTON} text-red-600 hover:bg-red-50`}
                                       >
-                                        <XCircle className="h-4 w-4" />
+                                        <XCircle
+                                          className="w-4 h-4"
+                                          aria-hidden="true"
+                                        />
                                       </button>
 
                                       <button
                                         type="button"
-                                        title="Reset to pending"
-                                        aria-label="Reset punch to pending"
+                                        title={
+                                          punch.review_status === "PENDING"
+                                            ? "Already pending"
+                                            : "Reset to pending"
+                                        }
+                                        aria-label={`Reset ${label} to pending`}
                                         onClick={() =>
                                           handleReviewStatusChange(
                                             punch.id,
@@ -954,27 +1124,26 @@ export default function ClockPunchDetailPage() {
                                           isBusy ||
                                           punch.review_status === "PENDING"
                                         }
-                                        className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${actionButtonClasses(
-                                          isBusy ||
-                                            punch.review_status === "PENDING",
-                                          "border-slate-300 text-slate-600 hover:bg-slate-100",
-                                        )}`}
+                                        className={`${ICON_BUTTON} text-slate-600 hover:bg-slate-100`}
                                       >
-                                        <RotateCcw className="h-4 w-4" />
+                                        <RotateCcw
+                                          className="w-4 h-4"
+                                          aria-hidden="true"
+                                        />
                                       </button>
 
                                       <button
                                         type="button"
                                         title="Review notes"
-                                        aria-label="Review notes"
+                                        aria-label={`Review notes for ${label}`}
                                         onClick={() => openNotes(punch)}
                                         disabled={isBusy}
-                                        className={`flex h-8 w-8 items-center justify-center rounded-lg border transition-colors ${actionButtonClasses(
-                                          isBusy,
-                                          "border-slate-300 text-slate-600 hover:bg-slate-100",
-                                        )}`}
+                                        className={`${ICON_BUTTON} text-slate-600 hover:bg-slate-100`}
                                       >
-                                        <MessageSquare className="h-4 w-4" />
+                                        <MessageSquare
+                                          className="w-4 h-4"
+                                          aria-hidden="true"
+                                        />
                                       </button>
                                     </div>
                                   </td>
@@ -990,45 +1159,61 @@ export default function ClockPunchDetailPage() {
 
                 {!canReview && (
                   <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                    <Info
+                      className="mt-0.5 w-4 h-4 shrink-0 text-slate-500"
+                      aria-hidden="true"
+                    />
                     <p className="text-sm text-slate-600">
                       Only administrators can approve or reject clock punches.
                     </p>
                   </div>
                 )}
-              </div>
+              </section>
             </div>
           )}
         </div>
-      </div>
+      </main>
 
       <DeleteConfirmation
         isOpen={Boolean(punchToReject)}
         onClose={() => setPunchToReject(null)}
         onConfirm={handleRejectConfirmed}
         isDeleting={isRejecting}
-        heading="Clock Punch"
-        title="Reject Clock Punch"
-        confirmButtonText="Reject Punch"
+        heading="clock punch"
+        title="Reject clock punch"
+        warningHeading="This will reject the punch"
+        confirmButtonText="Reject punch"
         confirmingText="Rejecting..."
         message={
           punchToReject
-            ? `Reject the ${formatClockPunchAction(
-                punchToReject.action,
-              )} punch at ${toDisplayTime(
-                punchToReject.punched_at,
+            ? `Reject ${employeeName(employeeGroup)}'s ${punchLabel(
+                punchToReject,
+              )} on ${formatLongDate(
+                groupDate,
               )}? It stops counting towards the day's hours but stays in the audit history.`
             : ""
         }
       />
 
       {isAddingMissing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-xl border border-slate-200 bg-white">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
+          onClick={() => {
+            if (!isMissingDirty && !isSavingMissing) closeMissingEditor();
+          }}
+        >
+          <div
+            ref={missingModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add missing punches"
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-xl border border-slate-200 bg-white"
+          >
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-semibold text-slate-800">
-                Add Missing Punch{missingDrafts.length === 1 ? "" : "es"}
-              </h3>
+              <h2 className="text-lg font-semibold text-slate-800">
+                Add missing punch{missingDrafts.length === 1 ? "" : "es"}
+              </h2>
               <button
                 type="button"
                 onClick={closeMissingEditor}
@@ -1039,24 +1224,30 @@ export default function ClockPunchDetailPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4 px-6 py-4">
+            <div className="flex-1 overflow-y-auto space-y-4 p-6">
               <p className="text-sm text-slate-600">
                 {formatLongDate(groupDate)} &bull; {employeeName(employeeGroup)}
               </p>
 
               {summary.lastPunch ? (
                 <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                  <Info
+                    className="mt-0.5 w-4 h-4 shrink-0 text-slate-500"
+                    aria-hidden="true"
+                  />
                   <p className="text-sm text-slate-600">
                     The last punch recorded was{" "}
                     {formatClockPunchAction(summary.lastPunch.action)} at{" "}
-                    {toDisplayTime(summary.lastPunch.punched_at)}. Anything
-                    added has to come after it.
+                    {toDisplayTime(summary.lastPunch.punched_at) || "—"}.
+                    Anything added has to come after it.
                   </p>
                 </div>
               ) : (
                 <div className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <Info className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+                  <Info
+                    className="mt-0.5 w-4 h-4 shrink-0 text-slate-500"
+                    aria-hidden="true"
+                  />
                   <p className="text-sm text-slate-600">
                     No active punches are recorded for this day yet.
                   </p>
@@ -1064,49 +1255,84 @@ export default function ClockPunchDetailPage() {
               )}
 
               <div className="space-y-3">
-                {missingDrafts.map((draft, index) => (
-                  <div
-                    key={draft.action}
-                    className="flex flex-wrap items-center justify-between gap-3"
-                  >
-                    <div>
-                      <span
-                        className={`${BADGE} ${
-                          actionStyles[draft.action] || actionStyles.CLOCK_OUT
+                {missingDrafts.map((draft, index) => {
+                  const inputId = `missing-time-${draft.action}`;
+                  const errorId = `${inputId}-error`;
+                  const hasError = missingError?.action === draft.action;
+
+                  return (
+                    <div
+                      key={draft.action}
+                      className="flex flex-wrap items-center justify-between gap-3"
+                    >
+                      <div>
+                        <label htmlFor={inputId} className="block">
+                          <span
+                            className={`${BADGE} ${
+                              actionStyles[draft.action] ||
+                              actionStyles.CLOCK_OUT
+                            }`}
+                          >
+                            {formatClockPunchAction(draft.action)}
+                          </span>
+                        </label>
+                        {index > 0 && (
+                          <p className="mt-1 text-xs text-slate-500">
+                            Optional &mdash; leave blank to skip
+                          </p>
+                        )}
+                      </div>
+
+                      <input
+                        id={inputId}
+                        type="time"
+                        value={draft.time}
+                        data-autofocus={index === 0 ? true : undefined}
+                        aria-invalid={hasError || undefined}
+                        aria-describedby={hasError ? errorId : undefined}
+                        onChange={(event) =>
+                          updateMissingDraft(draft.action, event.target.value)
+                        }
+                        className={`w-40 px-3 py-2 ${
+                          hasError ? INPUT_INVALID : INPUT_BASE
                         }`}
-                      >
-                        {formatClockPunchAction(draft.action)}
-                      </span>
-                      {index > 0 && (
-                        <p className="mt-1 text-xs text-slate-500">
-                          Optional &mdash; leave blank to skip
+                      />
+
+                      {hasError && (
+                        <p
+                          id={errorId}
+                          role="alert"
+                          className="basis-full text-xs text-red-600"
+                        >
+                          {missingError.message}
                         </p>
                       )}
                     </div>
+                  );
+                })}
 
-                    <input
-                      type="time"
-                      value={draft.time}
-                      onChange={(event) =>
-                        updateMissingDraft(draft.action, event.target.value)
-                      }
-                      className="w-40 rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-800 transition-colors duration-200 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                ))}
+                {missingError &&
+                  !missingDrafts.some(
+                    (draft) => draft.action === missingError.action,
+                  ) && (
+                    <p role="alert" className="text-xs text-red-600">
+                      {missingError.message}
+                    </p>
+                  )}
               </div>
 
               <p className="text-xs text-slate-500">
-                Times are Adelaide time on {groupDate}. Added punches are
-                recorded as manual entries against your account.
+                Times are Adelaide time on {formatLongDate(groupDate)}. Added
+                punches are recorded as manual entries against your account.
               </p>
             </div>
 
-            <div className="shrink-0 flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+            <div className="shrink-0 flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
               <button
                 type="button"
                 onClick={closeMissingEditor}
-                className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
+                disabled={isSavingMissing}
+                className={BUTTON_SECONDARY}
               >
                 Cancel
               </button>
@@ -1114,18 +1340,26 @@ export default function ClockPunchDetailPage() {
                 type="button"
                 onClick={() => handleSaveMissing(false)}
                 disabled={isSavingMissing}
-                className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                className={BUTTON_SECONDARY}
               >
-                {isSavingMissing ? "Adding..." : "Add"}
+                {isSavingMissing && !isApprovingMissing
+                  ? "Adding..."
+                  : "Add as pending"}
               </button>
               <button
                 type="button"
                 onClick={() => handleSaveMissing(true)}
                 disabled={isSavingMissing}
-                className="cursor-pointer flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
+                className={BUTTON_PRIMARY}
               >
-                <CheckCircle2 className="h-4 w-4" />
-                {isSavingMissing ? "Adding..." : "Add & Approve"}
+                {isSavingMissing && isApprovingMissing ? (
+                  <ButtonSpinner />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                )}
+                {isSavingMissing && isApprovingMissing
+                  ? "Adding..."
+                  : "Add and approve"}
               </button>
             </div>
           </div>
@@ -1133,12 +1367,24 @@ export default function ClockPunchDetailPage() {
       )}
 
       {timePunch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-xl border border-slate-200 bg-white">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
+          onClick={() => {
+            if (!isTimeDirty && !isSavingTime) closeTimeEditor();
+          }}
+        >
+          <div
+            ref={timeModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Edit punch time"
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-xl border border-slate-200 bg-white"
+          >
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-semibold text-slate-800">
-                Edit Punch Time
-              </h3>
+              <h2 className="text-lg font-semibold text-slate-800">
+                Edit punch time
+              </h2>
               <button
                 type="button"
                 onClick={closeTimeEditor}
@@ -1149,9 +1395,12 @@ export default function ClockPunchDetailPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4 px-6 py-4">
+            <div className="flex-1 overflow-y-auto space-y-4 p-6">
               <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                <AlertTriangle
+                  className="mt-0.5 w-4 h-4 shrink-0 text-amber-600"
+                  aria-hidden="true"
+                />
                 <p className="text-sm text-amber-800">
                   Overwriting a recorded punch time changes the hours for this
                   day. The change is kept in the activity log.
@@ -1160,14 +1409,14 @@ export default function ClockPunchDetailPage() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <p className="mb-1 text-sm font-medium text-slate-700">
+                  <p className="mb-1.5 text-sm font-medium text-slate-700">
                     Punch
                   </p>
                   <p className="text-sm font-semibold text-slate-800">
                     {formatClockPunchAction(timePunch.action)}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Recorded at {toDisplayTime(timePunch.punched_at)} on{" "}
+                    Recorded at {toDisplayTime(timePunch.punched_at) || "—"} on{" "}
                     {formatLongDate(groupDate)}
                   </p>
                 </div>
@@ -1175,18 +1424,43 @@ export default function ClockPunchDetailPage() {
                 <div>
                   <label
                     htmlFor="punch-time"
-                    className="mb-1 block text-sm font-medium text-slate-700"
+                    className="mb-1.5 block text-sm font-medium text-slate-700"
                   >
-                    New time <span className="text-red-500">*</span>
+                    New time <span className="text-red-600">*</span>
                   </label>
                   <input
                     id="punch-time"
                     type="time"
+                    required
                     value={timeDraft}
-                    onChange={(event) => setTimeDraft(event.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-800 transition-colors duration-200 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-primary"
+                    data-autofocus
+                    aria-invalid={timeError ? true : undefined}
+                    aria-describedby={
+                      timeError
+                        ? "punch-time-error punch-time-hint"
+                        : "punch-time-hint"
+                    }
+                    onChange={(event) => {
+                      setTimeDraft(event.target.value);
+                      setTimeError("");
+                    }}
+                    className={`px-4 py-3 ${
+                      timeError ? INPUT_INVALID : INPUT_BASE
+                    }`}
                   />
-                  <p className="mt-1 text-xs text-slate-500">
+                  {timeError && (
+                    <p
+                      id="punch-time-error"
+                      role="alert"
+                      className="mt-1 text-xs text-red-600"
+                    >
+                      {timeError}
+                    </p>
+                  )}
+                  <p
+                    id="punch-time-hint"
+                    className="mt-1 text-xs text-slate-500"
+                  >
                     Adelaide time, on the same day as the original punch
                   </p>
                 </div>
@@ -1195,7 +1469,7 @@ export default function ClockPunchDetailPage() {
               <div>
                 <label
                   htmlFor="punch-time-notes"
-                  className="mb-1 block text-sm font-medium text-slate-700"
+                  className="mb-1.5 block text-sm font-medium text-slate-700"
                 >
                   Review notes
                 </label>
@@ -1205,17 +1479,18 @@ export default function ClockPunchDetailPage() {
                   onChange={(event) => setTimeNotesDraft(event.target.value)}
                   maxLength={MAX_REVIEW_NOTES_LENGTH}
                   rows={3}
-                  placeholder="Explain why this time was overwritten..."
-                  className="w-full resize-y rounded-lg border border-slate-300 px-4 py-3 text-sm text-slate-800 transition-colors duration-200 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-primary"
+                  placeholder="e.g. Forgot to clock in, confirmed with the supervisor"
+                  className={`resize-y px-4 py-3 ${INPUT_BASE}`}
                 />
               </div>
             </div>
 
-            <div className="shrink-0 flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+            <div className="shrink-0 flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
               <button
                 type="button"
                 onClick={closeTimeEditor}
-                className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
+                disabled={isSavingTime}
+                className={BUTTON_SECONDARY}
               >
                 Cancel
               </button>
@@ -1223,9 +1498,10 @@ export default function ClockPunchDetailPage() {
                 type="button"
                 onClick={handleSaveTime}
                 disabled={isSavingTime || !timeDraft}
-                className="cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
+                className={BUTTON_PRIMARY}
               >
-                {isSavingTime ? "Saving..." : "Save Time"}
+                {isSavingTime && <ButtonSpinner />}
+                {isSavingTime ? "Saving..." : "Save time"}
               </button>
             </div>
           </div>
@@ -1233,12 +1509,24 @@ export default function ClockPunchDetailPage() {
       )}
 
       {notesPunch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-xl border border-slate-200 bg-white">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
+          onClick={() => {
+            if (!isNotesDirty && !isSavingNotes) setNotesPunch(null);
+          }}
+        >
+          <div
+            ref={notesModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Review notes"
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-xl border border-slate-200 bg-white"
+          >
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-              <h3 className="text-lg font-semibold text-slate-800">
-                Review Notes
-              </h3>
+              <h2 className="text-lg font-semibold text-slate-800">
+                Review notes
+              </h2>
               <button
                 type="button"
                 onClick={() => setNotesPunch(null)}
@@ -1249,29 +1537,37 @@ export default function ClockPunchDetailPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-4">
-              <p className="mb-3 text-sm text-slate-600">
-                {formatClockPunchAction(notesPunch.action)} at{" "}
-                {toDisplayTime(notesPunch.punched_at)}
+            <div className="flex-1 overflow-y-auto p-6">
+              <p className="mb-4 text-sm text-slate-600">
+                {punchLabel(notesPunch)}
               </p>
+              <label
+                htmlFor="punch-review-notes"
+                className="mb-1.5 block text-sm font-medium text-slate-700"
+              >
+                Note
+              </label>
               <textarea
+                id="punch-review-notes"
                 value={notesDraft}
+                data-autofocus
                 onChange={(event) => setNotesDraft(event.target.value)}
                 maxLength={MAX_REVIEW_NOTES_LENGTH}
                 rows={5}
-                placeholder="Add a note explaining this review decision..."
-                className="w-full resize-y rounded-lg border border-slate-300 px-4 py-3 text-sm text-slate-800 transition-colors duration-200 focus:outline-none focus:border-transparent focus:ring-2 focus:ring-primary"
+                placeholder="e.g. Approved after confirming the finish time with the supervisor"
+                className={`resize-y px-4 py-3 ${INPUT_BASE}`}
               />
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs tabular-nums text-slate-500">
                 {notesDraft.length}/{MAX_REVIEW_NOTES_LENGTH}
               </p>
             </div>
 
-            <div className="shrink-0 flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+            <div className="shrink-0 flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
               <button
                 type="button"
                 onClick={() => setNotesPunch(null)}
-                className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100"
+                disabled={isSavingNotes}
+                className={BUTTON_SECONDARY}
               >
                 Cancel
               </button>
@@ -1279,9 +1575,10 @@ export default function ClockPunchDetailPage() {
                 type="button"
                 onClick={handleSaveNotes}
                 disabled={isSavingNotes}
-                className="cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50"
+                className={BUTTON_PRIMARY}
               >
-                {isSavingNotes ? "Saving..." : "Save Notes"}
+                {isSavingNotes && <ButtonSpinner />}
+                {isSavingNotes ? "Saving..." : "Save notes"}
               </button>
             </div>
           </div>

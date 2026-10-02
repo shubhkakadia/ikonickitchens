@@ -7,9 +7,14 @@ import { describeAuthorization } from "../../../helpers/authCases";
 
 // sendNotification sends real WhatsApp messages; never call it in tests.
 vi.mock("@/lib/notification", () => ({ sendNotification: vi.fn() }));
+vi.mock("@/lib/updates", async (importOriginal) => ({
+  ...(await importOriginal()),
+  publishUpdate: vi.fn(),
+}));
 
 const { PATCH, DELETE } = await import("@/app/api/v1/stage/[id]/route");
 const { sendNotification } = await import("@/lib/notification");
+const { publishUpdate } = await import("@/lib/updates");
 
 const ID = "stage-1";
 const URL = `/api/v1/stage/${ID}`;
@@ -294,9 +299,7 @@ describe("PATCH /api/v1/stage/[id]", () => {
         });
         prismaMock.lot.findMany.mockResolvedValue(siblings);
         prismaMock.stage.findFirst.mockImplementation(async ({ where }) =>
-          existing[where.lot_id]
-            ? { stage_id: existing[where.lot_id] }
-            : null,
+          existing[where.lot_id] ? { stage_id: existing[where.lot_id] } : null,
         );
         prismaMock.stage.create.mockImplementation(async ({ data }) => ({
           stage_id: `new-${data.lot_id}`,
@@ -471,6 +474,59 @@ describe("PATCH /api/v1/stage/[id]", () => {
         const res = await patch({ status: "DONE" });
 
         expect(res.status).toBe(200);
+      });
+    });
+
+    describe("updates feed", () => {
+      const withLot = (overrides = {}) =>
+        completeStage({
+          lot: {
+            name: "Lot 1",
+            project_id: "btto-001",
+            project: { name: "Smith House", client: { client_name: "Acme" } },
+          },
+          ...overrides,
+        });
+
+      it("publishes a stage update with the status change and a link to the lot", async () => {
+        mockUpdate({ complete: withLot({ status: "DONE" }) });
+
+        await patch({ status: "DONE" });
+
+        expect(publishUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "STAGE_UPDATED",
+            title: "Stage updated",
+            message: "Drafting: status not started → done (Lot 1, Smith House)",
+            url: "/admin/projects/btto-001?lot=btto-001-l1&tab=overview",
+            dedupeKey: `stage:${ID}`,
+            windowMinutes: 5,
+          }),
+        );
+      });
+
+      it("reports a changed assignee list", async () => {
+        prismaMock.stage_employee.findMany.mockResolvedValue([
+          { employee_id: "emp-1" },
+        ]);
+        mockUpdate({
+          complete: withLot({ assigned_to: [{ employee_id: "emp-2" }] }),
+        });
+
+        await patch({ assigned_to: ["emp-2"] });
+
+        expect(publishUpdate.mock.calls[0][0].message).toContain(
+          "assignees changed",
+        );
+      });
+
+      it("publishes nothing when the save changed nothing", async () => {
+        mockUpdate({ complete: withLot() });
+
+        const res = await patch({ notes: "" });
+
+        expect(res.status).toBe(200);
+        expect(publishUpdate).not.toHaveBeenCalled();
       });
     });
 

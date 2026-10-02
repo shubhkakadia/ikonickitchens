@@ -7,9 +7,10 @@ import {
   ArrowUp,
   ArrowUpDown,
   Calendar,
+  Check,
   CheckCircle2,
   ChevronDown,
-  Coffee,
+  Clock,
   Funnel,
   Plus,
   RotateCcw,
@@ -17,6 +18,7 @@ import {
   Sheet,
   UserRound,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
@@ -25,7 +27,7 @@ import "react-toastify/dist/ReactToastify.css";
 import AdminShell from "@/components/AdminShell";
 import PaginationFooter from "@/components/PaginationFooter";
 import SearchBar from "@/components/SearchBar";
-import TabsController from "@/components/tabscontroller";
+import { BUTTON_COUNT_BADGE } from "@/app/admin/dashboard/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
 import { useExcelExport } from "@/hooks/useExcelExport";
 import {
@@ -43,6 +45,27 @@ import {
 const DEFAULT_DATES_PER_PAGE = 10;
 const TABLE_KEY = "clock_punches";
 const CLOCK_PUNCH_TIME_ZONE = "Australia/Adelaide";
+
+const TABLE_COLUMNS = 6;
+
+// Fields the list can be sorted by. Used by both the "Sort by" menu and the
+// column headers so the two never drift apart.
+const SORT_OPTIONS = [
+  { field: "date", label: "Date" },
+  { field: "employee", label: "Employee" },
+  { field: "hours", label: "Working hours" },
+];
+
+const MENU_ITEM =
+  "cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between";
+const MENU_CHECK_ROW =
+  "cursor-pointer flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors";
+const CHECKBOX =
+  "h-4 w-4 accent-primary border-slate-300 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const INPUT =
+  "w-full text-sm text-slate-800 px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent";
 
 const BREAK_STATUS_OPTIONS = ["ON_BREAK", "BREAK_COMPLETED", "NO_BREAK"];
 const REVIEW_STATUS_OPTIONS = ["PENDING", "APPROVED", "REJECTED", "MIXED"];
@@ -127,6 +150,46 @@ function toStatusParam(selected, options) {
   return [...selected].sort().join(",");
 }
 
+// Sortable column header. The label is a real button so the sort is reachable
+// by keyboard (DESIGN.md 13.7); the active column carries the only indicator.
+function SortHeader({
+  field,
+  label,
+  sortField,
+  sortOrder,
+  onSort,
+  icon,
+  alignRight = false,
+}) {
+  const isActive = sortField === field;
+  const ariaSort = isActive
+    ? sortOrder === "asc"
+      ? "ascending"
+      : "descending"
+    : undefined;
+
+  return (
+    <th
+      scope="col"
+      aria-sort={ariaSort}
+      className={`px-4 py-2 text-xs font-medium uppercase tracking-wider text-slate-500 ${
+        alignRight ? "text-right" : "text-left"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className={`flex cursor-pointer items-center gap-2 rounded-sm uppercase tracking-wider transition-colors duration-200 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary ${
+          alignRight ? "ml-auto" : ""
+        }`}
+      >
+        {label}
+        {icon}
+      </button>
+    </th>
+  );
+}
+
 function StatusFilterDropdown({
   label,
   options,
@@ -142,39 +205,38 @@ function StatusFilterDropdown({
       <button
         type="button"
         onClick={() => onOpenChange(!isOpen)}
-        className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-colors duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+        aria-haspopup="true"
+        aria-expanded={isOpen}
+        className={BTN_SECONDARY}
       >
-        <Funnel className="h-4 w-4" />
+        <Funnel className="h-4 w-4" aria-hidden="true" />
         <span>{label}</span>
         {hiddenCount > 0 && (
-          <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-            {hiddenCount}
-          </span>
+          <span className={BUTTON_COUNT_BADGE}>{hiddenCount}</span>
         )}
       </button>
       {isOpen && (
         <div className="absolute top-full right-0 mt-1 w-60 bg-white border border-slate-300 rounded-lg z-40 max-h-96 overflow-y-auto">
           <div className="py-1">
-            <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-              <span className="font-semibold">Select All</span>
+            <label
+              className={`${MENU_CHECK_ROW} sticky top-0 bg-white border-b border-slate-200`}
+            >
+              <span className="font-medium">Select all</span>
               <input
                 type="checkbox"
                 checked={selected.length === options.length}
                 onChange={() => onToggle("Select All")}
-                className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                className={CHECKBOX}
               />
             </label>
             {options.map((option) => (
-              <label
-                key={option}
-                className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
-              >
+              <label key={option} className={MENU_CHECK_ROW}>
                 <span>{formatLabel(option)}</span>
                 <input
                   type="checkbox"
                   checked={selected.includes(option)}
                   onChange={() => onToggle(option)}
-                  className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                  className={CHECKBOX}
                 />
               </label>
             ))}
@@ -192,6 +254,10 @@ function ReviewStatusDropdown({
   isUpdating,
   onSelect,
 }) {
+  const reviewLabel = group.review_status
+    ? formatLabel(group.review_status)
+    : "—";
+
   return (
     <div
       className="dropdown-container relative inline-flex items-center gap-2"
@@ -202,15 +268,19 @@ function ReviewStatusDropdown({
           type="button"
           onClick={() => onOpenChange(!isOpen)}
           disabled={isUpdating}
-          className={`${BADGE} transition-colors ${
+          aria-haspopup="true"
+          aria-expanded={isOpen}
+          aria-label={`Review status: ${reviewLabel}. Change review status`}
+          className={`${BADGE} transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
             reviewStyles[group.review_status] || reviewStyles.PENDING
           } ${isUpdating ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:opacity-80"}`}
         >
           {group.review_status === "APPROVED" && (
-            <CheckCircle2 className="w-4 h-4" />
+            <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
           )}
-          <span>{formatLabel(group.review_status)}</span>
+          <span>{reviewLabel}</span>
           <ChevronDown
+            aria-hidden="true"
             className={`h-3 w-3 transition-transform duration-200 ${
               isOpen ? "rotate-180" : ""
             }`}
@@ -218,7 +288,7 @@ function ReviewStatusDropdown({
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 z-40 mt-1 w-40 rounded-lg border border-slate-300 bg-white">
+          <div className="absolute left-0 z-40 mt-1 w-44 rounded-lg border border-slate-300 bg-white">
             <div className="py-1">
               {REVIEW_STATUS_ACTIONS.map((status) => (
                 <button
@@ -228,17 +298,18 @@ function ReviewStatusDropdown({
                     if (group.review_status !== status) onSelect(status);
                     onOpenChange(false);
                   }}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-100"
+                  aria-current={
+                    group.review_status === status ? "true" : undefined
+                  }
+                  className={MENU_ITEM}
                 >
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      group.review_status === status
-                        ? reviewStyles[status]
-                        : "border border-transparent"
-                    }`}
-                  >
-                    {formatLabel(status)}
-                  </span>
+                  <span>{formatLabel(status)}</span>
+                  {group.review_status === status && (
+                    <Check
+                      className="h-4 w-4 text-primary"
+                      aria-hidden="true"
+                    />
+                  )}
                 </button>
               ))}
             </div>
@@ -247,7 +318,11 @@ function ReviewStatusDropdown({
       </div>
 
       {isUpdating && (
-        <div className="h-3 w-3 animate-spin rounded-full border-2 border-slate-400 border-t-transparent"></div>
+        <span
+          role="status"
+          aria-label="Updating review status"
+          className="h-3 w-3 animate-spin rounded-full border-2 border-slate-200 border-t-primary"
+        />
       )}
     </div>
   );
@@ -360,17 +435,25 @@ export default function ViewAllPunchesPage() {
     selectedColumns,
   });
 
-  // Close dropdowns when clicking outside
+  // Close dropdowns when clicking outside or pressing Escape
   useEffect(() => {
+    const closeAll = () => {
+      setOpenDropdown(null);
+      setOpenStatusDropdownId(null);
+    };
     const handleClickOutside = (event) => {
-      if (!event.target.closest(".dropdown-container")) {
-        setOpenDropdown(null);
-        setOpenStatusDropdownId(null);
-      }
+      if (!event.target.closest(".dropdown-container")) closeAll();
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") closeAll();
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, []);
 
   // Filters change the result set, so go back to the first page of dates.
@@ -393,7 +476,7 @@ export default function ViewAllPunchesPage() {
         setError("");
 
         if (!token) {
-          setError("No valid session found. Please log in again.");
+          setError("Your session has expired. Sign in again.");
           return;
         }
 
@@ -416,7 +499,10 @@ export default function ViewAllPunchesPage() {
         });
 
         if (!response.data.status) {
-          setError(response.data.message || "Failed to fetch clock punches");
+          setError(
+            response.data.message ||
+              "Couldn't load clock punches. Check your connection and try again.",
+          );
           return;
         }
 
@@ -433,7 +519,7 @@ export default function ViewAllPunchesPage() {
         console.error("Error fetching clock punches:", requestError);
         setError(
           requestError.response?.data?.message ||
-            "Unable to load clock punches. Please try again.",
+            "Couldn't load clock punches. Check your connection and try again.",
         );
       } finally {
         if (!controller.signal.aborted) setLoading(false);
@@ -508,12 +594,12 @@ export default function ViewAllPunchesPage() {
     setOpenDropdown(null);
   };
 
+  // Only the active column shows a sort indicator (DESIGN.md 15.4).
   const getSortIcon = (field) => {
-    if (sortField !== field)
-      return <ArrowUpDown className="h-4 w-4 text-slate-400" />;
+    if (sortField !== field) return null;
     if (sortOrder === "asc")
-      return <ArrowUp className="h-4 w-4 text-primary" />;
-    return <ArrowDown className="h-4 w-4 text-primary" />;
+      return <ArrowUp className="h-4 w-4 text-primary" aria-hidden="true" />;
+    return <ArrowDown className="h-4 w-4 text-primary" aria-hidden="true" />;
   };
 
   const handleStatusToggle = (setSelected, options) => (value) => {
@@ -567,7 +653,9 @@ export default function ViewAllPunchesPage() {
         );
 
         if (!response.data.status) {
-          toast.error(response.data.message || "Failed to update the punches");
+          toast.error(
+            response.data.message || "Couldn't update the punches. Try again.",
+          );
           return;
         }
       }
@@ -581,7 +669,7 @@ export default function ViewAllPunchesPage() {
       console.error("Error updating clock punch review status:", requestError);
       toast.error(
         requestError.response?.data?.message ||
-          "Failed to update the punches. Please try again.",
+          "Couldn't update the punches. Check your connection and try again.",
       );
     } finally {
       setUpdatingStatusId(null);
@@ -608,7 +696,7 @@ export default function ViewAllPunchesPage() {
     setOpenDropdown(null);
 
     if (!token) {
-      toast.error("No valid session found. Please login again.", {
+      toast.error("Your session has expired. Sign in again.", {
         position: "top-right",
         autoClose: 3000,
         hideProgressBar: false,
@@ -635,7 +723,8 @@ export default function ViewAllPunchesPage() {
 
       if (!response.data.status) {
         toast.error(
-          response.data.message || "Failed to load clock punches for export.",
+          response.data.message ||
+            "Couldn't load clock punches for export. Try again.",
           {
             position: "top-right",
             autoClose: 3000,
@@ -654,7 +743,7 @@ export default function ViewAllPunchesPage() {
       console.error("Error exporting clock punches:", requestError);
       toast.error(
         requestError.response?.data?.message ||
-          "Failed to export clock punches. Please try again.",
+          "Couldn't export clock punches. Check your connection and try again.",
         {
           position: "top-right",
           autoClose: 3000,
@@ -674,45 +763,17 @@ export default function ViewAllPunchesPage() {
     pagination.total_dates === 0 ||
     selectedColumns.length === 0;
 
-  // Only the very first load takes over the page; later refetches keep the
-  // toolbar in place and show the spinner inside the table.
-  const isInitialLoading = loading && dateGroups.length === 0;
+  const goToAddPunch = () => router.push("/admin/employees/punches/add");
 
-  if (isInitialLoading || error) {
-    return (
-      <AdminShell>
-        <div className="flex h-full flex-col overflow-hidden">
-          {isInitialLoading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <div className="animate-spin rounded-full w-8 h-8 border-2 border-primary border-t-transparent mx-auto mb-4" />
-                <p className="text-sm text-slate-600 font-medium">
-                  Loading clock punches...
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className="text-center">
-                <AlertTriangle
-                  aria-hidden="true"
-                  className="w-8 h-8 text-red-500 mx-auto mb-4"
-                />
-                <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
-                <button
-                  type="button"
-                  onClick={() => setRefreshKey((value) => value + 1)}
-                  className="cursor-pointer px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200"
-                >
-                  Try Again
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </AdminShell>
-    );
-  }
+  // Filters that narrow the list (sort does not hide records), used to tell
+  // "no records" apart from "no results for this filter" (DESIGN.md 15.4).
+  const isNarrowingFilterActive =
+    search !== "" ||
+    Boolean(startDate) ||
+    Boolean(endDate) ||
+    Boolean(breakStatusParam) ||
+    Boolean(reviewStatusParam) ||
+    Boolean(workingStatusParam);
 
   return (
     <AdminShell>
@@ -720,44 +781,50 @@ export default function ViewAllPunchesPage() {
         <div className="px-4 py-2 shrink-0">
           <div className="flex justify-between items-center">
             <h1 className="text-xl font-semibold text-slate-800">
-              Clock Punches
+              Clock punches
             </h1>
             <div className="flex items-center gap-2">
               <SearchBar />
-              <TabsController href="/admin/employees/punches/add">
-                <div className="cursor-pointer bg-primary hover:bg-primary/90 transition-colors duration-200 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium">
-                  <Plus className="h-4 w-4" />
-                  Add Punch
-                </div>
-              </TabsController>
+              <button
+                type="button"
+                onClick={goToAddPunch}
+                className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add punch
+              </button>
             </div>
           </div>
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-4">
-          <div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-300 bg-white">
+          <div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
             <div className="p-4 shrink-0 border-b border-slate-200">
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 {/* search bar */}
-                <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
-                  <Search className="h-4 w-4 absolute left-3 text-slate-400" />
+                <div className="flex items-center gap-2 flex-1 min-w-64 max-w-2xl relative">
+                  <Search
+                    className="h-4 w-4 absolute left-3 text-slate-400 pointer-events-none"
+                    aria-hidden="true"
+                  />
                   <input
                     type="text"
-                    placeholder="Search punches with employee name, employee id, role, date"
-                    className="w-full text-sm text-slate-800 px-3 py-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200"
+                    aria-label="Search clock punches"
+                    placeholder="Search by employee, employee ID, role or date"
+                    className="w-full text-sm text-slate-800 py-2 pr-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                   />
                 </div>
                 {/* reset, filters, sort by, export to excel */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {isAnyFilterActive && (
                     <button
                       type="button"
                       onClick={handleReset}
-                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-colors duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                      className={BTN_SECONDARY}
                     >
-                      <RotateCcw className="h-4 w-4" />
+                      <RotateCcw className="h-4 w-4" aria-hidden="true" />
                       <span>Reset</span>
                     </button>
                   )}
@@ -770,45 +837,53 @@ export default function ViewAllPunchesPage() {
                           openDropdown === "dates" ? null : "dates",
                         )
                       }
-                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-colors duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                      aria-haspopup="true"
+                      aria-expanded={openDropdown === "dates"}
+                      className={BTN_SECONDARY}
                     >
-                      <Calendar className="h-4 w-4" />
-                      <span>Filter by Dates</span>
+                      <Calendar className="h-4 w-4" aria-hidden="true" />
+                      <span>Filter by dates</span>
                       {(startDate || endDate) && (
-                        <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                          Active
-                        </span>
+                        <span className={BUTTON_COUNT_BADGE}>Active</span>
                       )}
                     </button>
                     {openDropdown === "dates" && (
                       <div className="absolute top-full right-0 mt-1 w-72 bg-white border border-slate-300 rounded-lg z-40 p-4">
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                              Start Date
+                            <label
+                              htmlFor="punch-start-date"
+                              className="block text-sm font-medium text-slate-700 mb-1.5"
+                            >
+                              Start date
                             </label>
                             <input
+                              id="punch-start-date"
                               type="date"
                               value={startDate}
                               onChange={(event) =>
                                 setStartDate(event.target.value)
                               }
                               max={endDate || undefined}
-                              className="w-full text-sm text-slate-800 px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200"
+                              className={INPUT}
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">
-                              End Date
+                            <label
+                              htmlFor="punch-end-date"
+                              className="block text-sm font-medium text-slate-700 mb-1.5"
+                            >
+                              End date
                             </label>
                             <input
+                              id="punch-end-date"
                               type="date"
                               value={endDate}
                               onChange={(event) =>
                                 setEndDate(event.target.value)
                               }
                               min={startDate || undefined}
-                              className="w-full text-sm text-slate-800 px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200"
+                              className={INPUT}
                             />
                           </div>
                           {(startDate || endDate) && (
@@ -818,9 +893,9 @@ export default function ViewAllPunchesPage() {
                                 setStartDate("");
                                 setEndDate("");
                               }}
-                              className="w-full cursor-pointer text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-50 px-3 py-2 rounded-lg transition-colors duration-200"
+                              className="w-full cursor-pointer text-sm font-medium text-slate-600 hover:bg-slate-100 px-3 py-2 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary"
                             >
-                              Clear Dates
+                              Clear dates
                             </button>
                           )}
                         </div>
@@ -829,7 +904,7 @@ export default function ViewAllPunchesPage() {
                   </div>
 
                   <StatusFilterDropdown
-                    label="Break Status"
+                    label="Break status"
                     options={BREAK_STATUS_OPTIONS}
                     selected={breakStatuses}
                     onToggle={handleStatusToggle(
@@ -843,7 +918,7 @@ export default function ViewAllPunchesPage() {
                   />
 
                   <StatusFilterDropdown
-                    label="Review Status"
+                    label="Review status"
                     options={REVIEW_STATUS_OPTIONS}
                     selected={reviewStatuses}
                     onToggle={handleStatusToggle(
@@ -857,7 +932,7 @@ export default function ViewAllPunchesPage() {
                   />
 
                   <StatusFilterDropdown
-                    label="Working Status"
+                    label="Working status"
                     options={WORKING_STATUS_OPTIONS}
                     selected={workingStatuses}
                     onToggle={handleStatusToggle(
@@ -876,24 +951,22 @@ export default function ViewAllPunchesPage() {
                       onClick={() =>
                         setOpenDropdown(openDropdown === "sort" ? null : "sort")
                       }
-                      className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-colors duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                      aria-haspopup="true"
+                      aria-expanded={openDropdown === "sort"}
+                      className={BTN_SECONDARY}
                     >
-                      <ArrowUpDown className="h-4 w-4" />
+                      <ArrowUpDown className="h-4 w-4" aria-hidden="true" />
                       <span>Sort by</span>
                     </button>
                     {openDropdown === "sort" && (
                       <div className="absolute top-full right-0 mt-1 w-52 bg-white border border-slate-300 rounded-lg z-40">
                         <div className="py-1">
-                          {[
-                            ["date", "Date"],
-                            ["employee", "Employee"],
-                            ["hours", "Working Hours"],
-                          ].map(([field, label]) => (
+                          {SORT_OPTIONS.map(({ field, label }) => (
                             <button
                               key={field}
                               type="button"
                               onClick={() => handleSort(field)}
-                              className="cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 flex items-center justify-between"
+                              className={MENU_ITEM}
                             >
                               {label} {getSortIcon(field)}
                             </button>
@@ -903,21 +976,17 @@ export default function ViewAllPunchesPage() {
                     )}
                   </div>
 
-                  <div className="relative dropdown-container flex items-center">
+                  <div className="relative dropdown-container flex items-stretch">
                     <button
                       type="button"
                       onClick={handleExportToExcel}
                       disabled={exportDisabled}
-                      className={`flex items-center gap-2 transition-colors duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                        exportDisabled
-                          ? "opacity-50 cursor-not-allowed"
-                          : "cursor-pointer hover:bg-slate-100"
-                      }`}
+                      className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 border-r-0 hover:bg-slate-100 rounded-l-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Sheet className="h-4 w-4" />
+                      <Sheet className="h-4 w-4" aria-hidden="true" />
                       <span>
                         {isExporting || isPreparingExport
-                          ? "Exporting..."
+                          ? "Exporting…"
                           : "Export to Excel"}
                       </span>
                     </button>
@@ -929,39 +998,37 @@ export default function ViewAllPunchesPage() {
                         )
                       }
                       disabled={isExporting || isPreparingExport}
-                      className={`flex items-center transition-colors duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                        isExporting || isPreparingExport
-                          ? "opacity-50 cursor-not-allowed"
-                          : "cursor-pointer hover:bg-slate-100"
-                      }`}
+                      aria-label="Choose columns to export"
+                      aria-haspopup="true"
+                      aria-expanded={openDropdown === "columns"}
+                      className="cursor-pointer flex items-center px-2 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-r-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <ChevronDown className="h-5 w-5" />
+                      <ChevronDown className="h-4 w-4" aria-hidden="true" />
                     </button>
                     {openDropdown === "columns" && (
                       <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-300 rounded-lg z-40 max-h-96 overflow-y-auto">
                         <div className="py-1">
-                          <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                            <span className="font-semibold">Select All</span>
+                          <label
+                            className={`${MENU_CHECK_ROW} sticky top-0 bg-white border-b border-slate-200`}
+                          >
+                            <span className="font-medium">Select all</span>
                             <input
                               type="checkbox"
                               checked={
                                 selectedColumns.length === EXPORT_COLUMNS.length
                               }
                               onChange={() => handleColumnToggle("Select All")}
-                              className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                              className={CHECKBOX}
                             />
                           </label>
                           {EXPORT_COLUMNS.map((column) => (
-                            <label
-                              key={column}
-                              className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
-                            >
+                            <label key={column} className={MENU_CHECK_ROW}>
                               <span>{column}</span>
                               <input
                                 type="checkbox"
                                 checked={selectedColumns.includes(column)}
                                 onChange={() => handleColumnToggle(column)}
-                                className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
+                                className={CHECKBOX}
                               />
                             </label>
                           ))}
@@ -978,41 +1045,48 @@ export default function ViewAllPunchesPage() {
                 <table className="min-w-full divide-y divide-slate-200">
                   <thead className="sticky top-0 z-10 bg-slate-50">
                     <tr>
+                      <SortHeader
+                        field="date"
+                        label="Date"
+                        sortField={sortField}
+                        sortOrder={sortOrder}
+                        onSort={handleSort}
+                        icon={getSortIcon("date")}
+                      />
+                      <SortHeader
+                        field="employee"
+                        label="Employee"
+                        sortField={sortField}
+                        sortOrder={sortOrder}
+                        onSort={handleSort}
+                        icon={getSortIcon("employee")}
+                      />
+                      <SortHeader
+                        field="hours"
+                        label="Working hours"
+                        sortField={sortField}
+                        sortOrder={sortOrder}
+                        onSort={handleSort}
+                        icon={getSortIcon("hours")}
+                        alignRight
+                      />
                       <th
-                        className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                        onClick={() => handleSort("date")}
+                        scope="col"
+                        className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500"
                       >
-                        <div className="flex items-center gap-2">
-                          Date
-                          {getSortIcon("date")}
-                        </div>
+                        Break status
                       </th>
                       <th
-                        className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                        onClick={() => handleSort("employee")}
+                        scope="col"
+                        className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500"
                       >
-                        <div className="flex items-center gap-2">
-                          Employee
-                          {getSortIcon("employee")}
-                        </div>
+                        Review status
                       </th>
                       <th
-                        className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500 cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                        onClick={() => handleSort("hours")}
+                        scope="col"
+                        className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500"
                       >
-                        <div className="flex items-center gap-2">
-                          Working Hours
-                          {getSortIcon("hours")}
-                        </div>
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                        Break Status
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                        Review Status
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                        Working Status
+                        Working status
                       </th>
                     </tr>
                   </thead>
@@ -1020,29 +1094,100 @@ export default function ViewAllPunchesPage() {
                     {loading ? (
                       <tr>
                         <td
-                          colSpan={6}
-                          className="px-4 py-4 text-sm text-slate-500 text-center"
+                          colSpan={TABLE_COLUMNS}
+                          className="px-4 py-12 text-center"
                         >
-                          Loading clock punches...
+                          <div
+                            className="flex flex-col items-center gap-2"
+                            role="status"
+                          >
+                            <span
+                              className="w-6 h-6 border-2 border-slate-200 border-t-primary rounded-full animate-spin"
+                              aria-hidden="true"
+                            />
+                            <p className="text-sm text-slate-600">
+                              Loading clock punches…
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : error ? (
+                      <tr>
+                        <td
+                          colSpan={TABLE_COLUMNS}
+                          className="px-4 py-12 text-center"
+                        >
+                          <div
+                            className="flex flex-col items-center gap-2"
+                            role="alert"
+                          >
+                            <AlertTriangle
+                              className="w-8 h-8 text-red-500"
+                              aria-hidden="true"
+                            />
+                            <p className="text-sm text-red-600">{error}</p>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setRefreshKey((value) => value + 1)
+                              }
+                              className={`${BTN_SECONDARY} py-1.5`}
+                            >
+                              Try again
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ) : punchGroups.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-10 text-center">
-                          <Coffee
-                            aria-hidden="true"
-                            className="mx-auto mb-3 w-8 h-8 text-slate-300"
-                          />
-                          <p className="text-sm font-semibold text-slate-800">
-                            No clock punches found
-                          </p>
-                          <p className="mt-1 text-sm text-slate-600">
-                            {search
-                              ? "No punches match your search on the loaded dates."
-                              : isAnyFilterActive
-                                ? "No records match the selected filters. Try widening the date range or status filters."
-                                : "Employee attendance will appear here after the first punch is recorded."}
-                          </p>
+                        <td
+                          colSpan={TABLE_COLUMNS}
+                          className="px-4 py-12 text-center"
+                        >
+                          <div className="flex flex-col items-center gap-2">
+                            <Clock
+                              className="w-8 h-8 text-slate-300"
+                              aria-hidden="true"
+                            />
+                            {isNarrowingFilterActive ? (
+                              <>
+                                <p className="text-sm text-slate-600">
+                                  {search
+                                    ? "No clock punches match your search on the loaded dates"
+                                    : "No clock punches match your filters"}
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={handleReset}
+                                  className={`${BTN_SECONDARY} py-1.5`}
+                                >
+                                  <RotateCcw
+                                    className="h-4 w-4"
+                                    aria-hidden="true"
+                                  />
+                                  Clear filters
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-sm text-slate-600">
+                                  No clock punches yet. Attendance appears here
+                                  after the first punch is recorded.
+                                </p>
+                                <button
+                                  type="button"
+                                  onClick={goToAddPunch}
+                                  className={`${BTN_SECONDARY} py-1.5`}
+                                >
+                                  <Plus
+                                    className="h-4 w-4"
+                                    aria-hidden="true"
+                                  />
+                                  Add punch
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ) : (
@@ -1055,34 +1200,47 @@ export default function ViewAllPunchesPage() {
                               ? undefined
                               : "This day has no active clock in to open"
                           }
-                          className={`transition-colors hover:bg-slate-50 ${
+                          className={`transition-colors duration-200 hover:bg-slate-50 ${
                             group.reference_punch_id ? "cursor-pointer" : ""
                           }`}
                         >
                           <td className="whitespace-nowrap px-4 py-3">
                             <p className="text-sm font-semibold text-slate-800">
-                              {formatGroupDate(group.date)}
+                              {group.reference_punch_id ? (
+                                <Link
+                                  href={`/admin/employees/punches/${group.reference_punch_id}`}
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="rounded-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                >
+                                  {formatGroupDate(group.date)}
+                                </Link>
+                              ) : (
+                                formatGroupDate(group.date)
+                              )}
                             </p>
-                            <p className="text-xs text-slate-500">
-                              {group.date}
+                            <p className="font-mono text-xs text-slate-500">
+                              {group.date || "—"}
                             </p>
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                              <div
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-slate-500"
+                                aria-hidden="true"
+                              >
                                 <UserRound className="h-4 w-4" />
                               </div>
                               <div>
                                 <p className="whitespace-nowrap text-sm font-medium text-slate-700">
                                   {employeeName(group)}
                                 </p>
-                                <p className="text-xs text-slate-500">
-                                  {group.employee_id}
+                                <p className="font-mono text-xs text-slate-500">
+                                  {group.employee_id || "—"}
                                 </p>
                               </div>
                             </div>
                           </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-slate-700">
+                          <td className="whitespace-nowrap px-4 py-3 text-right font-mono text-sm font-medium text-slate-700">
                             {Number(group.hours || 0).toFixed(2)} hours
                           </td>
                           <td className="whitespace-nowrap px-4 py-3">
@@ -1092,7 +1250,9 @@ export default function ViewAllPunchesPage() {
                                 breakStyles.NO_BREAK
                               }`}
                             >
-                              {formatLabel(group.break_status)}
+                              {group.break_status
+                                ? formatLabel(group.break_status)
+                                : "—"}
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-4 py-3">
@@ -1126,9 +1286,14 @@ export default function ViewAllPunchesPage() {
                                 }`}
                               >
                                 {group.review_status === "APPROVED" && (
-                                  <CheckCircle2 className="w-4 h-4" />
+                                  <CheckCircle2
+                                    className="w-3 h-3"
+                                    aria-hidden="true"
+                                  />
                                 )}
-                                {formatLabel(group.review_status)}
+                                {group.review_status
+                                  ? formatLabel(group.review_status)
+                                  : "—"}
                               </span>
                             )}
                           </td>
@@ -1139,7 +1304,9 @@ export default function ViewAllPunchesPage() {
                                 workingStyles.NOT_WORKING
                               }`}
                             >
-                              {formatLabel(group.working_status)}
+                              {group.working_status
+                                ? formatLabel(group.working_status)
+                                : "—"}
                             </span>
                           </td>
                         </tr>

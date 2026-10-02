@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import AdminShell from "@/components/AdminShell";
 import SearchBar from "@/components/SearchBar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,18 +8,274 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
   AlertTriangle,
-  MapPin,
-  User,
-  Clock,
   ArrowRight,
-  ClipboardList,
-  CheckCircle,
   Check,
+  CheckCircle,
+  ChevronDown,
+  ClipboardList,
+  Clock,
+  User,
+  Users,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import useModalFocus from "@/hooks/useModalFocus";
+import {
+  BADGE,
+  COUNT_BADGE,
+  STATUS_COLORS,
+} from "@/app/admin/dashboard/lib/format";
+import { formatLabel } from "@/app/admin/employees/punches/lib/punchStyles";
+
+const EMPTY = "—";
+const STAGE_NAME = "Site Measurements";
+
+// The statuses a site measurement can be moved between. The status menu is the
+// keyboard route to what dragging a card does with a mouse.
+const STATUS_OPTIONS = ["NOT_STARTED", "IN_PROGRESS", "DONE"];
+
+const BTN_PRIMARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const MENU_ITEM =
+  "cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between gap-2 focus:outline-none focus:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed";
+
+// Helpers shared by the board and its cards.
+const findSiteStage = (lot) =>
+  lot.stages?.find((s) => s.name.toLowerCase() === STAGE_NAME.toLowerCase());
+
+const getStageStatus = (lot) => findSiteStage(lot)?.status || "NOT_STARTED";
+
+const getAssignedTeamMembers = (lot, employees) => {
+  const stage = findSiteStage(lot);
+  if (!stage || !stage.assigned_to || stage.assigned_to.length === 0) {
+    return "Unassigned";
+  }
+
+  return stage.assigned_to
+    .map((assignment) => {
+      if (typeof assignment === "string") {
+        const employee = employees.find((e) => e.employee_id === assignment);
+        return employee
+          ? `${employee.first_name} ${employee.last_name}`
+          : assignment;
+      }
+      return `${assignment.employee.first_name} ${assignment.employee.last_name}`;
+    })
+    .join(", ");
+};
+
+// Column drop target. Defined at module level so cards keep their DOM nodes
+// (and keyboard focus) when the page state changes.
+function DropZone({ children, targetColumn, onDrop }) {
+  const [{ isOver, canDrop }, drop] = useDrop(
+    () => ({
+      accept: "LOT_CARD",
+      drop: (item) => {
+        onDrop(item.lot, targetColumn);
+      },
+      collect: (monitor) => ({
+        isOver: monitor.isOver(),
+        canDrop: monitor.canDrop(),
+      }),
+    }),
+    [targetColumn, onDrop],
+  );
+
+  const isActive = isOver && canDrop;
+
+  return (
+    <div
+      ref={drop}
+      className={`flex-1 rounded-lg min-h-0 p-1 border-2 border-dashed transition-colors duration-200 ${
+        isActive ? "border-primary bg-primary/5" : "border-transparent"
+      }`}
+    >
+      <div className="h-full overflow-y-auto space-y-3 pr-2">{children}</div>
+    </div>
+  );
+}
+
+function EmptyColumn({ icon: Icon, message }) {
+  return (
+    <div className="px-4 py-12 text-center bg-white rounded-lg border border-slate-200">
+      <div className="flex flex-col items-center gap-2">
+        <Icon className="w-8 h-8 text-slate-300" aria-hidden="true" />
+        <p className="text-sm text-slate-600">{message}</p>
+      </div>
+    </div>
+  );
+}
+
+function LotCard({
+  lot,
+  employees,
+  menuOpen,
+  menuPosition,
+  isUpdatingStatus,
+  onOpen,
+  onStatusClick,
+  onStatusSelect,
+  onAssign,
+}) {
+  const clientName = lot.project?.client?.client_name || EMPTY;
+  const projectName = lot.project?.name || EMPTY;
+  const projectId = lot.project?.project_id;
+  const lotId = lot.lot_id || EMPTY;
+
+  const stageStatus = getStageStatus(lot);
+  const statusLabel = formatLabel(stageStatus);
+  const hasAssignees = (findSiteStage(lot)?.assigned_to?.length || 0) > 0;
+
+  // react-dnd hook
+  const [{ isDragging }, drag] = useDrag(
+    () => ({
+      type: "LOT_CARD",
+      item: { lot },
+      collect: (monitor) => ({
+        isDragging: monitor.isDragging(),
+      }),
+    }),
+    [lot],
+  );
+
+  return (
+    <div
+      ref={drag}
+      onClick={() => onOpen(lot)}
+      className={`bg-white p-4 rounded-lg border border-slate-200 hover:border-primary/25 transition-colors duration-200 cursor-pointer group relative ${
+        isDragging ? "opacity-40" : ""
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3 mb-2">
+        {/* The project name is the keyboard route into the project */}
+        <h3 className="min-w-0 text-sm font-semibold text-slate-800">
+          {projectId ? (
+            <Link
+              href={`/admin/projects/${projectId}`}
+              draggable={false}
+              onClick={(e) => e.stopPropagation()}
+              title={projectName}
+              className="block truncate rounded-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              {projectName}
+            </Link>
+          ) : (
+            <span className="block truncate" title={projectName}>
+              {projectName}
+            </span>
+          )}
+        </h3>
+
+        <div className="status-dropdown-container shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onStatusClick(lot, e);
+            }}
+            aria-haspopup="true"
+            aria-expanded={menuOpen}
+            aria-label={`Change status, currently ${statusLabel}`}
+            className={`${BADGE} ${STATUS_COLORS[stageStatus] || STATUS_COLORS.NOT_STARTED} cursor-pointer hover:opacity-80 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary`}
+          >
+            {statusLabel}
+            <ChevronDown className="w-3 h-3" aria-hidden="true" />
+          </button>
+
+          {menuOpen && (
+            <div
+              className="fixed bg-white rounded-lg border border-slate-300 w-40 z-40 overflow-hidden"
+              style={{
+                top: menuPosition?.top,
+                left: menuPosition?.left,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {STATUS_OPTIONS.map((key) => (
+                <button
+                  type="button"
+                  key={key}
+                  disabled={isUpdatingStatus}
+                  aria-current={stageStatus === key ? "true" : undefined}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStatusSelect(lot, key);
+                  }}
+                  className={`${MENU_ITEM} ${stageStatus === key ? "bg-slate-50 font-medium" : ""}`}
+                >
+                  {formatLabel(key)}
+                  {stageStatus === key && (
+                    <Check
+                      className="w-4 h-4 text-primary"
+                      aria-hidden="true"
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+        <div className="flex items-center gap-2 text-slate-600 min-w-0">
+          <User
+            className="w-4 h-4 text-slate-400 shrink-0"
+            aria-hidden="true"
+          />
+          <span className="sr-only">Client:</span>
+          <span className="truncate" title={clientName}>
+            {clientName}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 text-slate-600 min-w-0">
+          <ClipboardList
+            className="w-4 h-4 text-slate-400 shrink-0"
+            aria-hidden="true"
+          />
+          <span className="sr-only">Lot:</span>
+          <span className="font-mono truncate" title={lotId}>
+            {lotId}
+          </span>
+        </div>
+
+        <div className="col-span-2 flex items-center gap-2 text-slate-600 min-w-0">
+          <Users
+            className="w-4 h-4 text-slate-400 shrink-0"
+            aria-hidden="true"
+          />
+          <span className="sr-only">Assigned to:</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAssign(lot);
+            }}
+            aria-haspopup="dialog"
+            title="Assign team members"
+            className={`cursor-pointer text-xs rounded-sm text-left truncate focus:outline-none focus:ring-2 focus:ring-primary ${
+              hasAssignees ? "text-primary font-medium" : "text-slate-600"
+            }`}
+          >
+            {getAssignedTeamMembers(lot, employees)}
+          </button>
+        </div>
+      </div>
+
+      {/* Hover indicator - bottom right corner */}
+      <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <ArrowRight className="w-4 h-4 text-primary" aria-hidden="true" />
+      </div>
+    </div>
+  );
+}
 
 export default function SiteMeasurementsPage() {
   const { getToken } = useAuth();
@@ -39,6 +295,9 @@ export default function SiteMeasurementsPage() {
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [currentLotForAssignment, setCurrentLotForAssignment] = useState(null);
   const [employeeSearchTerm, setEmployeeSearchTerm] = useState("");
+  const employeeModalRef = useRef(null);
+
+  useModalFocus(employeeModalRef, showEmployeeDropdown);
 
   useEffect(() => {
     fetchSiteMeasurements();
@@ -62,6 +321,7 @@ export default function SiteMeasurementsPage() {
   // Fetch employees on component mount
   useEffect(() => {
     fetchEmployees();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Close dropdowns when scrolling
@@ -93,12 +353,30 @@ export default function SiteMeasurementsPage() {
     }
   }, [showEmployeeDropdown]);
 
+  // The status menu and the assignment modal close on Escape (DESIGN.md 9.4).
+  // Neither is destructive, and assignments save as they are clicked, so there
+  // is no unsaved form to protect.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+      if (showEmployeeDropdown) {
+        setShowEmployeeDropdown(false);
+        setEmployeeSearchTerm("");
+      } else if (statusDropdownOpen) {
+        setStatusDropdownOpen(null);
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [showEmployeeDropdown, statusDropdownOpen]);
+
   const fetchSiteMeasurements = async () => {
     try {
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
+        toast.error("Your session has expired. Sign in again.");
+        setError("Your session has expired. Sign in again.");
         return;
       }
 
@@ -116,14 +394,29 @@ export default function SiteMeasurementsPage() {
         setPendingLots(response.data.data.pending);
         setDoneLots(response.data.data.done);
       } else {
-        setError(response.data.message);
+        setError(
+          response.data.message ||
+            "Couldn't load site measurements. Check your connection and try again.",
+        );
       }
     } catch (error) {
       console.error("Error fetching site measurements:", error);
-      setError(error.message || "Failed to fetch site measurements");
+      setError(
+        error.response?.data?.message ||
+          "Couldn't load site measurements. Check your connection and try again.",
+      );
     } finally {
       setLoading(false);
     }
+  };
+
+  // Retry from the error state: show the loader again, then refetch. Refreshes
+  // after an update call fetchSiteMeasurements directly so the board doesn't
+  // flash back to the loader.
+  const retryFetch = () => {
+    setLoading(true);
+    setError("");
+    fetchSiteMeasurements();
   };
 
   const fetchEmployees = async () => {
@@ -166,6 +459,11 @@ export default function SiteMeasurementsPage() {
     setEmployeeSearchTerm("");
   };
 
+  const closeEmployeeModal = () => {
+    setShowEmployeeDropdown(false);
+    setEmployeeSearchTerm("");
+  };
+
   // Helper to normalize assigned_to array
   const normalizeAssignedTo = (assignedTo) => {
     if (!assignedTo || assignedTo.length === 0) return [];
@@ -177,9 +475,7 @@ export default function SiteMeasurementsPage() {
   // Check if employee is assigned to current lot
   const isEmployeeAssigned = (employeeId) => {
     if (!currentLotForAssignment) return false;
-    const stage = currentLotForAssignment.stages?.find(
-      (s) => s.name.toLowerCase() === "site measurements",
-    );
+    const stage = findSiteStage(currentLotForAssignment);
     if (!stage) return false;
     const assignedIds = normalizeAssignedTo(stage.assigned_to || []);
     return assignedIds.includes(employeeId);
@@ -189,12 +485,12 @@ export default function SiteMeasurementsPage() {
   const handleToggleEmployeeAssignment = async (employeeId) => {
     if (!currentLotForAssignment) return;
 
-    const stageName = "Site Measurements";
+    const stageName = STAGE_NAME;
     try {
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
+        toast.error("Your session has expired. Sign in again.");
         return;
       }
 
@@ -239,11 +535,12 @@ export default function SiteMeasurementsPage() {
         );
 
         if (createResponse.data.status) {
-          toast.success("Assignment updated successfully");
+          toast.success("Assignment updated.");
           fetchSiteMeasurements();
         } else {
           toast.error(
-            createResponse.data.message || "Failed to update assignment",
+            createResponse.data.message ||
+              "Couldn't update the assignment. Try again.",
           );
         }
       } else {
@@ -267,49 +564,22 @@ export default function SiteMeasurementsPage() {
         );
 
         if (response.data.status) {
-          toast.success("Assignment updated successfully");
+          toast.success("Assignment updated.");
           fetchSiteMeasurements();
         } else {
-          toast.error(response.data.message || "Failed to update assignment");
+          toast.error(
+            response.data.message ||
+              "Couldn't update the assignment. Try again.",
+          );
         }
       }
     } catch (error) {
       console.error("Error updating assignment:", error);
-      toast.error("Failed to update assignment");
+      toast.error("Couldn't update the assignment. Try again.");
     }
   };
 
-  // Get assigned team members display
-  const getAssignedTeamMembers = (lot) => {
-    const stage = lot.stages?.find(
-      (s) => s.name.toLowerCase() === "site measurements",
-    );
-    if (!stage || !stage.assigned_to || stage.assigned_to.length === 0) {
-      return "Unassigned";
-    }
-
-    return stage.assigned_to
-      .map((assignment) => {
-        if (typeof assignment === "string") {
-          const employee = employees.find((e) => e.employee_id === assignment);
-          return employee
-            ? `${employee.first_name} ${employee.last_name}`
-            : assignment;
-        }
-        return `${assignment.employee.first_name} ${assignment.employee.last_name}`;
-      })
-      .join(", ");
-  };
-
-  // Helper to check stage status
-  const getStageStatus = (lot, stageName) => {
-    const stage = lot.stages?.find(
-      (s) => s.name.toLowerCase() === stageName.toLowerCase(),
-    );
-    return stage ? stage.status : "NOT_STARTED";
-  };
-
-  // Handle status square click
+  // Handle status badge click
   const handleStatusClick = (lot, event) => {
     event.stopPropagation();
     event.nativeEvent.stopImmediatePropagation();
@@ -336,13 +606,13 @@ export default function SiteMeasurementsPage() {
 
   // Handle stage status update
   const handleStageStatusUpdate = async (lot, newStatus) => {
-    const stageName = "Site Measurements";
+    const stageName = STAGE_NAME;
     try {
       setIsUpdatingStatus(true);
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.");
+        toast.error("Your session has expired. Sign in again.");
         return;
       }
 
@@ -372,11 +642,14 @@ export default function SiteMeasurementsPage() {
         );
 
         if (createResponse.data.status) {
-          toast.success("Status updated successfully");
+          toast.success("Status updated.");
           setStatusDropdownOpen(null);
           fetchSiteMeasurements();
         } else {
-          toast.error(createResponse.data.message || "Failed to update status");
+          toast.error(
+            createResponse.data.message ||
+              "Couldn't update the status. Try again.",
+          );
         }
       } else {
         // Update stage
@@ -402,17 +675,19 @@ export default function SiteMeasurementsPage() {
         );
 
         if (response.data.status) {
-          toast.success("Status updated successfully");
+          toast.success("Status updated.");
           setStatusDropdownOpen(null);
           // Refresh data from backend
           fetchSiteMeasurements();
         } else {
-          toast.error(response.data.message || "Failed to update status");
+          toast.error(
+            response.data.message || "Couldn't update the status. Try again.",
+          );
         }
       }
     } catch (error) {
       console.error("Error updating status:", error);
-      toast.error("Failed to update status");
+      toast.error("Couldn't update the status. Try again.");
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -427,7 +702,7 @@ export default function SiteMeasurementsPage() {
 
   // Handle drop for react-dnd
   const handleDrop = async (lot, targetColumn) => {
-    const currentStatus = getStageStatus(lot, "Site Measurements");
+    const currentStatus = getStageStatus(lot);
     let newStatus;
 
     // Determine new status based on target column
@@ -443,176 +718,20 @@ export default function SiteMeasurementsPage() {
     await handleStageStatusUpdate(lot, newStatus);
   };
 
-  // DropZone component with react-dnd
-  const DropZone = ({ children, targetColumn, isEmpty }) => {
-    const [{ isOver, canDrop }, drop] = useDrop(
-      () => ({
-        accept: "LOT_CARD",
-        drop: (item) => {
-          handleDrop(item.lot, targetColumn);
-        },
-        collect: (monitor) => ({
-          isOver: monitor.isOver(),
-          canDrop: monitor.canDrop(),
-        }),
-      }),
-      [targetColumn],
-    );
-
-    const isActive = isOver && canDrop;
-    const bgColor = targetColumn === "done" ? "bg-green-50" : "bg-blue-50";
-    const borderColor =
-      targetColumn === "done" ? "border-green-300" : "border-blue-300";
-
-    return (
-      <div
-        ref={drop}
-        className={`flex-1 rounded-lg transition-colors min-h-0 ${
-          isActive ? `${bgColor} border-2 border-dashed ${borderColor} p-1` : ""
-        }`}
-      >
-        <div className="h-full overflow-y-auto space-y-3 pr-2">{children}</div>
-      </div>
-    );
-  };
-
-  const LotCard = ({ lot }) => {
-    const clientName = lot.project?.client?.client_name || "Unknown Client";
-    const projectName = lot.project?.name || "Unknown Project";
-    const lotId = lot.lot_id || "No ID";
-
-    const stageStatus = getStageStatus(lot, "Site Measurements");
-
-    const statusConfig = {
-      NOT_STARTED: {
-        label: "Not Started",
-        color: "bg-slate-100 text-slate-600 border-slate-200",
-        dot: "bg-slate-400",
-      },
-      IN_PROGRESS: {
-        label: "In Progress",
-        color: "bg-yellow-50 text-yellow-700 border-yellow-200",
-        dot: "bg-yellow-400",
-      },
-      DONE: {
-        label: "Done",
-        color: "bg-green-50 text-green-700 border-green-200",
-        dot: "bg-green-400",
-      },
-    };
-
-    const currentStatus = statusConfig[stageStatus] || statusConfig.NOT_STARTED;
-
-    // react-dnd hook
-    const [{ isDragging }, drag] = useDrag(
-      () => ({
-        type: "LOT_CARD",
-        item: { lot },
-        collect: (monitor) => ({
-          isDragging: monitor.isDragging(),
-        }),
-      }),
-      [lot],
-    );
-
-    return (
-      <div
-        ref={drag}
-        onClick={() => handleCardClick(lot)}
-        className={`bg-white p-3 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-move group relative ${
-          isDragging ? "opacity-40" : ""
-        }`}
-      >
-        {/* Status badge - top right corner */}
-        <div className="status-dropdown-container absolute top-3 right-3">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleStatusClick(lot, e);
-            }}
-            className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${currentStatus.color} uppercase tracking-wide flex items-center gap-1 hover:bg-opacity-80 transition-colors cursor-pointer`}
-          >
-            <div className={`w-1.5 h-1.5 rounded-full ${currentStatus.dot}`} />
-            {currentStatus.label}
-          </button>
-
-          {/* Dropdown Portal/Absolute Position */}
-          {statusDropdownOpen === lot.lot_id && (
-            <div
-              className="fixed bg-white rounded-lg shadow-xl border border-slate-200 w-40 z-50 overflow-hidden text-sm"
-              style={{
-                top: statusDropdownPositions[lot.lot_id]?.top,
-                left: statusDropdownPositions[lot.lot_id]?.left,
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {Object.entries(statusConfig).map(([key, config]) => (
-                <button
-                  key={key}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleStageStatusUpdate(lot, key);
-                  }}
-                  className={`cursor-pointer w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 ${stageStatus === key ? "bg-slate-50 font-medium" : ""}`}
-                >
-                  <div className={`w-2 h-2 rounded-full ${config.dot}`} />
-                  {config.label}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Project name with more space on right for status badge */}
-        <h3
-          className="text-base font-bold text-slate-800 mb-2 pr-24 line-clamp-1"
-          title={projectName}
-        >
-          {projectName}
-        </h3>
-
-        {/* Grid layout for information - more compact */}
-        <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-600">
-            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="line-clamp-1 text-xs">{clientName}</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 text-slate-600">
-            <ClipboardList className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded">
-              {lotId}
-            </span>
-          </div>
-
-          <div className="col-span-2 flex items-center gap-1.5 text-slate-600">
-            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenEmployeeDropdown(lot);
-              }}
-              className={`cursor-pointer text-xs hover:text-primary hover:underline text-left truncate ${
-                lot.stages?.find(
-                  (s) => s.name.toLowerCase() === "site measurements",
-                )?.assigned_to?.length > 0
-                  ? "text-primary font-medium"
-                  : "text-slate-600"
-              }`}
-            >
-              {getAssignedTeamMembers(lot)}
-            </button>
-          </div>
-        </div>
-
-        {/* Hover indicator - bottom right corner */}
-        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <ArrowRight className="w-3.5 h-3.5 text-primary" />
-        </div>
-      </div>
-    );
-  };
+  const renderCard = (lot) => (
+    <LotCard
+      key={lot.lot_id}
+      lot={lot}
+      employees={employees}
+      menuOpen={statusDropdownOpen === lot.lot_id}
+      menuPosition={statusDropdownPositions[lot.lot_id]}
+      isUpdatingStatus={isUpdatingStatus}
+      onOpen={handleCardClick}
+      onStatusClick={handleStatusClick}
+      onStatusSelect={handleStageStatusUpdate}
+      onAssign={handleOpenEmployeeDropdown}
+    />
+  );
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -620,14 +739,9 @@ export default function SiteMeasurementsPage() {
         <main className="flex h-full min-h-0 flex-col overflow-hidden">
           <div className="px-4 py-2 shrink-0">
             <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <MapPin className="w-6 h-6 text-primary" />
-                </div>
-                <h1 className="text-xl font-bold text-slate-700">
-                  Site Measurements
-                </h1>
-              </div>
+              <h1 className="text-xl font-semibold text-slate-800">
+                Site measurements
+              </h1>
               <div className="flex items-center gap-2">
                 <SearchBar />
               </div>
@@ -636,87 +750,103 @@ export default function SiteMeasurementsPage() {
 
           <div className="px-4 pb-4 flex-1 min-h-0">
             {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-                  <p className="text-sm text-slate-600 font-medium">
-                    Loading site measurements...
+              <div className="flex items-center justify-center h-full bg-white rounded-lg border border-slate-200">
+                <div
+                  className="flex flex-col items-center gap-2 px-4 py-12"
+                  role="status"
+                >
+                  <span
+                    className="w-6 h-6 border-2 border-slate-200 border-t-primary rounded-full animate-spin"
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm text-slate-600">
+                    Loading site measurements…
                   </p>
                 </div>
               </div>
             ) : error ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-sm text-red-600 mb-4 font-medium">
-                    {error}
-                  </p>
+              <div className="flex items-center justify-center h-full bg-white rounded-lg border border-slate-200">
+                <div
+                  className="flex flex-col items-center gap-2 px-4 py-12 text-center"
+                  role="alert"
+                >
+                  <AlertTriangle
+                    className="w-8 h-8 text-red-500"
+                    aria-hidden="true"
+                  />
+                  <p className="text-sm text-red-600">{error}</p>
                   <button
-                    onClick={() => window.location.reload()}
-                    className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+                    type="button"
+                    onClick={retryFetch}
+                    className={BTN_SECONDARY}
                   >
-                    Try Again
+                    Try again
                   </button>
                 </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
                 {/* Pending Column */}
-                <div className="flex flex-col h-full min-h-0">
-                  <div className="flex items-center justify-between bg-slate-50 z-10 py-2 mb-4">
-                    <h2 className="flex items-center gap-2 text-lg font-bold text-slate-700">
-                      <Clock className="w-5 h-5 text-orange-500" />
-                      Pending Measurements
-                      <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">
-                        {pendingLots.length}
-                      </span>
+                <section
+                  aria-labelledby="pending-measurements-title"
+                  className="flex flex-col h-full min-h-0"
+                >
+                  <div className="flex items-center justify-between py-2 mb-4">
+                    <h2
+                      id="pending-measurements-title"
+                      className="flex items-center gap-2 text-lg font-semibold text-slate-800"
+                    >
+                      <Clock
+                        className="w-5 h-5 text-slate-500"
+                        aria-hidden="true"
+                      />
+                      Pending measurements
+                      <span className={COUNT_BADGE}>{pendingLots.length}</span>
                     </h2>
                   </div>
 
-                  <DropZone
-                    targetColumn="pending"
-                    isEmpty={pendingLots.length === 0}
-                  >
+                  <DropZone targetColumn="pending" onDrop={handleDrop}>
                     {pendingLots.length === 0 ? (
-                      <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300">
-                        <p className="text-slate-500">
-                          No pending measurements
-                        </p>
-                      </div>
+                      <EmptyColumn
+                        icon={Clock}
+                        message="No pending measurements"
+                      />
                     ) : (
-                      pendingLots.map((lot) => (
-                        <LotCard key={lot.lot_id} lot={lot} />
-                      ))
+                      pendingLots.map(renderCard)
                     )}
                   </DropZone>
-                </div>
+                </section>
 
                 {/* Done Column */}
-                <div className="flex flex-col h-full min-h-0">
-                  <div className="flex items-center justify-between bg-slate-50 z-10 py-2 mb-4">
-                    <h2 className="flex items-center gap-2 text-lg font-bold text-slate-700">
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                      Completed Measurements
-                      <span className="px-2 py-0.5 bg-slate-200 text-slate-600 text-xs rounded-full">
-                        {doneLots.length}
-                      </span>
+                <section
+                  aria-labelledby="completed-measurements-title"
+                  className="flex flex-col h-full min-h-0"
+                >
+                  <div className="flex items-center justify-between py-2 mb-4">
+                    <h2
+                      id="completed-measurements-title"
+                      className="flex items-center gap-2 text-lg font-semibold text-slate-800"
+                    >
+                      <CheckCircle
+                        className="w-5 h-5 text-slate-500"
+                        aria-hidden="true"
+                      />
+                      Completed measurements
+                      <span className={COUNT_BADGE}>{doneLots.length}</span>
                     </h2>
                   </div>
 
-                  <DropZone targetColumn="done" isEmpty={doneLots.length === 0}>
+                  <DropZone targetColumn="done" onDrop={handleDrop}>
                     {doneLots.length === 0 ? (
-                      <div className="p-8 text-center bg-white rounded-xl border border-dashed border-slate-300">
-                        <p className="text-slate-500">
-                          No completed measurements
-                        </p>
-                      </div>
+                      <EmptyColumn
+                        icon={CheckCircle}
+                        message="No completed measurements"
+                      />
                     ) : (
-                      doneLots.map((lot) => (
-                        <LotCard key={lot.lot_id} lot={lot} />
-                      ))
+                      doneLots.map(renderCard)
                     )}
                   </DropZone>
-                </div>
+                </section>
               </div>
             )}
           </div>
@@ -724,37 +854,56 @@ export default function SiteMeasurementsPage() {
 
         {/* Employee Assignment Dropdown Modal */}
         {showEmployeeDropdown && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="employee-dropdown bg-white rounded-xl shadow-2xl w-full max-w-md border border-slate-200 max-h-[80vh] overflow-hidden flex flex-col">
-              <div className="p-4 border-b border-slate-200 shrink-0">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-bold text-slate-800">
-                    Assign Team Members
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setShowEmployeeDropdown(false);
-                      setEmployeeSearchTerm("");
-                    }}
-                    className="cursor-pointer text-slate-400 hover:text-slate-600 transition-colors"
+          <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4">
+            <div
+              ref={employeeModalRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="assign-team-title"
+              className="employee-dropdown bg-white rounded-xl border border-slate-200 w-full max-w-md max-h-[90vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+                <div className="min-w-0">
+                  <h2
+                    id="assign-team-title"
+                    className="text-lg font-semibold text-slate-800"
                   >
-                    <X className="w-5 h-5" />
-                  </button>
+                    Assign team members
+                  </h2>
+                  <p
+                    className="text-xs text-slate-500 truncate"
+                    title={currentLotForAssignment?.project?.name || undefined}
+                  >
+                    Project: {currentLotForAssignment?.project?.name || EMPTY}
+                  </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={closeEmployeeModal}
+                  className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary"
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" aria-hidden="true" />
+                </button>
+              </div>
+
+              <div className="px-6 pt-6 pb-3 shrink-0">
                 <input
                   type="text"
+                  data-autofocus
+                  aria-label="Search employees"
                   value={employeeSearchTerm}
                   onChange={(e) => setEmployeeSearchTerm(e.target.value)}
-                  placeholder="Search employees..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="Search by name, ID or email"
+                  className="w-full text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
+                <p className="mt-2 text-xs text-slate-500">
+                  Select or clear a person to assign them. Changes save
+                  automatically.
+                </p>
               </div>
 
-              <div className="mb-3 text-xs text-slate-500 px-4 pt-2">
-                Click to select/unselect. Changes are saved automatically.
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <div className="flex-1 overflow-y-auto px-6 pb-6">
                 {filteredEmployees.length > 0 ? (
                   <div className="space-y-2">
                     {filteredEmployees.map((employee) => {
@@ -763,55 +912,72 @@ export default function SiteMeasurementsPage() {
                       );
                       return (
                         <button
+                          type="button"
                           key={employee.employee_id}
+                          aria-pressed={isAssigned}
                           onClick={() =>
                             handleToggleEmployeeAssignment(employee.employee_id)
                           }
-                          className={`cursor-pointer w-full text-left p-3 border rounded-lg transition-colors ${
+                          className={`cursor-pointer w-full text-left p-3 border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary ${
                             isAssigned
                               ? "border-primary bg-primary/10 hover:bg-primary/20"
-                              : "border-slate-200 hover:bg-slate-50 hover:border-primary"
+                              : "border-slate-200 hover:bg-slate-50 hover:border-primary/25"
                           }`}
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <div className="font-medium text-slate-900">
-                                  {employee.first_name} {employee.last_name}
-                                </div>
-                                {isAssigned && (
-                                  <Check className="w-4 h-4 text-primary" />
-                                )}
-                              </div>
-                              <div className="text-sm text-slate-600">
-                                ID: {employee.employee_id}
-                              </div>
-                              {employee.email && (
-                                <div className="text-xs text-slate-500">
-                                  {employee.email}
-                                </div>
-                              )}
-                            </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-slate-800">
+                              {employee.first_name} {employee.last_name}
+                            </span>
+                            {isAssigned && (
+                              <Check
+                                className="w-4 h-4 text-primary"
+                                aria-hidden="true"
+                              />
+                            )}
                           </div>
+                          <div className="text-xs text-slate-600 font-mono">
+                            {employee.employee_id}
+                          </div>
+                          {employee.email && (
+                            <div className="text-xs text-slate-500">
+                              {employee.email}
+                            </div>
+                          )}
                         </button>
                       );
                     })}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-slate-500">
-                    <User className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-                    <p className="text-sm">No employees found</p>
+                  <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
+                    <User
+                      className="w-8 h-8 text-slate-300"
+                      aria-hidden="true"
+                    />
+                    {employees.length > 0 ? (
+                      <>
+                        <p className="text-sm text-slate-600">
+                          No employees match your search
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setEmployeeSearchTerm("")}
+                          className={BTN_SECONDARY}
+                        >
+                          Clear search
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-sm text-slate-600">No employees yet</p>
+                    )}
                   </div>
                 )}
               </div>
 
-              <div className="p-4 border-t border-slate-200 shrink-0">
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 shrink-0">
                 <button
-                  onClick={() => {
-                    setShowEmployeeDropdown(false);
-                    setEmployeeSearchTerm("");
-                  }}
-                  className="cursor-pointer w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                  type="button"
+                  onClick={closeEmployeeModal}
+                  className={BTN_PRIMARY}
                 >
                   Done
                 </button>

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth, getUserFromToken } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
+import { publishMtoCreated } from "@/lib/updates";
 
 export async function POST(request) {
   try {
@@ -109,6 +110,13 @@ export async function POST(request) {
       "CREATE",
       `Materials to order created successfully${completeMto.project ? ` for project: ${projectName}` : ""}`,
     );
+
+    await publishMtoCreated({
+      req: request,
+      mtoId: mto.id,
+      projectName: completeMto.project?.name,
+      itemCount: completeMto.items?.length,
+    });
 
     // Send notification for MTO creation
     try {

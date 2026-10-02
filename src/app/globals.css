@@ -197,6 +197,24 @@ html {
   }
 }
 
+/* Focus ring only for the keyboard (DESIGN.md 13.1) ---------------------------
+   Buttons, links, tabs and menu items show their focus ring when reached with
+   the keyboard, not after a mouse click. Text fields keep their ring on click. */
+:where(
+    button,
+    a,
+    summary,
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="menuitemradio"],
+    [role="option"],
+    [tabindex]:not(input, textarea, select)
+  ):focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none !important;
+}
+
 /* Public marketing site --------------------------------------------------- */
 .marketing-site {
   --mk-paper: #f4f1eb;
@@ -371,8 +389,7 @@ html {
   color: var(--mk-ink) !important;
 }
 
-.marketing-header--over-hero:not(.marketing-header--solid)
-  .marketing-nav__cta {
+.marketing-header--over-hero:not(.marketing-header--solid) .marketing-nav__cta {
   border-color: var(--mk-paper);
   background: var(--mk-paper);
   color: var(--mk-ink) !important;

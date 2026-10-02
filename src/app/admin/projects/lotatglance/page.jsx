@@ -15,18 +15,172 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
+  Check,
+  Clock,
+  Minus,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import SearchBar from "@/components/SearchBar";
 import TextEditor from "@/components/TextEditor/TextEditor";
+import useModalFocus from "@/hooks/useModalFocus";
 import {
   usePersistedTableFilter,
   useTableFilterActions,
 } from "@/hooks/usePersistedTableFilter";
+import { BADGE, STATUS_COLORS } from "@/app/admin/dashboard/lib/format";
+import { formatLabel } from "@/app/admin/employees/punches/lib/punchStyles";
 
 const TABLE_KEY = "lot-at-a-glance";
 const GANTT_LABEL_WIDTH = 310;
+const EMPTY = "—";
+
+// Corner radius of a schedule bar's rounded end (rounded-sm, DESIGN.md 4). It
+// is applied inline because each end is only rounded when it is the true start
+// or end of the item rather than clipped by the visible range.
+const BAR_RADIUS = "6px";
+
+// Shared form-control and button recipes (DESIGN.md 9.1, 9.2).
+const FIELD =
+  "w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-colors duration-200";
+const fieldTone = (hasError) =>
+  hasError
+    ? "border-red-500 focus:ring-red-500"
+    : "border-slate-300 focus:ring-primary";
+const BTN_PRIMARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_ICON =
+  "cursor-pointer rounded-lg border border-slate-300 p-2 text-slate-600 transition-colors duration-200 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-primary";
+const MENU_ITEM =
+  "cursor-pointer w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center gap-2 focus:outline-none focus:bg-slate-100";
+const MENU_CHECK_ROW =
+  "cursor-pointer flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-100 transition-colors";
+const CHECKBOX =
+  "h-4 w-4 accent-primary border-slate-300 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary";
+
+// A stage's status as a solid mark in the matrix and on schedule bars. These are
+// data-viz fills, not badges, so they sit one step darker than the badge tones
+// (-600 against the -100 fills) but follow the same DESIGN.md 5.4 hues: DONE
+// green, IN_PROGRESS blue, NOT_STARTED / NA slate. Each status also has an icon
+// and a text label wherever it is drawn, so colour is never the only signal.
+const STATUS_FILL = {
+  DONE: "bg-green-600",
+  IN_PROGRESS: "bg-blue-600",
+  NOT_STARTED: "bg-slate-600",
+  NA: "bg-slate-500",
+};
+const STATUS_ICON = { DONE: Check, IN_PROGRESS: Clock, NA: Minus };
+const STATUS_OPTIONS = ["NOT_STARTED", "IN_PROGRESS", "DONE"];
+const FILTER_OPTIONS = ["ALL", "NOT_STARTED", "IN_PROGRESS", "DONE", "NA"];
+
+// NA means "not applicable", so it reads "N/A" rather than the title-cased "Na".
+const statusLabel = (status) =>
+  status === "NA" ? "N/A" : formatLabel(status || "NOT_STARTED");
+
+// Floating date label shown over a bar on hover. A floating layer needs an
+// opaque fill and a border rather than a shadow (DESIGN.md 6).
+const DATE_PILL = "rounded-full border border-slate-300 bg-white px-2.5 py-1";
+
+// Columns offered in the Excel export, and their headers in the sheet. These
+// are the exported file's contract, so they keep their original spelling.
+const COL_CLIENT = "Client Name";
+const COL_PROJECT = "Project Name";
+const COL_LOT = "Lot ID";
+const COL_PERCENT = "Percentage Completed";
+
+// Stage cell values written to the export (unchanged from before the redesign).
+const EXPORT_STATUS = {
+  IN_PROGRESS: "in progress",
+  DONE: "done",
+  NOT_STARTED: "not started",
+  NA: "NA",
+};
+const EXPORT_COLUMNS = [
+  COL_CLIENT,
+  COL_PROJECT,
+  COL_LOT,
+  ...stages,
+  COL_PERCENT,
+];
+
+const TIMELINE_SCALES = [
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+  { value: "quarterly", label: "Quarterly" },
+];
+
+// Stage names are stored lowercase; show them with the casing from the shared
+// stage list so they read the same as the matrix column headers.
+const displayStageName = (name) =>
+  stages.find((stage) => stage.toLowerCase() === String(name).toLowerCase()) ||
+  formatLabel(name);
+
+function Spinner() {
+  return (
+    <span
+      className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+      aria-hidden="true"
+    />
+  );
+}
+
+function FieldError({ id, message }) {
+  if (!message) return null;
+  return (
+    <p id={id} className="text-xs text-red-600 mt-1">
+      {message}
+    </p>
+  );
+}
+
+// Loading and error states render inside the content card so the page header
+// and toolbar stay put (DESIGN.md 11, 15.1).
+function LoadState({ loading, error, onRetry }) {
+  if (loading) {
+    return (
+      <div
+        className="flex flex-col items-center gap-2 px-4 py-12"
+        role="status"
+      >
+        <span
+          className="w-6 h-6 border-2 border-slate-200 border-t-primary rounded-full animate-spin"
+          aria-hidden="true"
+        />
+        <p className="text-sm text-slate-600">Loading lots…</p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center gap-2 px-4 py-12" role="alert">
+      <AlertTriangle className="w-8 h-8 text-red-500" aria-hidden="true" />
+      <p className="text-sm text-red-600">{error}</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className={`${BTN_SECONDARY} py-1.5`}
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
+// Colour-coded status square used by the legend. Cells in the matrix draw the
+// same fill plus an icon (see StatusMark).
+function LegendSwatch({ status }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span
+        className={`h-4 w-4 rounded ${STATUS_FILL[status]}`}
+        aria-hidden="true"
+      />
+      <span className="text-xs text-slate-600">{statusLabel(status)}</span>
+    </div>
+  );
+}
 
 const getCalendarDate = (value) => {
   if (!value) return null;
@@ -91,7 +245,7 @@ const formatScheduleDate = (value) => {
         month: "short",
         year: "numeric",
       })
-    : "Not set";
+    : EMPTY;
 };
 
 const formatScheduleDateWithDay = (value) => {
@@ -103,7 +257,13 @@ const formatScheduleDateWithDay = (value) => {
         month: "short",
         year: "numeric",
       })
-    : "Not set";
+    : EMPTY;
+};
+
+// "02 Oct 2026 – 05 Oct 2026", or a single dash when nothing is scheduled.
+const formatScheduleRange = (start, end) => {
+  if (!start && !end) return EMPTY;
+  return `${formatScheduleDate(start)} – ${formatScheduleDate(end)}`;
 };
 
 // Lot notes are authored in the rich text editor, so strip the markup before
@@ -129,7 +289,7 @@ const toPlainText = (notes) => {
 const formatNotesLabel = (notes) => {
   const value = toPlainText(notes).trim();
   if (!value) return "No notes added";
-  return value.length > 500 ? `${value.slice(0, 500)}...` : value;
+  return value.length > 500 ? `${value.slice(0, 500)}…` : value;
 };
 
 const formatDateForApi = (date) => {
@@ -162,7 +322,12 @@ function SchedulerView({
   const [selectedScheduleDetails, setSelectedScheduleDetails] = useState(null);
   const [detailForm, setDetailForm] = useState(null);
   const [isSavingLotDetails, setIsSavingLotDetails] = useState(false);
+  const [detailErrors, setDetailErrors] = useState({});
+  const initialDetailForm = useRef(null);
+  const detailModalRef = useRef(null);
   const hasInitialisedAccordions = useRef(false);
+
+  useModalFocus(detailModalRef, Boolean(selectedScheduleDetails));
 
   useEffect(() => {
     if (hasInitialisedAccordions.current || activeLots.length === 0) return;
@@ -224,7 +389,7 @@ function SchedulerView({
   }, [rangeOffset, timelineScale]);
 
   const unitWidth = 44;
-  const rangeLabel = `${formatScheduleDate(schedule.startDate)} - ${formatScheduleDate(schedule.endDate)}`;
+  const rangeLabel = formatScheduleRange(schedule.startDate, schedule.endDate);
   const previousRangeLabel = formatPeriod(
     addPeriods(schedule.startDate, timelineScale, -1),
     timelineScale,
@@ -275,13 +440,13 @@ function SchedulerView({
         ? `calc(${(duration / schedule.totalPeriods) * 100}% - 6px)`
         : `${Math.max(duration * unitWidth - 6, 12)}px`,
       borderTopLeftRadius:
-        visibleStart.getTime() === start.getTime() ? "0.375rem" : "0",
+        visibleStart.getTime() === start.getTime() ? BAR_RADIUS : "0",
       borderBottomLeftRadius:
-        visibleStart.getTime() === start.getTime() ? "0.375rem" : "0",
+        visibleStart.getTime() === start.getTime() ? BAR_RADIUS : "0",
       borderTopRightRadius:
-        visibleEnd.getTime() === end.getTime() ? "0.375rem" : "0",
+        visibleEnd.getTime() === end.getTime() ? BAR_RADIUS : "0",
       borderBottomRightRadius:
-        visibleEnd.getTime() === end.getTime() ? "0.375rem" : "0",
+        visibleEnd.getTime() === end.getTime() ? BAR_RADIUS : "0",
     };
   };
 
@@ -291,19 +456,40 @@ function SchedulerView({
     return getBarStyle(start, schedule.endDate);
   };
 
-  const validateStageDateRange = (scheduleData, startDate, endDate) => {
-    if (scheduleData.type !== "stage") return true;
+  // Returns a { field, message } describing what is wrong with a stage's dates
+  // relative to its parent lot, or null when they are fine. Drag and click
+  // scheduling surface it as a toast; the details modal shows it inline.
+  const getStageDateRangeError = (scheduleData, startDate, endDate) => {
+    if (scheduleData.type !== "stage") return null;
 
     const lotStartDate = getCalendarDate(scheduleData.lotStartDate);
     const lotEndDate = getCalendarDate(scheduleData.lotEndDate);
     if (!lotStartDate || !lotEndDate) {
-      toast.error(
-        "Set the parent lot start and installation due dates before scheduling a stage",
-      );
-      return false;
+      return {
+        field: "form",
+        message:
+          "Set the lot's start and installation due dates before scheduling a stage.",
+      };
     }
-    if (startDate < lotStartDate || endDate > lotEndDate) {
-      toast.error("Stage dates must stay within the parent lot date range");
+    if (startDate < lotStartDate) {
+      return {
+        field: "startDate",
+        message: `Stage dates must stay within the lot's dates. The lot starts ${formatScheduleDate(lotStartDate)}.`,
+      };
+    }
+    if (endDate > lotEndDate) {
+      return {
+        field: "endDate",
+        message: `Stage dates must stay within the lot's dates. The lot ends ${formatScheduleDate(lotEndDate)}.`,
+      };
+    }
+    return null;
+  };
+
+  const validateStageDateRange = (scheduleData, startDate, endDate) => {
+    const rangeError = getStageDateRangeError(scheduleData, startDate, endDate);
+    if (rangeError) {
+      toast.error(rangeError.message);
       return false;
     }
     return true;
@@ -325,19 +511,6 @@ function SchedulerView({
     return schedule.periods[periodIndex] || null;
   };
 
-  const getStageBarColor = (status) => {
-    switch (status) {
-      case "IN_PROGRESS":
-        return "bg-yellow-600";
-      case "DONE":
-        return "bg-green-600";
-      case "NA":
-        return "bg-slate-500";
-      default:
-        return "bg-slate-600";
-    }
-  };
-
   const getScheduleKey = (scheduleData) =>
     `${scheduleData.type}:${scheduleData.id || scheduleData.lotId}:${scheduleData.name || ""}`;
 
@@ -347,27 +520,63 @@ function SchedulerView({
       details.type === "stage"
         ? details.item.endDate
         : details.item.installationDueDate;
-    setSelectedScheduleDetails(details);
-    setDetailForm({
+    const nextForm = {
       startDate: formatDateForInput(details.item.startDate),
       endDate: formatDateForInput(endDate),
       notes: details.item.notes || "",
-    });
+    };
+    initialDetailForm.current = nextForm;
+    setSelectedScheduleDetails(details);
+    setDetailForm(nextForm);
+    setDetailErrors({});
   };
 
-  const saveScheduleDetails = async () => {
-    if (!selectedScheduleDetails || !detailForm) return;
-    if (!detailForm.startDate || !detailForm.endDate) {
-      toast.error("Start and end dates are required");
-      return;
-    }
-    if (new Date(detailForm.startDate) > new Date(detailForm.endDate)) {
-      toast.error("Start date cannot be after end date");
-      return;
+  const closeScheduleDetails = () => {
+    setSelectedScheduleDetails(null);
+    setDetailForm(null);
+    setDetailErrors({});
+    initialDetailForm.current = null;
+  };
+
+  // A dirty form is never closed by a stray backdrop click (DESIGN.md 15.1).
+  const isDetailFormDirty =
+    Boolean(detailForm) &&
+    Boolean(initialDetailForm.current) &&
+    (detailForm.startDate !== initialDetailForm.current.startDate ||
+      detailForm.endDate !== initialDetailForm.current.endDate ||
+      detailForm.notes !== initialDetailForm.current.notes);
+
+  const handleDetailFieldChange = (field, value) => {
+    setDetailForm((current) => ({ ...current, [field]: value }));
+    setDetailErrors((current) => ({ ...current, [field]: "", form: "" }));
+  };
+
+  // Escape closes the details modal (DESIGN.md 9.4) unless a save is running.
+  useEffect(() => {
+    if (!selectedScheduleDetails) return;
+    const onKeyDown = (event) => {
+      if (event.key === "Escape" && !isSavingLotDetails) closeScheduleDetails();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [selectedScheduleDetails, isSavingLotDetails]);
+
+  const validateScheduleDetails = () => {
+    const errors = {};
+    if (!detailForm.startDate) errors.startDate = "Enter a start date.";
+    if (!detailForm.endDate) errors.endDate = "Enter an end date.";
+    if (
+      !errors.startDate &&
+      !errors.endDate &&
+      new Date(detailForm.startDate) > new Date(detailForm.endDate)
+    ) {
+      errors.endDate = "The end date can't be before the start date.";
     }
     if (
-      selectedScheduleDetails.type === "stage" &&
-      !validateStageDateRange(
+      Object.keys(errors).length === 0 &&
+      selectedScheduleDetails.type === "stage"
+    ) {
+      const rangeError = getStageDateRangeError(
         {
           type: "stage",
           lotStartDate: selectedScheduleDetails.lot?.startDate,
@@ -375,15 +584,30 @@ function SchedulerView({
         },
         getCalendarDate(detailForm.startDate),
         getCalendarDate(detailForm.endDate),
-      )
-    ) {
+      );
+      if (rangeError) errors[rangeError.field] = rangeError.message;
+    }
+    return errors;
+  };
+
+  const saveScheduleDetails = async () => {
+    if (!selectedScheduleDetails || !detailForm) return;
+    const errors = validateScheduleDetails();
+    if (Object.keys(errors).length > 0) {
+      setDetailErrors(errors);
+      const firstInvalid = ["startDate", "endDate"].find(
+        (field) => errors[field],
+      );
+      if (firstInvalid) {
+        document.getElementById(`schedule-${firstInvalid}`)?.focus();
+      }
       return;
     }
 
     try {
       const token = getToken();
       if (!token)
-        throw new Error("No valid session found. Please login again.");
+        throw new Error("Your session has expired. Sign in again to continue.");
 
       setIsSavingLotDetails(true);
       const item = selectedScheduleDetails.item;
@@ -428,16 +652,15 @@ function SchedulerView({
           { headers: { Authorization: `Bearer ${token}` } },
         );
       }
-      toast.success("Schedule details updated");
+      toast.success("Schedule details updated.");
       await onRefresh();
-      setSelectedScheduleDetails(null);
-      setDetailForm(null);
+      closeScheduleDetails();
     } catch (error) {
       console.error("Error updating lot details:", error);
       toast.error(
         error.response?.data?.message ||
           error.message ||
-          "Failed to update lot details",
+          "Couldn't save the schedule details. Check your connection and try again.",
       );
       await onRefresh();
     } finally {
@@ -470,7 +693,7 @@ function SchedulerView({
     }
 
     if (date < pendingSchedule.startDate) {
-      toast.error("End date cannot be before start date");
+      toast.error("The end date can't be before the start date.");
       return;
     }
 
@@ -488,7 +711,7 @@ function SchedulerView({
     try {
       const token = getToken();
       if (!token)
-        throw new Error("No valid session found. Please login again.");
+        throw new Error("Your session has expired. Sign in again to continue.");
       const headers = { Authorization: `Bearer ${token}` };
 
       if (scheduleData.type === "lot") {
@@ -538,14 +761,14 @@ function SchedulerView({
         );
       }
 
-      toast.success("Schedule dates added");
+      toast.success("Schedule dates added.");
       await onRefresh();
     } catch (error) {
       console.error("Error adding schedule dates:", error);
       toast.error(
         error.response?.data?.message ||
           error.message ||
-          "Failed to add schedule dates",
+          "Couldn't add the schedule dates. Check your connection and try again.",
       );
       await onRefresh();
     } finally {
@@ -577,7 +800,7 @@ function SchedulerView({
             : currentEnd;
 
       if (!nextStart || !nextEnd || nextStart > nextEnd) {
-        toast.error("Start date cannot be after end date");
+        toast.error("The start date can't be after the end date.");
         return;
       }
 
@@ -593,7 +816,7 @@ function SchedulerView({
 
       const token = getToken();
       if (!token) {
-        toast.error("No valid session found. Please login again.");
+        toast.error("Your session has expired. Sign in again to continue.");
         return;
       }
 
@@ -639,7 +862,7 @@ function SchedulerView({
         );
       }
 
-      toast.success("Schedule date updated");
+      toast.success("Schedule date updated.");
       await onRefresh();
     } catch (error) {
       console.error("Error updating schedule date:", error);
@@ -652,7 +875,8 @@ function SchedulerView({
         });
       }
       toast.error(
-        error.response?.data?.message || "Failed to update schedule date",
+        error.response?.data?.message ||
+          "Couldn't update the schedule date. Check your connection and try again.",
       );
     } finally {
       setDragState(null);
@@ -705,9 +929,9 @@ function SchedulerView({
     const startDate = getCalendarDate(dragData?.startDate);
     const endDate = getCalendarDate(dragData?.endDate);
     const canResizeStart =
-      startDate && barStyle?.borderTopLeftRadius === "0.375rem";
+      startDate && barStyle?.borderTopLeftRadius === BAR_RADIUS;
     const canResizeEnd =
-      endDate && barStyle?.borderTopRightRadius === "0.375rem";
+      endDate && barStyle?.borderTopRightRadius === BAR_RADIUS;
     const showEndpointPills =
       startDate &&
       endDate &&
@@ -748,15 +972,22 @@ function SchedulerView({
         >
           {onToggle ? (
             <button
+              type="button"
               onClick={onToggle}
               aria-expanded={isExpanded}
-              className="flex min-w-0 flex-1 items-center gap-2 text-left cursor-pointer"
+              className="flex min-w-0 flex-1 items-center gap-2 text-left cursor-pointer rounded-sm focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <ChevronDown
-                className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${
-                  isExpanded ? "" : "-rotate-90"
-                }`}
-              />
+              {isExpanded ? (
+                <ChevronDown
+                  className="h-4 w-4 shrink-0 text-slate-500"
+                  aria-hidden="true"
+                />
+              ) : (
+                <ChevronRight
+                  className="h-4 w-4 shrink-0 text-slate-500"
+                  aria-hidden="true"
+                />
+              )}
               <div className="min-w-0">
                 <p
                   className="truncate text-sm font-medium text-slate-700"
@@ -764,7 +995,9 @@ function SchedulerView({
                 >
                   {label}
                 </p>
-                <p className="text-xs text-slate-500">{detail}</p>
+                <p className="truncate text-xs text-slate-500" title={detail}>
+                  {detail}
+                </p>
               </div>
             </button>
           ) : (
@@ -775,7 +1008,9 @@ function SchedulerView({
               >
                 {label}
               </p>
-              <p className="text-xs text-slate-500">{detail}</p>
+              <p className="truncate text-xs text-slate-500" title={detail}>
+                {detail}
+              </p>
             </div>
           )}
         </div>
@@ -837,11 +1072,11 @@ function SchedulerView({
                     } ${canSchedule ? "cursor-crosshair" : ""}`}
                   >
                     {showHoveredTilePills && (
-                      <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-1 flex -translate-x-1/2 gap-1 whitespace-nowrap text-[11px] font-medium text-slate-700">
-                        <span className="rounded-full bg-white px-2 py-1 shadow-sm ring-1 ring-slate-200">
+                      <div className="pointer-events-none absolute bottom-full left-0 right-0 z-30 mb-1 flex justify-center gap-1 whitespace-nowrap text-xs font-medium text-slate-700">
+                        <span className={DATE_PILL}>
                           Start: {formatScheduleDateWithDay(dragData.startDate)}
                         </span>
-                        <span className="rounded-full bg-white px-2 py-1 shadow-sm ring-1 ring-slate-200">
+                        <span className={DATE_PILL}>
                           End: {formatScheduleDateWithDay(dragData.endDate)}
                         </span>
                       </div>
@@ -854,36 +1089,38 @@ function SchedulerView({
           {displayedBarStyle ? (
             <div
               className={`pointer-events-none absolute top-5 h-6 ${barClass} ${
-                isDraggingThisBar ? "opacity-30 shadow-none" : "shadow-sm"
+                isDraggingThisBar ? "opacity-30" : ""
               }`}
               style={displayedBarStyle}
             >
               {warning && (
                 <button
+                  type="button"
                   onClick={() => openScheduleDetails(details)}
-                  className="pointer-events-auto absolute inset-0 flex cursor-pointer items-center justify-center gap-1 text-xs font-semibold text-white"
+                  className="pointer-events-auto absolute inset-0 flex cursor-pointer items-center justify-center gap-1 text-xs font-medium text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
                   title="Open lot details to set the installation date"
                 >
-                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTriangle className="h-4 w-4" aria-hidden="true" />
                   Installation date is not set
                 </button>
               )}
               {isHoveredBar && !dragState && showEndpointPills && (
                 <>
-                  <div className="pointer-events-none absolute bottom-full left-0 z-30 mb-1 whitespace-nowrap text-[11px] font-medium text-slate-700">
-                    <span className="rounded-full bg-white px-2 py-1 shadow-sm ring-1 ring-slate-200">
+                  <div className="pointer-events-none absolute bottom-full left-0 z-30 mb-1 whitespace-nowrap text-xs font-medium text-slate-700">
+                    <span className={DATE_PILL}>
                       Start: {formatScheduleDateWithDay(dragData.startDate)}
                     </span>
                   </div>
-                  <div className="pointer-events-none absolute bottom-full right-0 z-30 mb-1 whitespace-nowrap text-[11px] font-medium text-slate-700">
-                    <span className="rounded-full bg-white px-2 py-1 shadow-sm ring-1 ring-slate-200">
+                  <div className="pointer-events-none absolute bottom-full right-0 z-30 mb-1 whitespace-nowrap text-xs font-medium text-slate-700">
+                    <span className={DATE_PILL}>
                       End: {formatScheduleDateWithDay(dragData.endDate)}
                     </span>
                   </div>
                 </>
               )}
               {!warning && (
-                <div
+                <button
+                  type="button"
                   onClick={() => {
                     if (!dragState) openScheduleDetails(details);
                   }}
@@ -913,8 +1150,9 @@ function SchedulerView({
                     const period = getPeriodFromDragPosition(event);
                     if (period) handleDateDrop(event, period);
                   }}
-                  className="pointer-events-auto absolute inset-y-0 left-2 right-2 cursor-pointer"
-                  title="Open schedule details"
+                  className="pointer-events-auto absolute inset-y-0 left-2 right-2 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white"
+                  title={`Open schedule details: ${label}, ${detail}`}
+                  aria-label={`Open schedule details: ${label}, ${detail}`}
                 />
               )}
               {!warning && canResizeStart && (
@@ -974,16 +1212,16 @@ function SchedulerView({
             </div>
           ) : pendingBarStyle ? (
             <div
-              className={`pointer-events-none absolute top-5 h-6 opacity-25 shadow-sm ${barClass}`}
+              className={`pointer-events-none absolute top-5 h-6 opacity-25 ${barClass}`}
               style={pendingBarStyle}
             />
           ) : (
-            <span className="relative z-1 inline-flex h-16 items-center px-3 text-xs italic text-slate-400">
+            <span className="relative inline-flex h-16 items-center px-3 text-xs italic text-slate-500">
               Unscheduled
             </span>
           )}
           <p
-            className="absolute top-12 z-1 max-w-[250px] truncate text-xs text-slate-500"
+            className="absolute top-12 max-w-64 truncate text-xs text-slate-500"
             style={{ left: displayedBarStyle?.left || "0.5rem" }}
             title={toPlainText(notes) || "No notes added"}
           >
@@ -996,34 +1234,41 @@ function SchedulerView({
 
   return (
     <div className="flex-1 min-h-0 px-4 py-4">
-      <div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4">
           <div>
-            <h2 className="text-base font-semibold text-slate-700">
-              Lot Schedule
+            <h2 className="text-lg font-semibold text-slate-800">
+              Lot schedule
             </h2>
             <p className="mt-1 text-sm text-slate-500">{rangeLabel}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded-lg border border-slate-300 bg-slate-50 p-1">
-              {["weekly", "monthly", "quarterly"].map((scale) => (
+            <div
+              role="group"
+              aria-label="Timeline scale"
+              className="inline-flex rounded-lg border border-slate-300 bg-slate-50 p-1"
+            >
+              {TIMELINE_SCALES.map(({ value, label }) => (
                 <button
-                  key={scale}
+                  key={value}
+                  type="button"
+                  aria-pressed={timelineScale === value}
                   onClick={() => {
-                    setTimelineScale(scale);
+                    setTimelineScale(value);
                     setRangeOffset(0);
                   }}
-                  className={`cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors ${
-                    timelineScale === scale
-                      ? "bg-white text-primary shadow-sm"
-                      : "text-slate-500 hover:text-slate-700"
+                  className={`cursor-pointer rounded-md border px-3 py-1.5 text-sm font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary ${
+                    timelineScale === value
+                      ? "border-slate-300 bg-white text-primary"
+                      : "border-transparent text-slate-500 hover:text-slate-700"
                   }`}
                 >
-                  {scale}
+                  {label}
                 </button>
               ))}
             </div>
             <button
+              type="button"
               onClick={() => setRangeOffset((offset) => offset - 1)}
               aria-label={
                 timelineScale === "weekly"
@@ -1035,11 +1280,12 @@ function SchedulerView({
                   ? "Previous week"
                   : `Previous ${previousRangeLabel}`
               }
-              className="cursor-pointer rounded-lg border border-slate-300 p-2 text-slate-600 transition-colors hover:bg-slate-100"
+              className={BTN_ICON}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             </button>
             <button
+              type="button"
               onClick={() => setRangeOffset((offset) => offset + 1)}
               aria-label={
                 timelineScale === "weekly"
@@ -1051,15 +1297,19 @@ function SchedulerView({
                   ? "Next week"
                   : `Next ${nextRangeLabel}`
               }
-              className="cursor-pointer rounded-lg border border-slate-300 p-2 text-slate-600 transition-colors hover:bg-slate-100"
+              className={BTN_ICON}
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
         {activeLots.length === 0 ? (
-          <div className="p-8 text-center text-sm font-medium text-slate-500">
-            No active lots found
+          <div className="flex flex-col items-center gap-2 px-4 py-12">
+            <ClipboardList
+              className="w-8 h-8 text-slate-300"
+              aria-hidden="true"
+            />
+            <p className="text-sm text-slate-600">No active lots yet</p>
           </div>
         ) : (
           <div className="flex-1 overflow-auto">
@@ -1073,7 +1323,7 @@ function SchedulerView({
             >
               {hasTodayMarker && (
                 <div
-                  className="pointer-events-none absolute bottom-0 top-0 z-20 border-l-2 border-red-500"
+                  className="pointer-events-none absolute bottom-0 top-0 z-20 border-l-2 border-primary"
                   style={{
                     left: isWeeklyView
                       ? `calc(${((schedule.todayIndex + 0.5) / schedule.totalPeriods) * 100}% + ${GANTT_LABEL_WIDTH * (1 - (schedule.todayIndex + 0.5) / schedule.totalPeriods)}px)`
@@ -1082,14 +1332,14 @@ function SchedulerView({
                         unitWidth / 2,
                   }}
                 >
-                  <span className="absolute -left-5 top-1 rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  <span className="absolute -left-6 top-1 rounded-sm bg-primary px-1.5 py-0.5 text-xs font-medium text-white">
                     Today
                   </span>
                 </div>
               )}
               <div className="grid sticky top-0 z-30" style={gridStyle}>
-                <div className="sticky left-0 z-40 border-b border-r border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  Lot / Stage
+                <div className="sticky left-0 z-40 border-b border-r border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium uppercase tracking-wider text-slate-500">
+                  Lot / stage
                 </div>
                 <div
                   className="grid border-b border-slate-200 bg-slate-50"
@@ -1103,7 +1353,7 @@ function SchedulerView({
                   {schedule.periods.map((period) => (
                     <div
                       key={period.toISOString()}
-                      className="border-r border-slate-200 px-1 py-2 text-center text-[10px] leading-tight text-slate-500"
+                      className="border-r border-slate-200 px-1 py-2 text-center text-xs leading-tight text-slate-500"
                     >
                       <div className="font-semibold text-slate-700">
                         {formatTimelineHeader(period, timelineScale)}
@@ -1125,12 +1375,15 @@ function SchedulerView({
                 return (
                   <React.Fragment key={lot.lot_id}>
                     {renderTimelineRow({
-                      label: `${lot.project?.name || "N/A"} — ${lot.name || lot.lot_id}`,
-                      detail: `${formatScheduleDate(lot.startDate)} — ${formatScheduleDate(lot.installationDueDate)}`,
+                      label: `${lot.project?.name || EMPTY} - ${lot.name || lot.lot_id}`,
+                      detail: formatScheduleRange(
+                        lot.startDate,
+                        lot.installationDueDate,
+                      ),
                       barStyle: lotBarStyle || lotWarningBarStyle,
                       barClass: hasMissingInstallationDate
                         ? "bg-red-600"
-                        : "bg-primary",
+                        : "bg-violet-600",
                       tone: "bg-slate-50",
                       rowKey: `lot-${lot.lot_id}`,
                       notes: lot.notes,
@@ -1161,14 +1414,20 @@ function SchedulerView({
                           <React.Fragment key={`${lot.lot_id}-${stageName}`}>
                             {renderTimelineRow({
                               label: `↳ ${stageName}`,
-                              detail: stage
-                                ? `${formatScheduleDate(stage.startDate)} — ${formatScheduleDate(stage.endDate)}`
-                                : "Unscheduled",
+                              detail: `${
+                                stage?.startDate || stage?.endDate
+                                  ? formatScheduleRange(
+                                      stage.startDate,
+                                      stage.endDate,
+                                    )
+                                  : "Unscheduled"
+                              } · ${statusLabel(status)}`,
                               barStyle: getBarStyle(
                                 stage?.startDate,
                                 stage?.endDate,
                               ),
-                              barClass: getStageBarColor(status),
+                              barClass:
+                                STATUS_FILL[status] || STATUS_FILL.NOT_STARTED,
                               tone: "bg-white",
                               rowKey: `stage-${lot.lot_id}-${stageName}`,
                               notes: stage?.notes,
@@ -1209,167 +1468,205 @@ function SchedulerView({
           </div>
         )}
       </div>
-      {selectedScheduleDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+      {selectedScheduleDetails && detailForm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
+          onClick={() => {
+            if (!isDetailFormDirty && !isSavingLotDetails) {
+              closeScheduleDetails();
+            }
+          }}
+        >
           <div
+            ref={detailModalRef}
             role="dialog"
             aria-modal="true"
-            aria-label="Schedule details"
-            className="w-full max-w-xl rounded-xl bg-white p-6 shadow-2xl"
+            aria-labelledby="schedule-details-title"
+            className="bg-white w-full max-w-2xl rounded-xl border border-slate-200 max-h-[90vh] flex flex-col"
+            onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-primary">
-                  {selectedScheduleDetails.type === "stage" ? "Stage" : "Lot"}{" "}
-                  details
+            <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-slate-200 shrink-0">
+              <div className="min-w-0">
+                <h2
+                  id="schedule-details-title"
+                  className="truncate text-lg font-semibold text-slate-800"
+                >
+                  {selectedScheduleDetails.type === "stage"
+                    ? displayStageName(selectedScheduleDetails.item.name)
+                    : selectedScheduleDetails.item.name ||
+                      selectedScheduleDetails.item.lot_id}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {selectedScheduleDetails.type === "stage"
+                    ? "Stage details"
+                    : "Lot details"}
                 </p>
-                <h3 className="mt-1 text-lg font-semibold text-slate-800">
-                  {selectedScheduleDetails.item.name ||
-                    selectedScheduleDetails.item.lot_id}
-                </h3>
               </div>
               <button
-                onClick={() => {
-                  setSelectedScheduleDetails(null);
-                  setDetailForm(null);
-                }}
-                className="cursor-pointer rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
-                aria-label="Close schedule details"
+                type="button"
+                onClick={closeScheduleDetails}
+                disabled={isSavingLotDetails}
+                className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Close"
               >
-                <X className="h-5 w-5" />
+                <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
-            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Start date
-                </p>
-                {detailForm ? (
-                  <input
-                    type="date"
-                    value={detailForm?.startDate || ""}
-                    onChange={(event) =>
-                      setDetailForm((current) => ({
-                        ...current,
-                        startDate: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                ) : (
-                  <p className="mt-1 text-sm font-medium text-slate-700">
-                    {formatScheduleDateWithDay(
-                      selectedScheduleDetails.item.startDate,
-                    )}
-                  </p>
-                )}
-              </div>
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  End date
-                </p>
-                {detailForm ? (
-                  <input
-                    type="date"
-                    value={detailForm?.endDate || ""}
-                    min={detailForm?.startDate || undefined}
-                    onChange={(event) =>
-                      setDetailForm((current) => ({
-                        ...current,
-                        endDate: event.target.value,
-                      }))
-                    }
-                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                ) : (
-                  <p className="mt-1 text-sm font-medium text-slate-700">
-                    {formatScheduleDateWithDay(
-                      selectedScheduleDetails.item.endDate,
-                    )}
-                  </p>
-                )}
-              </div>
-              {selectedScheduleDetails.type === "stage" && (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                    Status
-                  </p>
-                  <p className="mt-1 text-sm font-medium text-slate-700">
-                    {selectedScheduleDetails.item.status
-                      ?.replaceAll("_", " ")
-                      .toLowerCase()}
-                  </p>
-                </div>
-              )}
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Lot
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-700">
-                  {selectedScheduleDetails.lot?.lot_id ||
-                    selectedScheduleDetails.item.lot_id}
-                </p>
-              </div>
-            </div>
-            <div className="mt-5">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Notes
-              </p>
-              {detailForm ? (
-                selectedScheduleDetails.type === "lot" ? (
-                  <div className="mt-1">
-                    <TextEditor
-                      initialContent={detailForm?.notes || ""}
-                      onChange={(content) =>
-                        setDetailForm((current) => ({
-                          ...current,
-                          notes: content,
-                        }))
+            <form
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault();
+                saveScheduleDetails();
+              }}
+              className="flex flex-col min-h-0"
+            >
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="schedule-startDate"
+                      className="block text-sm font-medium text-slate-700 mb-1.5"
+                    >
+                      Start date <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      id="schedule-startDate"
+                      type="date"
+                      data-autofocus
+                      value={detailForm.startDate || ""}
+                      onChange={(event) =>
+                        handleDetailFieldChange("startDate", event.target.value)
                       }
-                      placeholder="No notes added"
+                      aria-invalid={!!detailErrors.startDate}
+                      aria-describedby={
+                        detailErrors.startDate
+                          ? "schedule-startDate-error"
+                          : undefined
+                      }
+                      className={`${FIELD} ${fieldTone(detailErrors.startDate)}`}
+                    />
+                    <FieldError
+                      id="schedule-startDate-error"
+                      message={detailErrors.startDate}
                     />
                   </div>
-                ) : (
-                  <textarea
-                    value={detailForm?.notes || ""}
-                    onChange={(event) =>
-                      setDetailForm((current) => ({
-                        ...current,
-                        notes: event.target.value,
-                      }))
-                    }
-                    rows={5}
-                    className="mt-1 w-full rounded-lg border border-slate-300 p-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary"
-                    placeholder="No notes added"
-                  />
-                )
-              ) : (
-                <p className="mt-1 max-h-56 overflow-y-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
-                  {toPlainText(selectedScheduleDetails.item.notes) ||
-                    "No notes added"}
-                </p>
-              )}
-            </div>
-            {detailForm && (
-              <div className="mt-5 flex justify-end gap-3 border-t border-slate-200 pt-4">
+                  <div>
+                    <label
+                      htmlFor="schedule-endDate"
+                      className="block text-sm font-medium text-slate-700 mb-1.5"
+                    >
+                      End date <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      id="schedule-endDate"
+                      type="date"
+                      value={detailForm.endDate || ""}
+                      min={detailForm.startDate || undefined}
+                      onChange={(event) =>
+                        handleDetailFieldChange("endDate", event.target.value)
+                      }
+                      aria-invalid={!!detailErrors.endDate}
+                      aria-describedby={
+                        detailErrors.endDate
+                          ? "schedule-endDate-error"
+                          : undefined
+                      }
+                      className={`${FIELD} ${fieldTone(detailErrors.endDate)}`}
+                    />
+                    <FieldError
+                      id="schedule-endDate-error"
+                      message={detailErrors.endDate}
+                    />
+                  </div>
+                  {selectedScheduleDetails.type === "stage" && (
+                    <div>
+                      <p className="block text-sm font-medium text-slate-700 mb-1.5">
+                        Status
+                      </p>
+                      <span
+                        className={`${BADGE} ${
+                          STATUS_COLORS[selectedScheduleDetails.item.status] ||
+                          STATUS_COLORS.NOT_STARTED
+                        }`}
+                      >
+                        {statusLabel(selectedScheduleDetails.item.status)}
+                      </span>
+                    </div>
+                  )}
+                  <div>
+                    <p className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Lot ID
+                    </p>
+                    <p className="text-sm font-mono text-slate-700">
+                      {selectedScheduleDetails.lot?.lot_id ||
+                        selectedScheduleDetails.item.lot_id ||
+                        EMPTY}
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  {selectedScheduleDetails.type === "lot" ? (
+                    <div role="group" aria-labelledby="schedule-notes-label">
+                      <p
+                        id="schedule-notes-label"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
+                        Notes
+                      </p>
+                      <TextEditor
+                        initialContent={detailForm.notes || ""}
+                        onChange={(content) =>
+                          handleDetailFieldChange("notes", content)
+                        }
+                        placeholder="No notes added"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <label
+                        htmlFor="schedule-notes"
+                        className="block text-sm font-medium text-slate-700 mb-1.5"
+                      >
+                        Notes
+                      </label>
+                      <textarea
+                        id="schedule-notes"
+                        value={detailForm.notes || ""}
+                        onChange={(event) =>
+                          handleDetailFieldChange("notes", event.target.value)
+                        }
+                        rows={5}
+                        className={`${FIELD} ${fieldTone(false)}`}
+                        placeholder="No notes added"
+                      />
+                    </>
+                  )}
+                </div>
+                {detailErrors.form && (
+                  <p role="alert" className="text-sm text-red-600">
+                    {detailErrors.form}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 shrink-0">
                 <button
-                  onClick={() => {
-                    setSelectedScheduleDetails(null);
-                    setDetailForm(null);
-                  }}
-                  className="cursor-pointer rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                  type="button"
+                  onClick={closeScheduleDetails}
+                  disabled={isSavingLotDetails}
+                  className={`${BTN_SECONDARY} px-4`}
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={saveScheduleDetails}
+                  type="submit"
                   disabled={isSavingLotDetails}
-                  className="cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className={BTN_PRIMARY}
                 >
-                  {isSavingLotDetails ? "Saving..." : "Save changes"}
+                  {isSavingLotDetails && <Spinner />}
+                  Save changes
                 </button>
               </div>
-            )}
+            </form>
           </div>
         </div>
       )}
@@ -1377,7 +1674,7 @@ function SchedulerView({
   );
 }
 
-export default function page() {
+export default function LotsAtAGlancePage() {
   const { getToken } = useAuth();
   const router = useRouter();
   const [activeLots, setActiveLots] = useState([]);
@@ -1401,23 +1698,11 @@ export default function page() {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   // Define all available columns for export
-  const availableColumns = useMemo(() => {
-    return [
-      "Client Name",
-      "Project Name",
-      "Lot ID",
-      ...stages,
-      "Percentage Completed",
-    ];
-  }, []);
+  const availableColumns = useMemo(() => [...EXPORT_COLUMNS], []);
 
   // Initialize selected columns with all columns
   const [selectedColumns, setSelectedColumns] = useState(() => [
-    "Client Name",
-    "Project Name",
-    "Lot ID",
-    ...stages,
-    "Percentage Completed",
+    ...EXPORT_COLUMNS,
   ]);
 
   useEffect(() => {
@@ -1425,16 +1710,24 @@ export default function page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Menus close on Escape (DESIGN.md 9.4).
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.key !== "Escape") return;
+      setShowFilterDropdowns({});
+      setShowColumnDropdown(false);
+      setStatusDropdownOpen(null);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const fetchActiveLots = async () => {
     try {
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error("Your session has expired. Sign in again to continue.");
         return;
       }
 
@@ -1456,7 +1749,10 @@ export default function page() {
       }
     } catch (error) {
       console.error("Error fetching active lots:", error);
-      setError(error.response?.data?.message || "Failed to fetch active lots");
+      setError(
+        error.response?.data?.message ||
+          "Couldn't load the active lots. Check your connection and try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -1522,54 +1818,6 @@ export default function page() {
       (stage) => stage.status === "DONE",
     ).length;
     return Math.round((doneCount / stages.length) * 100);
-  };
-
-  // Helper function to format status for display
-  const formatStatus = (status) => {
-    switch (status) {
-      case "IN_PROGRESS":
-        return "in progress";
-      case "DONE":
-        return "done";
-      case "NOT_STARTED":
-        return "not started";
-      case "NA":
-        return "NA";
-      default:
-        return "not started";
-    }
-  };
-
-  // Helper function to get status color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "IN_PROGRESS":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "DONE":
-        return "bg-green-100 text-green-800 border-green-200";
-      case "NOT_STARTED":
-        return "bg-slate-100 text-slate-800 border-slate-200";
-      case "NA":
-        return "bg-slate-100 text-slate-600 border-slate-200";
-      default:
-        return "bg-slate-100 text-slate-800 border-slate-200";
-    }
-  };
-
-  // Helper function to get status box color (just the background)
-  const getStatusBoxColor = (status) => {
-    switch (status) {
-      case "IN_PROGRESS":
-        return "bg-yellow-600";
-      case "DONE":
-        return "bg-green-600";
-      case "NOT_STARTED":
-        return "bg-slate-600";
-      case "NA":
-        return "bg-slate-500";
-      default:
-        return "bg-slate-600";
-    }
   };
 
   // Filter and sort lots based on search and stage filters
@@ -1720,22 +1968,13 @@ export default function page() {
   const handleExportToExcel = async () => {
     if (filteredLots.length === 0) {
       toast.warning(
-        "No data to export. Please adjust your filters or add lots.",
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        },
+        "There are no lots to export. Adjust your filters and try again.",
       );
       return;
     }
 
     if (selectedColumns.length === 0) {
-      toast.warning("Please select at least one column to export.", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
+      toast.warning("Choose at least one column to export.");
       return;
     }
 
@@ -1747,23 +1986,18 @@ export default function page() {
 
       // Map of column names to their data extraction functions
       const columnMap = {
-        "Client Name": (lot) => lot.project?.client?.client_name || "N/A",
-        "Project Name": (lot) => lot.project?.name || "N/A",
-        "Lot ID": (lot) => lot.lot_id || "",
-        "Percentage Completed": (lot) => `${getPercentageCompleted(lot)}%`,
+        [COL_CLIENT]: (lot) => lot.project?.client?.client_name || "N/A",
+        [COL_PROJECT]: (lot) => lot.project?.name || "N/A",
+        [COL_LOT]: (lot) => lot.lot_id || "",
+        [COL_PERCENT]: (lot) => `${getPercentageCompleted(lot)}%`,
       };
 
       // Add stage columns to the map
       stages.forEach((stage) => {
         columnMap[stage] = (lot) => {
           const status = getStageStatus(lot, stage);
-          return formatStatus(status);
+          return EXPORT_STATUS[status] || "not started";
         };
-      });
-
-      // Add stage widths
-      stages.forEach(() => {
-        // We'll set stage widths to 18 in the export
       });
 
       // Prepare data for export - only include selected columns
@@ -1785,10 +2019,10 @@ export default function page() {
 
       // Set column widths for selected columns only
       const colWidths = selectedColumns.map((column) => {
-        if (column === "Client Name") return { wch: 25 };
-        if (column === "Project Name") return { wch: 25 };
-        if (column === "Lot ID") return { wch: 15 };
-        if (column === "Percentage Completed") return { wch: 20 };
+        if (column === COL_CLIENT) return { wch: 25 };
+        if (column === COL_PROJECT) return { wch: 25 };
+        if (column === COL_LOT) return { wch: 15 };
+        if (column === COL_PERCENT) return { wch: 20 };
         return { wch: 18 }; // Stage columns
       });
       ws["!cols"] = colWidths;
@@ -1804,21 +2038,10 @@ export default function page() {
       XLSX.writeFile(wb, filename);
 
       // Show success message
-      toast.success(
-        `Successfully exported ${exportData.length} lots to ${filename}`,
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        },
-      );
+      toast.success(`Exported ${exportData.length} lots to ${filename}.`);
     } catch (error) {
       console.error("Error exporting to Excel:", error);
-      toast.error("Failed to export data to Excel. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
+      toast.error("Couldn't export to Excel. Try again.");
     } finally {
       setIsExporting(false);
     }
@@ -1828,11 +2051,7 @@ export default function page() {
   const handleProjectNameClick = (lot, event) => {
     event.stopPropagation();
     if (!lot.project?.project_id) {
-      toast.error("Project ID not found", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
+      toast.error("Couldn't open the project because its ID is missing.");
       return;
     }
 
@@ -1844,11 +2063,7 @@ export default function page() {
   const handleClientNameClick = (lot, event) => {
     event.stopPropagation();
     if (!lot.project?.client?.client_id) {
-      toast.error("Client ID not found", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
+      toast.error("Couldn't open the client because its ID is missing.");
       return;
     }
 
@@ -1912,11 +2127,7 @@ export default function page() {
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error("Your session has expired. Sign in again to continue.");
         return;
       }
 
@@ -1947,16 +2158,13 @@ export default function page() {
         );
 
         if (createResponse.data.status) {
-          toast.success("Stage status updated successfully", {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-          });
+          toast.success("Stage status updated.");
           setStatusDropdownOpen(null);
           fetchActiveLots();
         } else {
           toast.error(
-            createResponse.data.message || "Failed to update stage status",
+            createResponse.data.message ||
+              "Couldn't update the stage status. Try again.",
           );
         }
       } else {
@@ -1983,24 +2191,21 @@ export default function page() {
         );
 
         if (response.data.status) {
-          toast.success("Stage status updated successfully", {
-            position: "top-right",
-            autoClose: 3000,
-            hideProgressBar: false,
-          });
+          toast.success("Stage status updated.");
           setStatusDropdownOpen(null);
           fetchActiveLots();
         } else {
-          toast.error(response.data.message || "Failed to update stage status");
+          toast.error(
+            response.data.message ||
+              "Couldn't update the stage status. Try again.",
+          );
         }
       }
     } catch (error) {
       console.error("Error updating stage status:", error);
-      toast.error("Failed to update stage status. Please try again.", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
+      toast.error(
+        "Couldn't update the stage status. Check your connection and try again.",
+      );
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -2043,551 +2248,510 @@ export default function page() {
     };
   }, []);
 
+  const retryFetch = () => {
+    setError("");
+    setLoading(true);
+    fetchActiveLots();
+  };
+
+  const exportDisabled =
+    isExporting || filteredLots.length === 0 || selectedColumns.length === 0;
+  const columnPickerDisabled = isExporting || filteredLots.length === 0;
+  const tableColumnCount = stages.length + 3;
+
+  const tabClass = (tab) =>
+    `cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-t-sm ${
+      activeTab === tab
+        ? "border-primary text-primary"
+        : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+    }`;
+
+  const TH_BASE =
+    "py-2 text-xs font-medium text-slate-500 uppercase tracking-wider";
+  const TH_ROTATED = `${TH_BASE} px-2 text-center w-[50px] h-80`;
+  const ROTATED_LABEL_STYLE = {
+    writingMode: "vertical-rl",
+    textOrientation: "mixed",
+    transform: "rotate(180deg)",
+  };
+
   return (
     <AdminShell>
       <main className="flex h-full min-h-0 flex-col overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-4"></div>
-              <p className="text-sm text-slate-600 font-medium">
-                Loading lots at a glance details...
-              </p>
-            </div>
-          </div>
-        ) : error ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <p className="text-sm text-red-600 mb-4 font-medium">{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="cursor-pointer btn-primary px-4 py-2 text-sm font-medium rounded-lg"
+        <div className="px-4 py-2 shrink-0">
+          <div className="flex flex-wrap justify-between items-center gap-3">
+            <h1 className="text-xl font-semibold text-slate-800">
+              Lots at a glance
+            </h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <div
+                role="group"
+                aria-label="Stage status key"
+                className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
               >
-                Try Again
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="px-4 py-2 shrink-0">
-              <div className="flex justify-between items-center">
-                <h1 className="text-xl font-bold text-slate-700">
-                  Lots at a Glance
-                </h1>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <span className="text-xs font-medium text-slate-600">
-                      Status:
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-4 w-4 rounded bg-slate-600" />
-                        <span className="text-xs text-slate-600">
-                          Not Started
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-4 w-4 rounded bg-yellow-600" />
-                        <span className="text-xs text-slate-600">
-                          In Progress
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-4 w-4 rounded bg-green-600" />
-                        <span className="text-xs text-slate-600">Done</span>
-                      </div>
-                    </div>
-                  </div>
-                  <SearchBar />
+                <span className="text-xs font-medium text-slate-600">
+                  Status:
+                </span>
+                <div className="flex flex-wrap items-center gap-3">
+                  {["NOT_STARTED", "IN_PROGRESS", "DONE", "NA"].map(
+                    (status) => (
+                      <LegendSwatch key={status} status={status} />
+                    ),
+                  )}
                 </div>
               </div>
+              <SearchBar />
             </div>
+          </div>
+        </div>
 
-            <div className="px-4 shrink-0 border-b border-slate-200">
-              <nav className="flex space-x-6">
-                <button
-                  onClick={() => setActiveTab("overview")}
-                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "overview"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                  }`}
-                >
-                  Overview
-                </button>
-                <button
-                  onClick={() => setActiveTab("scheduler")}
-                  className={`cursor-pointer py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "scheduler"
-                      ? "border-primary text-primary"
-                      : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-                  }`}
-                >
-                  Scheduler
-                </button>
-              </nav>
-            </div>
+        <div className="px-4 shrink-0 border-b border-slate-200">
+          <div className="flex space-x-6" role="tablist" aria-label="Lots view">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "overview"}
+              onClick={() => setActiveTab("overview")}
+              className={tabClass("overview")}
+            >
+              Overview
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === "scheduler"}
+              onClick={() => setActiveTab("scheduler")}
+              className={tabClass("scheduler")}
+            >
+              Scheduler
+            </button>
+          </div>
+        </div>
 
-            {activeTab === "overview" ? (
-              <div className="flex-1 flex flex-col overflow-hidden px-4 py-4">
-                <div className="bg-white rounded-lg shadow-sm border border-slate-200 flex flex-col h-full overflow-hidden">
-                  {/* Fixed Header Section */}
-                  <div className="p-4 shrink-0 border-b border-slate-200">
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                      {/* Search */}
-                      <div className="flex items-center gap-2 flex-1 max-w-2xl relative">
-                        <Search className="h-4 w-4 absolute left-3 text-slate-400" />
-                        <input
-                          type="text"
-                          placeholder="Search by client name, project name or lot ID"
-                          className="w-full text-slate-800 p-2 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 text-sm font-normal"
-                          value={search}
-                          onChange={(e) => setSearch(e.target.value)}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {/* Reset Button - Always visible when filters are active */}
-                        {hasActiveFilters && (
-                          <button
-                            onClick={handleResetFilters}
-                            className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                            <span>Reset Filters</span>
-                          </button>
-                        )}
-                        {/* Export to Excel */}
-                        <div className="relative dropdown-container flex items-center">
-                          <button
-                            onClick={handleExportToExcel}
-                            disabled={
-                              isExporting ||
-                              filteredLots.length === 0 ||
-                              selectedColumns.length === 0
-                            }
-                            className={`flex items-center gap-2 transition-all duration-200 text-slate-700 border border-slate-300 border-r-0 px-3 py-2 rounded-l-lg text-sm font-medium ${
-                              isExporting ||
-                              filteredLots.length === 0 ||
-                              selectedColumns.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                            }`}
-                          >
-                            <Sheet className="h-4 w-4" />
-                            <span>
-                              {isExporting ? "Exporting..." : "Export to Excel"}
-                            </span>
-                          </button>
-                          <button
-                            onClick={() =>
-                              setShowColumnDropdown(!showColumnDropdown)
-                            }
-                            disabled={isExporting || filteredLots.length === 0}
-                            className={`flex items-center transition-all duration-200 text-slate-700 border border-slate-300 px-2 py-2 rounded-r-lg text-sm font-medium ${
-                              isExporting || filteredLots.length === 0
-                                ? "opacity-50 cursor-not-allowed"
-                                : "cursor-pointer hover:bg-slate-100"
-                            }`}
-                          >
-                            <ChevronDown className="h-5 w-5" />
-                          </button>
-                          {showColumnDropdown && (
-                            <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
-                              <div className="py-1">
-                                <label className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 sticky top-0 bg-white border-b border-slate-200 cursor-pointer">
-                                  <span className="font-semibold">
-                                    Select All
-                                  </span>
-                                  <input
-                                    type="checkbox"
-                                    checked={
-                                      selectedColumns.length ===
-                                      availableColumns.length
-                                    }
-                                    onChange={() =>
-                                      handleColumnToggle("Select All")
-                                    }
-                                    className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                  />
-                                </label>
-                                {availableColumns.map((column) => (
-                                  <label
-                                    key={column}
-                                    className="flex items-center justify-between px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 cursor-pointer"
-                                  >
-                                    <span>{column}</span>
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedColumns.includes(column)}
-                                      onChange={() =>
-                                        handleColumnToggle(column)
-                                      }
-                                      className="h-4 w-4 text-primary focus:ring-primary border-slate-300 rounded"
-                                    />
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+        {activeTab === "overview" ? (
+          <div className="flex-1 flex flex-col overflow-hidden px-4 py-4">
+            <div className="bg-white rounded-lg border border-slate-200 flex flex-col h-full overflow-hidden">
+              {/* Fixed header section */}
+              <div className="p-4 shrink-0 border-b border-slate-200">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  {/* Search */}
+                  <div className="flex items-center gap-2 flex-1 min-w-64 max-w-2xl relative">
+                    <Search
+                      className="h-4 w-4 absolute left-3 text-slate-400 pointer-events-none"
+                      aria-hidden="true"
+                    />
+                    <input
+                      type="text"
+                      aria-label="Search lots"
+                      placeholder="Search by client name, project name or lot ID"
+                      className="w-full text-sm text-slate-800 py-2 pr-3 pl-10 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Reset button - visible when filters are active */}
+                    {hasActiveFilters && (
+                      <button
+                        type="button"
+                        onClick={handleResetFilters}
+                        className={BTN_SECONDARY}
+                      >
+                        <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                        <span>Reset filters</span>
+                      </button>
+                    )}
+                    {/* Export to Excel */}
+                    <div className="relative dropdown-container flex items-stretch">
+                      <button
+                        type="button"
+                        onClick={handleExportToExcel}
+                        disabled={exportDisabled}
+                        className="cursor-pointer flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 border-r-0 hover:bg-slate-100 rounded-l-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Sheet className="h-4 w-4" aria-hidden="true" />
+                        <span>
+                          {isExporting ? "Exporting…" : "Export to Excel"}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowColumnDropdown(!showColumnDropdown)
+                        }
+                        disabled={columnPickerDisabled}
+                        aria-label="Choose columns to export"
+                        aria-haspopup="true"
+                        aria-expanded={showColumnDropdown}
+                        className="cursor-pointer flex items-center px-2 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-r-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      {showColumnDropdown && (
+                        <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-slate-300 rounded-lg z-40 max-h-96 overflow-y-auto">
+                          <div className="py-1">
+                            <label
+                              className={`${MENU_CHECK_ROW} sticky top-0 bg-white border-b border-slate-200`}
+                            >
+                              <span className="font-medium">Select all</span>
+                              <input
+                                type="checkbox"
+                                checked={
+                                  selectedColumns.length ===
+                                  availableColumns.length
+                                }
+                                onChange={() =>
+                                  handleColumnToggle("Select All")
+                                }
+                                className={CHECKBOX}
+                              />
+                            </label>
+                            {availableColumns.map((column) => (
+                              <label key={column} className={MENU_CHECK_ROW}>
+                                <span>{column}</span>
+                                <input
+                                  type="checkbox"
+                                  checked={selectedColumns.includes(column)}
+                                  onChange={() => handleColumnToggle(column)}
+                                  className={CHECKBOX}
+                                />
+                              </label>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
+                </div>
+              </div>
 
-                  {/* Filter Dropdowns - Positioned fixed over the table */}
-                  {stages.map((stage) => {
-                    const filterStatus = stageFilters[stage] || "ALL";
-                    if (
-                      !showFilterDropdowns[stage] ||
-                      !dropdownPositions[stage]
-                    )
-                      return null;
+              {/* Filter dropdowns - positioned fixed over the table */}
+              {stages.map((stage) => {
+                const filterStatus = stageFilters[stage] || "ALL";
+                if (!showFilterDropdowns[stage] || !dropdownPositions[stage])
+                  return null;
 
-                    return (
-                      <div
-                        key={`dropdown-${stage}`}
-                        className="fixed bg-white border border-slate-200 rounded-lg shadow-xl z-50 w-40 filter-dropdown-container"
-                        style={{
-                          top: `${dropdownPositions[stage].top}px`,
-                          right: `${dropdownPositions[stage].right}px`,
-                        }}
-                      >
-                        <div className="py-1">
-                          <button
-                            onClick={() =>
-                              handleStageFilterChange(stage, "ALL")
-                            }
-                            className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                              filterStatus === "ALL"
-                                ? "bg-slate-100 font-medium"
-                                : ""
-                            }`}
-                          >
-                            All Statuses
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleStageFilterChange(stage, "NOT_STARTED")
-                            }
-                            className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                              filterStatus === "NOT_STARTED"
-                                ? "bg-slate-100 font-medium"
-                                : ""
-                            }`}
-                          >
-                            Not Started
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleStageFilterChange(stage, "IN_PROGRESS")
-                            }
-                            className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                              filterStatus === "IN_PROGRESS"
-                                ? "bg-slate-100 font-medium"
-                                : ""
-                            }`}
-                          >
-                            In Progress
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleStageFilterChange(stage, "DONE")
-                            }
-                            className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                              filterStatus === "DONE"
-                                ? "bg-slate-100 font-medium"
-                                : ""
-                            }`}
-                          >
-                            Done
-                          </button>
-                          <button
-                            onClick={() => handleStageFilterChange(stage, "NA")}
-                            className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 ${
-                              filterStatus === "NA"
-                                ? "bg-slate-100 font-medium"
-                                : ""
-                            }`}
-                          >
-                            NA
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                return (
+                  <div
+                    key={`dropdown-${stage}`}
+                    className="fixed bg-white border border-slate-300 rounded-lg z-40 w-40 filter-dropdown-container"
+                    style={{
+                      top: `${dropdownPositions[stage].top}px`,
+                      right: `${dropdownPositions[stage].right}px`,
+                    }}
+                  >
+                    <div className="py-1">
+                      {FILTER_OPTIONS.map((option) => (
+                        <button
+                          type="button"
+                          key={option}
+                          onClick={() => handleStageFilterChange(stage, option)}
+                          aria-current={filterStatus === option}
+                          className={`${MENU_ITEM} ${
+                            filterStatus === option
+                              ? "bg-slate-100 font-medium"
+                              : ""
+                          }`}
+                        >
+                          {option !== "ALL" && (
+                            <span
+                              className={`h-2 w-2 shrink-0 rounded-full ${STATUS_FILL[option]}`}
+                              aria-hidden="true"
+                            />
+                          )}
+                          {option === "ALL"
+                            ? "All statuses"
+                            : statusLabel(option)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
 
-                  {/* Scrollable Table Section */}
-                  <div className="flex-1 overflow-auto">
-                    {loading ? (
-                      <div className="p-8 text-center text-sm text-slate-500 font-medium">
-                        Loading active lots...
-                      </div>
-                    ) : error ? (
-                      <div className="p-8 text-center text-sm text-red-600 font-medium">
-                        {error}
-                      </div>
-                    ) : activeLots.length === 0 ? (
-                      <div className="p-8 text-center text-sm text-slate-500 font-medium">
-                        No active lots found
-                      </div>
-                    ) : (
-                      <div className="min-w-full">
-                        <table className="min-w-full divide-y divide-slate-200 table-fixed">
-                          <thead className="bg-slate-50 sticky top-0 z-20">
-                            <tr>
-                              <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-0 z-30 bg-slate-50 w-[180px] min-w-[180px] max-w-[180px]">
-                                Client Name
-                              </th>
-                              <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider h-[300px] border-r border-slate-200 sticky top-0 left-[180px] z-30 bg-slate-50 w-[350px] min-w-[350px] max-w-[350px]">
-                                Project Name - Lot Number
-                              </th>
-                              {stages.map((stage) => {
-                                const filterStatus =
-                                  stageFilters[stage] || "ALL";
-                                const hasFilter = filterStatus !== "ALL";
+              {/* Scrollable table section */}
+              <div className="flex-1 overflow-auto">
+                {loading || error ? (
+                  <LoadState
+                    loading={loading}
+                    error={error}
+                    onRetry={retryFetch}
+                  />
+                ) : activeLots.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2 px-4 py-12">
+                    <ClipboardList
+                      className="w-8 h-8 text-slate-300"
+                      aria-hidden="true"
+                    />
+                    <p className="text-sm text-slate-600">No active lots yet</p>
+                  </div>
+                ) : (
+                  <div className="min-w-full">
+                    <table className="min-w-full divide-y divide-slate-200 table-fixed">
+                      <caption className="sr-only">
+                        Stage status for each active lot
+                      </caption>
+                      <thead className="bg-slate-50 sticky top-0 z-20">
+                        <tr>
+                          <th
+                            scope="col"
+                            className={`${TH_BASE} px-4 text-left align-bottom border-r border-slate-200 sticky top-0 left-0 z-30 bg-slate-50 w-[180px] min-w-[180px] max-w-[180px]`}
+                          >
+                            Client name
+                          </th>
+                          <th
+                            scope="col"
+                            className={`${TH_BASE} px-4 text-left align-bottom border-r border-slate-200 sticky top-0 left-[180px] z-30 bg-slate-50 w-[350px] min-w-[350px] max-w-[350px]`}
+                          >
+                            Project name - lot number
+                          </th>
+                          {stages.map((stage) => {
+                            const filterStatus = stageFilters[stage] || "ALL";
+                            const hasFilter = filterStatus !== "ALL";
 
-                                return (
-                                  <th
-                                    key={stage}
-                                    className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[50px] h-[300px]"
-                                  >
-                                    <div className="flex flex-col items-center justify-end gap-2 h-full">
-                                      <span
-                                        className="whitespace-nowrap"
-                                        style={{
-                                          writingMode: "vertical-rl",
-                                          textOrientation: "mixed",
-                                          transform: "rotate(180deg)",
-                                        }}
-                                      >
-                                        {stage}
-                                      </span>
-
-                                      <div className="relative filter-dropdown-container shrink-0">
-                                        <button
-                                          ref={(el) =>
-                                            (filterButtonRefs.current[stage] =
-                                              el)
-                                          }
-                                          onClick={(e) =>
-                                            handleFilterButtonClick(stage, e)
-                                          }
-                                          className={`cursor-pointer p-1 rounded hover:bg-slate-200 transition-colors ${
-                                            hasFilter ? "bg-primary/20" : ""
-                                          }`}
-                                          title="Filter by status"
-                                        >
-                                          <Funnel
-                                            className={`h-3 w-3 ${
-                                              hasFilter
-                                                ? "text-primary"
-                                                : "text-slate-400"
-                                            }`}
-                                          />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  </th>
-                                );
-                              })}
-                              <th className="px-2 py-4 text-center text-sm font-semibold text-slate-600 uppercase tracking-wider w-[50px] h-[300px] border-l border-slate-200">
+                            return (
+                              <th
+                                key={stage}
+                                scope="col"
+                                className={TH_ROTATED}
+                              >
                                 <div className="flex flex-col items-center justify-end gap-2 h-full">
                                   <span
                                     className="whitespace-nowrap"
-                                    style={{
-                                      writingMode: "vertical-rl",
-                                      textOrientation: "mixed",
-                                      transform: "rotate(180deg)",
-                                    }}
+                                    style={ROTATED_LABEL_STYLE}
                                   >
-                                    Percentage Completed
+                                    {stage}
                                   </span>
+
+                                  <div className="relative filter-dropdown-container shrink-0">
+                                    <button
+                                      type="button"
+                                      ref={(el) =>
+                                        (filterButtonRefs.current[stage] = el)
+                                      }
+                                      onClick={(e) =>
+                                        handleFilterButtonClick(stage, e)
+                                      }
+                                      aria-haspopup="true"
+                                      aria-expanded={Boolean(
+                                        showFilterDropdowns[stage],
+                                      )}
+                                      aria-label={`Filter ${stage} by status${
+                                        hasFilter
+                                          ? ` (showing ${statusLabel(filterStatus)})`
+                                          : ""
+                                      }`}
+                                      title={
+                                        hasFilter
+                                          ? `Showing ${statusLabel(filterStatus)}`
+                                          : "Filter by status"
+                                      }
+                                      className={`cursor-pointer p-1.5 rounded-md hover:bg-slate-200 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary ${
+                                        hasFilter ? "bg-primary/20" : ""
+                                      }`}
+                                    >
+                                      <Funnel
+                                        className={`h-4 w-4 ${
+                                          hasFilter
+                                            ? "text-primary"
+                                            : "text-slate-500"
+                                        }`}
+                                        aria-hidden="true"
+                                      />
+                                    </button>
+                                  </div>
                                 </div>
                               </th>
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-slate-200">
-                            {filteredLots.length === 0 ? (
-                              <tr>
-                                <td
-                                  colSpan={stages.length + 3}
-                                  className="px-4 py-8 text-center text-sm text-slate-500"
+                            );
+                          })}
+                          <th
+                            scope="col"
+                            className={`${TH_ROTATED} border-l border-slate-200`}
+                          >
+                            <div className="flex flex-col items-center justify-end gap-2 h-full">
+                              <span
+                                className="whitespace-nowrap"
+                                style={ROTATED_LABEL_STYLE}
+                              >
+                                Percentage completed
+                              </span>
+                            </div>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-slate-200">
+                        {filteredLots.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={tableColumnCount}
+                              className="px-4 py-12 text-center"
+                            >
+                              <div className="flex flex-col items-center gap-2">
+                                <ClipboardList
+                                  className="w-8 h-8 text-slate-300"
+                                  aria-hidden="true"
+                                />
+                                <p className="text-sm text-slate-600">
+                                  No lots match your filters
+                                </p>
+                                {hasActiveFilters && (
+                                  <button
+                                    type="button"
+                                    onClick={handleResetFilters}
+                                    className={`${BTN_SECONDARY} py-1.5`}
+                                  >
+                                    <RotateCcw
+                                      className="h-4 w-4"
+                                      aria-hidden="true"
+                                    />
+                                    Clear filters
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredLots.map((lot) => (
+                            <tr
+                              key={lot.lot_id}
+                              className="group hover:bg-slate-50 transition-colors duration-200"
+                            >
+                              <td className="px-4 py-3 text-sm text-slate-700 sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap w-[180px] min-w-[180px] max-w-[180px] overflow-hidden">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleClientNameClick(lot, e)}
+                                  title={
+                                    lot.project?.client?.client_name || EMPTY
+                                  }
+                                  className="block w-full truncate text-left font-medium cursor-pointer rounded-sm focus:outline-none focus:ring-2 focus:ring-primary"
                                 >
-                                  <div className="flex flex-col items-center gap-3">
-                                    <p>
-                                      No lots match your filters. Try adjusting
-                                      your search or filters.
-                                    </p>
-                                    {hasActiveFilters && (
+                                  {lot.project?.client?.client_name || EMPTY}
+                                </button>
+                              </td>
+                              <td className="px-4 py-3 text-sm text-slate-700 sticky left-[180px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap w-[350px] min-w-[350px] max-w-[350px] overflow-hidden">
+                                <button
+                                  type="button"
+                                  onClick={(e) =>
+                                    handleProjectNameClick(lot, e)
+                                  }
+                                  title={`${lot.project?.name || EMPTY} - ${lot.lot_id}`}
+                                  className="block w-full truncate text-left font-medium cursor-pointer rounded-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                                >
+                                  {lot.project?.name || EMPTY} - {lot.lot_id}
+                                </button>
+                              </td>
+                              {stages.map((stage) => {
+                                const status = getStageStatus(lot, stage);
+                                const StatusIcon = STATUS_ICON[status];
+                                const dropdownKey = `${lot.lot_id}-${stage}`;
+                                const isDropdownOpen =
+                                  statusDropdownOpen === dropdownKey;
+                                const dropdownPosition =
+                                  statusDropdownPositions[dropdownKey];
+
+                                return (
+                                  <td
+                                    key={stage}
+                                    className="px-2 py-3 text-sm text-center relative"
+                                  >
+                                    <div className="relative inline-block">
                                       <button
-                                        onClick={handleResetFilters}
-                                        className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 transition-all duration-200 text-slate-700 border border-slate-300 px-3 py-2 rounded-lg text-sm font-medium"
+                                        type="button"
+                                        onClick={(e) =>
+                                          handleStatusSquareClick(lot, stage, e)
+                                        }
+                                        disabled={isUpdatingStatus}
+                                        aria-haspopup="true"
+                                        aria-expanded={isDropdownOpen}
+                                        aria-label={`${stage} for ${lot.lot_id}: ${statusLabel(status)}. Change status`}
+                                        title={`${statusLabel(status)} - click to change`}
+                                        className={`inline-flex items-center justify-center w-6 h-6 rounded-md text-white ${
+                                          STATUS_FILL[status] ||
+                                          STATUS_FILL.NOT_STARTED
+                                        } cursor-pointer hover:opacity-80 transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed`}
                                       >
-                                        <RotateCcw className="h-4 w-4" />
-                                        Reset Filters
+                                        {StatusIcon && (
+                                          <StatusIcon
+                                            className="w-3 h-3"
+                                            aria-hidden="true"
+                                          />
+                                        )}
                                       </button>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            ) : (
-                              filteredLots.map((lot) => (
-                                <tr
-                                  key={lot.lot_id}
-                                  className="group hover:bg-slate-50 transition-colors duration-200"
-                                >
-                                  <td
-                                    onClick={(e) =>
-                                      handleClientNameClick(lot, e)
-                                    }
-                                    className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-0 bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[180px] min-w-[180px] max-w-[180px] overflow-hidden"
-                                    title={
-                                      lot.project?.client?.client_name || "N/A"
-                                    }
-                                  >
-                                    <span className="block truncate">
-                                      {lot.project?.client?.client_name ||
-                                        "N/A"}
-                                    </span>
-                                  </td>
-                                  <td
-                                    onClick={(e) =>
-                                      handleProjectNameClick(lot, e)
-                                    }
-                                    className="px-4 py-3 text-sm text-slate-700 font-medium sticky left-[180px] bg-white group-hover:bg-slate-50 z-10 border-r border-slate-200 whitespace-nowrap cursor-pointer hover:bg-blue-50 w-[350px] min-w-[350px] max-w-[350px] overflow-hidden"
-                                    title={`${lot.project?.name || "N/A"} - ${lot.lot_id}`}
-                                  >
-                                    <span className="block truncate">
-                                      {lot.project?.name || "N/A"} -{" "}
-                                      {lot.lot_id}
-                                    </span>
-                                  </td>
-                                  {stages.map((stage) => {
-                                    const status = getStageStatus(lot, stage);
-                                    const boxColor = getStatusBoxColor(status);
-                                    const dropdownKey = `${lot.lot_id}-${stage}`;
-                                    const isDropdownOpen =
-                                      statusDropdownOpen === dropdownKey;
-                                    const dropdownPosition =
-                                      statusDropdownPositions[dropdownKey];
 
-                                    return (
-                                      <td
-                                        key={stage}
-                                        className="px-2 py-3 text-sm text-center relative"
-                                      >
-                                        <div className="relative inline-block">
-                                          <button
-                                            onClick={(e) =>
-                                              handleStatusSquareClick(
-                                                lot,
-                                                stage,
-                                                e,
-                                              )
-                                            }
-                                            disabled={isUpdatingStatus}
-                                            className={`inline-block w-6 h-6 rounded ${boxColor} cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed`}
-                                            title={`${formatStatus(status)} - Click to change`}
-                                          ></button>
-
-                                          {isDropdownOpen &&
-                                            dropdownPosition && (
-                                              <div
-                                                className="fixed bg-white border border-slate-200 rounded-lg shadow-xl z-50 w-40 status-dropdown-container"
-                                                style={{
-                                                  top: dropdownPosition.top
-                                                    ? `${dropdownPosition.top}px`
-                                                    : "auto",
-                                                  bottom:
-                                                    dropdownPosition.bottom
-                                                      ? `${dropdownPosition.bottom}px`
-                                                      : "auto",
-                                                  left: `${dropdownPosition.left}px`,
-                                                }}
+                                      {isDropdownOpen && dropdownPosition && (
+                                        <div
+                                          className="fixed bg-white border border-slate-300 rounded-lg z-40 w-40 status-dropdown-container"
+                                          style={{
+                                            top: dropdownPosition.top
+                                              ? `${dropdownPosition.top}px`
+                                              : "auto",
+                                            bottom: dropdownPosition.bottom
+                                              ? `${dropdownPosition.bottom}px`
+                                              : "auto",
+                                            left: `${dropdownPosition.left}px`,
+                                          }}
+                                        >
+                                          <div className="py-1">
+                                            {STATUS_OPTIONS.map((option) => (
+                                              <button
+                                                type="button"
+                                                key={option}
+                                                onClick={() =>
+                                                  handleStageStatusUpdate(
+                                                    lot,
+                                                    stage,
+                                                    option,
+                                                  )
+                                                }
+                                                disabled={isUpdatingStatus}
+                                                aria-current={status === option}
+                                                className={`${MENU_ITEM} disabled:opacity-50 disabled:cursor-not-allowed ${
+                                                  status === option
+                                                    ? "bg-slate-100 font-medium"
+                                                    : ""
+                                                }`}
                                               >
-                                                <div className="py-1">
-                                                  <button
-                                                    onClick={() =>
-                                                      handleStageStatusUpdate(
-                                                        lot,
-                                                        stage,
-                                                        "NOT_STARTED",
-                                                      )
-                                                    }
-                                                    disabled={isUpdatingStatus}
-                                                    className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                                      status === "NOT_STARTED"
-                                                        ? "bg-slate-100 font-medium"
-                                                        : ""
-                                                    }`}
-                                                  >
-                                                    Not Started
-                                                  </button>
-                                                  <button
-                                                    onClick={() =>
-                                                      handleStageStatusUpdate(
-                                                        lot,
-                                                        stage,
-                                                        "IN_PROGRESS",
-                                                      )
-                                                    }
-                                                    disabled={isUpdatingStatus}
-                                                    className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                                      status === "IN_PROGRESS"
-                                                        ? "bg-slate-100 font-medium"
-                                                        : ""
-                                                    }`}
-                                                  >
-                                                    In Progress
-                                                  </button>
-                                                  <button
-                                                    onClick={() =>
-                                                      handleStageStatusUpdate(
-                                                        lot,
-                                                        stage,
-                                                        "DONE",
-                                                      )
-                                                    }
-                                                    disabled={isUpdatingStatus}
-                                                    className={`cursor-pointer w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                                                      status === "DONE"
-                                                        ? "bg-slate-100 font-medium"
-                                                        : ""
-                                                    }`}
-                                                  >
-                                                    Done
-                                                  </button>
-                                                </div>
-                                              </div>
-                                            )}
+                                                <span
+                                                  className={`h-2 w-2 shrink-0 rounded-full ${STATUS_FILL[option]}`}
+                                                  aria-hidden="true"
+                                                />
+                                                {statusLabel(option)}
+                                              </button>
+                                            ))}
+                                          </div>
                                         </div>
-                                      </td>
-                                    );
-                                  })}
-                                  <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center border-l border-slate-200 whitespace-nowrap w-[50px] min-w-[50px] max-w-[50px]">
-                                    {getPercentageCompleted(lot)}%
+                                      )}
+                                    </div>
                                   </td>
-                                </tr>
-                              ))
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                                );
+                              })}
+                              <td className="px-4 py-3 text-sm text-slate-700 font-medium text-center tabular-nums border-l border-slate-200 whitespace-nowrap w-[50px] min-w-[50px] max-w-[50px]">
+                                {getPercentageCompleted(lot)}%
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-                </div>
+                )}
               </div>
-            ) : (
-              <SchedulerView
-                activeLots={activeLots}
-                getStageStatus={getStageStatus}
-                getToken={getToken}
-                onRefresh={fetchActiveLots}
-                onOptimisticUpdate={updateScheduleOptimistically}
-              />
-            )}
-          </>
+            </div>
+          </div>
+        ) : loading || error ? (
+          <div className="flex-1 min-h-0 px-4 py-4">
+            <div className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <LoadState loading={loading} error={error} onRetry={retryFetch} />
+            </div>
+          </div>
+        ) : (
+          <SchedulerView
+            activeLots={activeLots}
+            getStageStatus={getStageStatus}
+            getToken={getToken}
+            onRefresh={fetchActiveLots}
+            onOptimisticUpdate={updateScheduleOptimistically}
+          />
         )}
       </main>
     </AdminShell>

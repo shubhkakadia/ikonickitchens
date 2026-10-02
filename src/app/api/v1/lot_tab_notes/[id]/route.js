@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
+import { publishLotNotesUpdate } from "@/lib/updates";
 
 export async function GET(request, { params }) {
   try {
@@ -49,6 +50,11 @@ export async function PATCH(request, { params }) {
       "UPDATE",
       `Lot tab notes updated successfully: ${lotTab.notes}`,
     );
+    await publishLotNotesUpdate({
+      req: request,
+      lotId: lotTab.lot_id,
+      tabKind: lotTab.tab,
+    });
     if (!logged) {
       console.error(`Failed to log lot tab notes update: ${id}`);
     }

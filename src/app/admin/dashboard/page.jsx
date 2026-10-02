@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import axios from "axios";
 import { AlertTriangle, RefreshCcw } from "lucide-react";
 import AdminShell from "@/components/AdminShell";
@@ -12,13 +13,25 @@ import AttentionStrip from "./components/AttentionStrip";
 import ProductionSchedule from "./components/ProductionSchedule";
 import { MyMeetings, MyStages } from "./components/MyDayPanel";
 import TodoPanel from "./components/TodoPanel";
-import PipelinePanel from "./components/PipelinePanel";
-import ProcurementPanel from "./components/ProcurementPanel";
-import InventoryPanel from "./components/InventoryPanel";
+import UpdatesPanel from "./components/UpdatesPanel";
 import ActivityFeed from "./components/ActivityFeed";
 import StorageIndicator from "./components/StorageIndicator";
 import { SkeletonCard } from "./components/SectionCard";
 import { formatTime } from "./lib/format";
+
+// Chart.js and every chart panel live behind this boundary, so the first
+// paint (greeting, KPIs, attention items, schedule) ships without them.
+const InsightsPanel = dynamic(() => import("./components/InsightsPanel"), {
+  ssr: false,
+  loading: () => (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <SkeletonCard className="xl:col-span-2 h-72" />
+      <SkeletonCard className="h-72" />
+    </div>
+  ),
+});
+
+const AUTO_REFRESH_MS = 5 * 60 * 1000;
 
 const greeting = () => {
   const hour = new Date().getHours();
@@ -53,8 +66,8 @@ function HeaderClock() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
             className="h-[86px] bg-white rounded-lg border border-slate-200 animate-pulse"
@@ -79,6 +92,9 @@ export default function page() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Bumped on every successful reload so the Insights tabs drop their cache.
+  const [refreshKey, setRefreshKey] = useState(0);
+  const lastLoaded = useRef(0);
   const [storage, setStorage] = useState(null);
   const [storageLoading, setStorageLoading] = useState(true);
   const [storageError, setStorageError] = useState(null);
@@ -107,7 +123,9 @@ export default function page() {
       });
       if (response.data.status) {
         setData(response.data.data);
+        if (hasData.current) setRefreshKey((k) => k + 1);
         hasData.current = true;
+        lastLoaded.current = Date.now();
       } else {
         setError(response.data.message || "Failed to fetch dashboard data");
       }
@@ -125,6 +143,24 @@ export default function page() {
   useEffect(() => {
     fetchDashboard();
   }, [fetchDashboard]);
+
+  // Coming back to a stale tab refreshes it, instead of polling in the
+  // background while nobody is looking.
+  useEffect(() => {
+    const onVisible = () => {
+      if (
+        document.visibilityState === "visible" &&
+        hasData.current &&
+        Date.now() - lastLoaded.current > AUTO_REFRESH_MS
+      ) {
+        fetchDashboard();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [fetchDashboard]);
+
+  const getCurrentToken = useCallback(() => getTokenRef.current(), []);
 
   const fetchStorage = useCallback(async (refresh = false) => {
     const token = getTokenRef.current();
@@ -156,6 +192,19 @@ export default function page() {
   }, [fetchStorage]);
 
   const permissions = data?.permissions;
+
+  // Month-to-date PO spend comes free with the 12-month series already in
+  // the payload; no extra query.
+  const kpis = useMemo(() => {
+    const months = data?.procurement?.spendByMonth;
+    if (!data?.kpis || !permissions?.purchaseOrders || !months?.length)
+      return data?.kpis;
+    return {
+      ...data.kpis,
+      spendThisMonth: Number(months.at(-1)?.poTotal) || 0,
+      spendLastMonth: Number(months.at(-2)?.poTotal) || 0,
+    };
+  }, [data, permissions]);
 
   return (
     <AdminShell>
@@ -233,7 +282,7 @@ export default function page() {
 
               <ClockPunchCard />
 
-              <KpiStrip kpis={data.kpis} permissions={permissions} />
+              <KpiStrip kpis={kpis} permissions={permissions} />
 
               <AttentionStrip attention={data.attention} />
 
@@ -252,26 +301,18 @@ export default function page() {
                   )}
                 </div>
                 <div className="space-y-4 min-w-0">
+                  <UpdatesPanel />
                   <TodoPanel />
                   <MyStages stages={data.myDay?.stages} />
                   <MyMeetings meetings={data.myDay?.meetings} />
                 </div>
               </div>
 
-              {permissions?.projects && data.pipeline && (
-                <PipelinePanel pipeline={data.pipeline} />
-              )}
-
-              {permissions?.procurement && data.procurement && (
-                <ProcurementPanel
-                  procurement={data.procurement}
-                  permissions={permissions}
-                />
-              )}
-
-              {permissions?.inventory && data.inventory && (
-                <InventoryPanel inventory={data.inventory} />
-              )}
+              <InsightsPanel
+                data={data}
+                getToken={getCurrentToken}
+                refreshKey={refreshKey}
+              />
 
               {permissions?.logs && permissions?.projects && (
                 <ActivityFeed activity={data.activity} />

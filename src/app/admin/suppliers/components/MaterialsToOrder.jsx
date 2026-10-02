@@ -1,16 +1,18 @@
 "use client";
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useId, useState, useMemo, useRef } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  AlertTriangle,
   Plus,
   Package,
   ChevronDown,
   Calendar,
   FileText,
   FileUp,
-  Trash,
+  Paperclip,
+  Trash2,
   X,
   File,
   ArrowUpDown,
@@ -21,6 +23,311 @@ import Image from "next/image";
 import PurchaseOrderForm from "./PurchaseOrderForm";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
+import useModalFocus from "@/hooks/useModalFocus";
+import {
+  BADGE,
+  BADGE_TONES,
+  COUNT_BADGE,
+  STATUS_COLORS,
+  formatQty,
+  formatTime,
+} from "@/app/admin/dashboard/lib/format";
+import { formatLabel } from "@/app/admin/employees/punches/lib/punchStyles";
+
+const EMPTY = "—";
+const LOAD_ERROR =
+  "Couldn't load materials to order. Check your connection and try again.";
+const SESSION_ERROR = "Your session has expired. Sign in again to continue.";
+
+const ACTIVE_STATUSES = ["DRAFT", "PARTIALLY_ORDERED"];
+const COMPLETED_STATUSES = ["FULLY_ORDERED", "CLOSED"];
+
+// Button, field and table recipes from DESIGN.md 9.1 / 9.2 / 9.5 (compact).
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const ICON_BTN =
+  "cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed";
+const FIELD_COMPACT =
+  "text-sm text-slate-800 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200 disabled:bg-slate-50 disabled:text-slate-600 disabled:cursor-not-allowed";
+const TH =
+  "px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider";
+
+// Which attributes to list for each item category, in display order.
+const DETAIL_FIELDS = {
+  sheet: [
+    ["Brand", "brand"],
+    ["Colour", "color"],
+    ["Finish", "finish"],
+    ["Face", "face"],
+    ["Dimensions", "dimensions"],
+  ],
+  handle: [
+    ["Brand", "brand"],
+    ["Colour", "color"],
+    ["Type", "type"],
+    ["Dimensions", "dimensions"],
+    ["Material", "material"],
+  ],
+  hardware: [
+    ["Brand", "brand"],
+    ["Name", "name"],
+    ["Type", "type"],
+    ["Dimensions", "dimensions"],
+    ["Sub category", "sub_category"],
+  ],
+  accessory: [["Name", "name"]],
+  edging_tape: [
+    ["Brand", "brand"],
+    ["Colour", "color"],
+    ["Finish", "finish"],
+    ["Dimensions", "dimensions"],
+  ],
+};
+
+// A created date without a year is ambiguous on a record, so this keeps the
+// year (the shared formatDate is the compact day + month form).
+const formatCreated = (value) => {
+  if (!value) return EMPTY;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return EMPTY;
+  const day = date.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  const time = formatTime(value);
+  return time ? `${day}, ${time}` : day;
+};
+
+const formatFileSize = (bytes) => {
+  if (!bytes || bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+};
+
+const isImageFile = (file) =>
+  file.mime_type?.includes("image") || file.file_type === "image";
+const isVideoFile = (file) =>
+  file.mime_type?.includes("video") || file.file_type === "video";
+const isPdfFile = (file) =>
+  file.mime_type?.includes("pdf") ||
+  file.file_type === "pdf" ||
+  file.extension === "pdf";
+
+// If a purchase order already covers the line, show its quantity instead of the
+// manually entered one.
+const defaultQuantityOrdered = (entry) =>
+  entry.quantity_ordered_po && Number(entry.quantity_ordered_po) > 0
+    ? entry.quantity_ordered_po
+    : (entry.quantity_ordered ?? 0);
+
+// A short name for an MTO line, used to label its quantity field.
+const itemLabel = (entry) => {
+  const detail =
+    entry.item?.sheet ||
+    entry.item?.handle ||
+    entry.item?.hardware ||
+    entry.item?.accessory ||
+    entry.item?.edging_tape;
+  const name = [detail?.brand, detail?.name || detail?.color]
+    .filter(Boolean)
+    .join(" ");
+  return name || entry.item_id || formatLabel(entry.item?.category) || "item";
+};
+
+// Sortable column header. The label is a real button so the sort is reachable
+// by keyboard (DESIGN.md 13.7); the active column carries the only indicator.
+function SortHeader({
+  field,
+  label,
+  sortField,
+  sortOrder,
+  onSort,
+  alignRight = false,
+}) {
+  const isActive = sortField === field;
+  const ariaSort = isActive
+    ? sortOrder === "asc"
+      ? "ascending"
+      : "descending"
+    : undefined;
+  const Icon = !isActive
+    ? ArrowUpDown
+    : sortOrder === "asc"
+      ? ArrowUp
+      : ArrowDown;
+
+  return (
+    <th
+      scope="col"
+      aria-sort={ariaSort}
+      className={`${TH} ${alignRight ? "text-right" : "text-left"}`}
+    >
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className={`cursor-pointer flex items-center gap-2 uppercase tracking-wider hover:text-slate-700 transition-colors duration-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-primary ${
+          alignRight ? "ml-auto" : ""
+        }`}
+      >
+        {label}
+        <Icon
+          className={`w-4 h-4 ${isActive ? "text-primary" : "text-slate-400"}`}
+          aria-hidden="true"
+        />
+      </button>
+    </th>
+  );
+}
+
+// Item thumbnail with a placeholder when there is no image or it fails to load.
+function ItemThumb({ entry }) {
+  const [failed, setFailed] = useState(false);
+  const url = entry.item?.image?.url;
+
+  if (!url || failed) {
+    return (
+      <div className="w-10 h-10 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center">
+        <Package className="w-5 h-5 text-slate-400" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      loading="lazy"
+      src={`/${url}`}
+      alt={entry.item_id || entry.item?.category || "Item image"}
+      className="w-10 h-10 object-cover rounded-lg border border-slate-200"
+      onError={() => setFailed(true)}
+      width={40}
+      height={40}
+    />
+  );
+}
+
+// One collapsible group of uploaded files (images, videos, PDFs, other).
+function FileCategorySection({
+  title,
+  files,
+  isSmall = false,
+  sectionKey,
+  isExpanded,
+  onToggle,
+  onView,
+  onDelete,
+  deletingMediaId,
+}) {
+  if (files.length === 0) return null;
+
+  const panelId = `mto-files-${sectionKey}`;
+
+  return (
+    <div className="mb-4">
+      <button
+        type="button"
+        onClick={() => onToggle(sectionKey)}
+        aria-expanded={isExpanded}
+        aria-controls={panelId}
+        className="cursor-pointer w-full flex items-center justify-between text-sm font-semibold text-slate-700 mb-3 hover:text-slate-900 transition-colors duration-200 rounded-sm focus:outline-none focus:ring-2 focus:ring-primary"
+      >
+        <span>
+          {title} ({files.length})
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 transition-transform duration-200 ${
+            isExpanded ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+        />
+      </button>
+
+      {isExpanded && (
+        <div id={panelId} className="flex flex-wrap gap-3">
+          {files.map((file) => (
+            <div
+              key={file.id}
+              className={`relative bg-white border border-slate-200 hover:border-primary/25 rounded-lg transition-colors duration-200 ${
+                isSmall ? "w-32" : "w-40"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => onView(file)}
+                title="View file"
+                className="cursor-pointer block w-full text-left p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <span
+                  className={`flex w-full ${
+                    isSmall ? "aspect-4/3" : "aspect-square"
+                  } rounded-lg items-center justify-center mb-2 overflow-hidden bg-slate-50`}
+                >
+                  {isImageFile(file) ? (
+                    <Image
+                      height={100}
+                      width={100}
+                      src={`/${file.url}`}
+                      alt=""
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  ) : isVideoFile(file) ? (
+                    <video
+                      src={`/${file.url}`}
+                      className="w-full h-full object-cover rounded-lg"
+                      muted
+                      playsInline
+                    />
+                  ) : isPdfFile(file) ? (
+                    <FileText
+                      className={`${isSmall ? "w-5 h-5" : "w-8 h-8"} text-slate-400`}
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <File
+                      className={`${isSmall ? "w-5 h-5" : "w-8 h-8"} text-slate-400`}
+                      aria-hidden="true"
+                    />
+                  )}
+                </span>
+                <span className="block space-y-1">
+                  <span
+                    className="block text-xs font-medium text-slate-700 truncate"
+                    title={file.filename}
+                  >
+                    {file.filename || EMPTY}
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    {formatFileSize(file.size || 0)}
+                  </span>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onDelete(file.id)}
+                disabled={deletingMediaId === file.id}
+                aria-label={`Delete ${file.filename || "file"}`}
+                title="Delete file"
+                className="absolute top-2 right-2 cursor-pointer p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deletingMediaId === file.id ? (
+                  <span
+                    className="block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Trash2 className="w-4 h-4" aria-hidden="true" />
+                )}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const GroupedItemsTable = ({
   items,
@@ -42,12 +349,7 @@ const GroupedItemsTable = ({
       const next = { ...prev };
       items.forEach((it) => {
         if (it?.id && next[it.id] === undefined) {
-          // If quantity_ordered_po > 0, use that value instead of quantity_ordered
-          const qtyOrdered =
-            it.quantity_ordered_po && Number(it.quantity_ordered_po) > 0
-              ? it.quantity_ordered_po
-              : (it.quantity_ordered ?? 0);
-          next[it.id] = String(qtyOrdered);
+          next[it.id] = String(defaultQuantityOrdered(it));
         }
       });
       return next;
@@ -66,7 +368,7 @@ const GroupedItemsTable = ({
   const saveQuantityOrdered = async (mtoItemId, rawValue) => {
     const sessionToken = getToken();
     if (!sessionToken) {
-      toast.error("No valid session found. Please login again.");
+      toast.error(SESSION_ERROR);
       return;
     }
 
@@ -100,7 +402,8 @@ const GroupedItemsTable = ({
     } catch (err) {
       console.error("Failed to update quantity_ordered:", err);
       toast.error(
-        err?.response?.data?.message || err?.message || "Failed to save",
+        err?.response?.data?.message ||
+          "Couldn't save the quantity ordered. Check your connection and try again.",
       );
     } finally {
       setIsSavingQuantityOrderedById((prev) => ({
@@ -166,7 +469,7 @@ const GroupedItemsTable = ({
   const { groups, orderedGroupNames } = groupedItems;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       {orderedGroupNames.map((name) => {
         // Check if all items in this group have been fully ordered
         const groupItems = groups.get(name) || [];
@@ -179,8 +482,8 @@ const GroupedItemsTable = ({
 
         return (
           <div key={name}>
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-xs font-semibold text-slate-700">{name}</div>
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <h3 className="text-sm font-semibold text-slate-700">{name}</h3>
               {activeTab === "active" &&
                 name !== "Unassigned" &&
                 !allItemsOrdered && (
@@ -214,259 +517,163 @@ const GroupedItemsTable = ({
                       if (!supplierId) return;
                       onOpenPO(name, supplierId, mtoId);
                     }}
-                    className="cursor-pointer px-2 py-1 text-xs border border-primary text-primary rounded-md hover:bg-primary hover:text-white transition-colors"
+                    className={BTN_SECONDARY}
                   >
-                    <Plus className="inline w-3 h-3 mr-1" /> Create Purchase
-                    Order
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                    Create purchase order
                   </button>
                 )}
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full border border-slate-200 rounded-lg">
+            <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th scope="col" className={`${TH} text-left`}>
                       Image
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th scope="col" className={`${TH} text-left`}>
                       Category
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th scope="col" className={`${TH} text-left`}>
                       Details
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th scope="col" className={`${TH} text-right`}>
                       Quantity
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                      Qty Ordered
+                    <th scope="col" className={`${TH} text-right`}>
+                      Qty ordered
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                    <th scope="col" className={`${TH} text-left`}>
                       Status
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-200">
-                  {groups.get(name).map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50">
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        <div className="flex items-center">
-                          {item.item?.image?.url ? (
-                            <Image
-                              loading="lazy"
-                              src={`/${item.item.image.url}`}
-                              alt={
-                                item.item_id ||
-                                item.item?.category ||
-                                "Item image"
-                              }
-                              className="w-10 h-10 object-cover rounded border border-slate-200"
-                              onError={(e) => {
-                                e.target.style.display = "none";
-                                e.target.nextSibling.style.display = "flex";
-                              }}
-                              width={40}
-                              height={40}
-                            />
-                          ) : (
-                            <div className="w-10 h-10 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
-                              <Package className="w-5 h-5 text-slate-400" />
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                          {item.item?.category}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="text-xs text-slate-600 space-y-1">
-                          {item.item?.sheet && (
-                            <>
-                              <div>
-                                <span className="font-medium">Brand:</span>{" "}
-                                {item.item.sheet.brand || "-"}
-                              </div>
-                              <div>
-                                <span className="font-medium">Color:</span>{" "}
-                                {item.item.sheet.color}
-                              </div>
-                              <div>
-                                <span className="font-medium">Finish:</span>{" "}
-                                {item.item.sheet.finish}
-                              </div>
-                              <div>
-                                <span className="font-medium">Face:</span>{" "}
-                                {item.item.sheet.face || "-"}
-                              </div>
-                              <div>
-                                <span className="font-medium">Dimensions:</span>{" "}
-                                {item.item.sheet.dimensions}
-                              </div>
-                            </>
-                          )}
-                          {item.item?.handle && (
-                            <>
-                              <div>
-                                <span className="font-medium">Brand:</span>{" "}
-                                {item.item.handle.brand || "-"}
-                              </div>
-                              <div>
-                                <span className="font-medium">Color:</span>{" "}
-                                {item.item.handle.color}
-                              </div>
-                              <div>
-                                <span className="font-medium">Type:</span>{" "}
-                                {item.item.handle.type}
-                              </div>
-                              <div>
-                                <span className="font-medium">Dimensions:</span>{" "}
-                                {item.item.handle.dimensions}
-                              </div>
-                              <div>
-                                <span className="font-medium">Material:</span>{" "}
-                                {item.item.handle.material || "-"}
-                              </div>
-                            </>
-                          )}
-                          {item.item?.hardware && (
-                            <>
-                              <div>
-                                <span className="font-medium">Brand:</span>{" "}
-                                {item.item.hardware.brand || "-"}
-                              </div>
-                              <div>
-                                <span className="font-medium">Name:</span>{" "}
-                                {item.item.hardware.name}
-                              </div>
-                              <div>
-                                <span className="font-medium">Type:</span>{" "}
-                                {item.item.hardware.type}
-                              </div>
-                              <div>
-                                <span className="font-medium">Dimensions:</span>{" "}
-                                {item.item.hardware.dimensions}
-                              </div>
-                              <div>
-                                <span className="font-medium">
-                                  Sub Category:
-                                </span>{" "}
-                                {item.item.hardware.sub_category}
-                              </div>
-                            </>
-                          )}
-                          {item.item?.accessory && (
-                            <>
-                              <div>
-                                <span className="font-medium">Name:</span>{" "}
-                                {item.item.accessory.name}
-                              </div>
-                            </>
-                          )}
-                          {item.item?.edging_tape && (
-                            <>
-                              <div>
-                                <span className="font-medium">Brand:</span>{" "}
-                                {item.item.edging_tape.brand || "-"}
-                              </div>
-                              <div>
-                                <span className="font-medium">Color:</span>{" "}
-                                {item.item.edging_tape.color || "-"}
-                              </div>
-                              <div>
-                                <span className="font-medium">Finish:</span>{" "}
-                                {item.item.edging_tape.finish || "-"}
-                              </div>
-                              <div>
-                                <span className="font-medium">Dimensions:</span>{" "}
-                                {item.item.edging_tape.dimensions || "-"}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        <div className="text-xs text-slate-600">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <Package className="w-4 h-4 text-slate-500" />
-                            <span>
-                              <span className="font-medium">Qty:</span>{" "}
-                              {item.quantity} {item.item?.measurement_unit}
+                  {groups.get(name).map((item) => {
+                    const hasOrderedPo =
+                      Number(item.quantity_ordered_po || 0) > 0;
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <ItemThumb entry={item} />
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {item.item?.category ? (
+                            <span className={`${BADGE} ${BADGE_TONES.indigo}`}>
+                              {formatLabel(item.item.category)}
                             </span>
+                          ) : (
+                            <span className="text-sm text-slate-500">
+                              {EMPTY}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="text-xs text-slate-600 space-y-1">
+                            {Object.entries(DETAIL_FIELDS).map(
+                              ([key, fields]) =>
+                                item.item?.[key] && (
+                                  <React.Fragment key={key}>
+                                    {fields.map(([label, field]) => (
+                                      <div key={field}>
+                                        <span className="font-medium">
+                                          {label}:
+                                        </span>{" "}
+                                        {item.item[key][field] || EMPTY}
+                                      </div>
+                                    ))}
+                                  </React.Fragment>
+                                ),
+                            )}
                           </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          <p className="text-sm font-mono text-slate-700">
+                            {formatQty(
+                              item.quantity,
+                              item.item?.measurement_unit,
+                            )}
+                          </p>
                           {item.quantity_ordered_po > 0 && (
-                            <div className="flex items-center gap-1.5 text-blue-600 text-xs">
-                              <span>Ordered: {item.quantity_ordered_po}</span>
-                            </div>
+                            <p className="text-xs font-mono text-slate-600">
+                              Ordered {formatQty(item.quantity_ordered_po)}
+                            </p>
                           )}
                           {item.quantity_received > 0 && (
-                            <div className="flex items-center gap-1.5 text-green-600 text-xs">
-                              <span>Received: {item.quantity_received}</span>
-                            </div>
+                            <p className="text-xs font-mono text-slate-600">
+                              Received {formatQty(item.quantity_received)}
+                            </p>
                           )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        <input
-                          type="number"
-                          min="0"
-                          value={
-                            quantityOrderedDraftById[item.id] ??
-                            String(
-                              // If quantity_ordered_po > 0, use that value instead of quantity_ordered
-                              item.quantity_ordered_po &&
-                                Number(item.quantity_ordered_po) > 0
-                                ? item.quantity_ordered_po
-                                : (item.quantity_ordered ?? 0),
-                            )
-                          }
-                          onChange={(e) =>
-                            handleQuantityOrderedChange(item.id, e.target.value)
-                          }
-                          onBlur={() => {
-                            const timers = quantityOrderedTimersRef.current;
-                            if (timers.has(item.id)) {
-                              clearTimeout(timers.get(item.id));
-                              timers.delete(item.id);
-                            }
-                            const v =
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          <input
+                            type="number"
+                            min="0"
+                            aria-label={`Quantity ordered for ${itemLabel(item)}`}
+                            value={
                               quantityOrderedDraftById[item.id] ??
-                              String(
-                                // If quantity_ordered_po > 0, use that value instead of quantity_ordered
-                                item.quantity_ordered_po &&
-                                  Number(item.quantity_ordered_po)
-                                  ? item.quantity_ordered_po
-                                  : (item.quantity_ordered ?? 0),
-                              );
-                            saveQuantityOrdered(item.id, v);
-                          }}
-                          disabled={
-                            !!isSavingQuantityOrderedById[item.id] ||
-                            Number(item.quantity_ordered_po || 0) > 0
-                          }
-                          className="w-24 text-xs text-slate-800 px-2 py-1 border border-slate-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none disabled:opacity-60"
-                        />
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {Number(item.quantity_ordered_po || 0) > 0 && (
-                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                            Ordered
-                          </span>
-                        )}
-                        {item.quantity_received > 0 && (
-                          <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
-                            Received
-                          </span>
-                        )}
-                        {Number(item.quantity_ordered_po || 0) === 0 &&
-                          item.quantity_received === 0 && (
-                            <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded">
-                              Pending
-                            </span>
-                          )}
-                      </td>
-                    </tr>
-                  ))}
+                              String(defaultQuantityOrdered(item))
+                            }
+                            onChange={(e) =>
+                              handleQuantityOrderedChange(
+                                item.id,
+                                e.target.value,
+                              )
+                            }
+                            onBlur={() => {
+                              const timers = quantityOrderedTimersRef.current;
+                              if (timers.has(item.id)) {
+                                clearTimeout(timers.get(item.id));
+                                timers.delete(item.id);
+                              }
+                              const v =
+                                quantityOrderedDraftById[item.id] ??
+                                String(defaultQuantityOrdered(item));
+                              saveQuantityOrdered(item.id, v);
+                            }}
+                            disabled={
+                              !!isSavingQuantityOrderedById[item.id] ||
+                              hasOrderedPo
+                            }
+                            title={
+                              hasOrderedPo
+                                ? "A purchase order already covers this line"
+                                : undefined
+                            }
+                            className={`w-24 text-right font-mono ${FIELD_COMPACT}`}
+                          />
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-1">
+                            {hasOrderedPo && (
+                              <span
+                                className={`${BADGE} ${STATUS_COLORS.ORDERED}`}
+                              >
+                                Ordered
+                              </span>
+                            )}
+                            {item.quantity_received > 0 && (
+                              <span
+                                className={`${BADGE} ${STATUS_COLORS.FULLY_RECEIVED}`}
+                              >
+                                Received
+                              </span>
+                            )}
+                            {!hasOrderedPo && item.quantity_received === 0 && (
+                              <span
+                                className={`${BADGE} ${BADGE_TONES.warning}`}
+                              >
+                                Pending
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -479,8 +686,10 @@ const GroupedItemsTable = ({
 
 export default function MaterialsToOrder({ supplierId, onCountChange }) {
   const { getToken } = useAuth();
+  const fileFieldId = useId();
   const [materialsToOrder, setMaterialsToOrder] = useState([]);
-  const [loadingMTO, setLoadingMTO] = useState(false);
+  const [loadingMTO, setLoadingMTO] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [mtoActiveTab, setMtoActiveTab] = useState("active");
   const [showCreatePurchaseOrderModal, setShowCreatePurchaseOrderModal] =
     useState(false);
@@ -505,6 +714,11 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const fileInputRef = useRef(null);
+  const mediaModalRef = useRef(null);
+
+  // Focus moves into the media modal, stays inside it, and returns to the
+  // trigger on close (DESIGN.md 13.6).
+  useModalFocus(mediaModalRef, showMediaModal && !!selectedMtoForMedia);
 
   const handleUpdateQuantityOrdered = (mtoId, mtoItemId, value) => {
     setMaterialsToOrder((prev) =>
@@ -523,8 +737,12 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
   const fetchMaterialsToOrder = async () => {
     try {
       setLoadingMTO(true);
+      setLoadError("");
       const sessionToken = getToken();
-      if (!sessionToken) return;
+      if (!sessionToken) {
+        setLoadError(SESSION_ERROR);
+        return;
+      }
       const response = await axios.get(
         `/api/v1/materials_to_order/by-supplier/${supplierId}`,
         {
@@ -535,24 +753,26 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
         const data = response.data.data || [];
         setMaterialsToOrder(data);
         if (onCountChange) onCountChange(data.length || 0);
+      } else {
+        setLoadError(response.data.message || LOAD_ERROR);
       }
     } catch (err) {
       console.error("Error fetching materials to order:", err);
-      toast.error(
-        err.response?.data?.message || "Failed to fetch materials to order",
-        {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        },
-      );
+      const message = err.response?.data?.message || LOAD_ERROR;
+      setLoadError(message);
+      // With a list already on screen the inline error state is not shown, so
+      // say so in a toast instead.
+      if (materialsToOrder.length > 0) toast.error(message);
     } finally {
       setLoadingMTO(false);
     }
   };
 
   useEffect(() => {
-    if (!supplierId) return;
+    if (!supplierId) {
+      setLoadingMTO(false);
+      return;
+    }
     fetchMaterialsToOrder();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supplierId]);
@@ -600,22 +820,24 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
     }
   };
 
-  const getSortIcon = (field) => {
-    if (sortField !== field)
-      return <ArrowUpDown className="h-4 w-4 text-slate-400" />;
-    if (sortOrder === "asc")
-      return <ArrowUp className="h-4 w-4 text-primary" />;
-    if (sortOrder === "desc")
-      return <ArrowDown className="h-4 w-4 text-primary" />;
-    return null;
-  };
+  const tabCounts = useMemo(
+    () => ({
+      active: materialsToOrder.filter((mto) =>
+        ACTIVE_STATUSES.includes(mto.status),
+      ).length,
+      completed: materialsToOrder.filter((mto) =>
+        COMPLETED_STATUSES.includes(mto.status),
+      ).length,
+    }),
+    [materialsToOrder],
+  );
 
   const filteredMTOs = useMemo(() => {
     // Tab filter
     let list = materialsToOrder.filter((mto) =>
       mtoActiveTab === "active"
-        ? mto.status === "DRAFT" || mto.status === "PARTIALLY_ORDERED"
-        : mto.status === "FULLY_ORDERED" || mto.status === "CLOSED",
+        ? ACTIVE_STATUSES.includes(mto.status)
+        : COMPLETED_STATUSES.includes(mto.status),
     );
 
     // Precompute counts
@@ -681,13 +903,18 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
     }
   };
 
-  const formatFileSize = (bytes) => {
-    if (!bytes || bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
-  };
+  // The media modal closes on Escape (DESIGN.md 9.4), except while an upload is
+  // running. The delete confirmation needs an explicit button, and the file
+  // viewer handles its own Escape.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+      if (showDeleteMediaModal || viewFileModal) return;
+      if (showMediaModal && !uploadingMedia) handleCloseMediaModal();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  });
 
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -706,10 +933,7 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
     try {
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(SESSION_ERROR);
         return;
       }
 
@@ -730,10 +954,7 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
       );
 
       if (response.data.status) {
-        toast.success(response.data.message || "Files uploaded successfully", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.success(response.data.message || "Files uploaded.");
         // Refresh media files
         const updatedMedia = [...mediaFiles, ...(response.data.data || [])];
         setMediaFiles(updatedMedia);
@@ -744,16 +965,16 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
           fileInputRef.current.value = "";
         }
       } else {
-        toast.error(response.data.message || "Failed to upload files", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(
+          response.data.message ||
+            "Couldn't upload the files. Check your connection and try again.",
+        );
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to upload files", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      toast.error(
+        err?.response?.data?.message ||
+          "Couldn't upload the files. Check your connection and try again.",
+      );
     } finally {
       setUploadingMedia(false);
     }
@@ -771,10 +992,7 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
     try {
       const sessionToken = getToken();
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(SESSION_ERROR);
         return;
       }
 
@@ -788,10 +1006,7 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
       );
 
       if (response.data.status) {
-        toast.success("File deleted successfully", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.success("File deleted.");
         // Remove from local state
         setMediaFiles((prev) =>
           prev.filter((f) => f.id !== pendingDeleteMediaId),
@@ -801,16 +1016,16 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
         setShowDeleteMediaModal(false);
         setPendingDeleteMediaId(null);
       } else {
-        toast.error(response.data.message || "Failed to delete file", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(
+          response.data.message ||
+            "Couldn't delete the file. Check your connection and try again.",
+        );
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to delete file", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      toast.error(
+        err?.response?.data?.message ||
+          "Couldn't delete the file. Check your connection and try again.",
+      );
     } finally {
       setDeletingMediaId(null);
     }
@@ -841,226 +1056,330 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
     }));
   };
 
+  const tabClass = (tab) =>
+    `cursor-pointer py-2 px-1 border-b-2 font-medium text-sm transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+      mtoActiveTab === tab
+        ? "border-primary text-primary"
+        : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
+    }`;
+
+  const categorizedMedia = {
+    images: mediaFiles.filter((file) => isImageFile(file)),
+    videos: mediaFiles.filter(
+      (file) => !isImageFile(file) && isVideoFile(file),
+    ),
+    pdfs: mediaFiles.filter(
+      (file) => !isImageFile(file) && !isVideoFile(file) && isPdfFile(file),
+    ),
+    others: mediaFiles.filter(
+      (file) => !isImageFile(file) && !isVideoFile(file) && !isPdfFile(file),
+    ),
+  };
+
+  const pendingDeleteFile = mediaFiles.find(
+    (file) => file.id === pendingDeleteMediaId,
+  );
+  const pendingDeleteName = pendingDeleteFile?.filename || "This file";
+
+  const otherTab = mtoActiveTab === "active" ? "completed" : "active";
+  const tabLabels = { active: "active", completed: "completed" };
+
   return (
     <div>
       <div className="border-b border-slate-200 mb-2 flex items-center justify-between px-4">
-        <nav className="flex space-x-6">
+        <nav
+          className="flex space-x-6"
+          role="tablist"
+          aria-label="Materials to order status"
+        >
           <button
+            type="button"
+            role="tab"
+            id="mto-tab-active"
+            aria-selected={mtoActiveTab === "active"}
+            aria-controls="mto-panel"
             onClick={() => setMtoActiveTab("active")}
-            className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${
-              mtoActiveTab === "active"
-                ? "border-primary text-primary"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-            }`}
+            className={tabClass("active")}
           >
-            Active
+            <span className="flex items-center gap-2">
+              Active
+              {tabCounts.active > 0 && (
+                <span className={COUNT_BADGE}>{tabCounts.active}</span>
+              )}
+            </span>
           </button>
           <button
+            type="button"
+            role="tab"
+            id="mto-tab-completed"
+            aria-selected={mtoActiveTab === "completed"}
+            aria-controls="mto-panel"
             onClick={() => setMtoActiveTab("completed")}
-            className={`cursor-pointer py-3 px-1 border-b-2 font-medium text-sm ${
-              mtoActiveTab === "completed"
-                ? "border-primary text-primary"
-                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
-            }`}
+            className={tabClass("completed")}
           >
-            Completed
+            <span className="flex items-center gap-2">
+              Completed
+              {tabCounts.completed > 0 && (
+                <span className={COUNT_BADGE}>{tabCounts.completed}</span>
+              )}
+            </span>
           </button>
         </nav>
       </div>
-      {loadingMTO ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
-        </div>
-      ) : filteredMTOs && filteredMTOs.length > 0 ? (
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50 sticky top-0 z-10">
-              <tr>
-                <th
-                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                  onClick={() => handleSort("project")}
-                >
-                  <div className="flex items-center gap-2">
-                    Project / Lots
-                    {getSortIcon("project")}
-                  </div>
-                </th>
-                <th
-                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                  onClick={() => handleSort("items")}
-                >
-                  <div className="flex items-center gap-2">
-                    Items
-                    {getSortIcon("items")}
-                  </div>
-                </th>
-                <th
-                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                  onClick={() => handleSort("remaining")}
-                >
-                  <div className="flex items-center gap-2">
-                    Items Remaining
-                    {getSortIcon("remaining")}
-                  </div>
-                </th>
-                <th
-                  className="px-4 py-2 text-left text-sm font-semibold text-slate-600 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors duration-200"
-                  onClick={() => handleSort("status")}
-                >
-                  <div className="flex items-center gap-2">
-                    Status
-                    {getSortIcon("status")}
-                  </div>
-                </th>
-                <th className="px-4 py-2 text-right text-sm font-semibold text-slate-600 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-slate-200">
-              {filteredMTOs.map((mto) => {
-                return (
-                  <React.Fragment key={mto.id}>
-                    <tr
-                      onClick={() => {
-                        if (openAccordionId === mto.id) {
-                          setOpenAccordionId(null);
-                        } else {
-                          setOpenAccordionId(mto.id);
-                        }
-                      }}
-                      className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex flex-row items-center gap-3">
-                          <span className="text-sm font-semibold text-slate-800 truncate">
-                            {mto.project?.name || "Project"}
-                          </span>
-                          <div className="flex flex-wrap gap-1 mt-1 md:mt-0">
-                            {mto.lots?.map((lot) => (
-                              <span
-                                key={lot.lot_id || lot.id}
-                                className="text-[10px] px-2 py-1 bg-purple-100 text-purple-800 rounded"
-                              >
-                                {lot.name}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-700">
-                        {mto.__itemsCount ?? (mto.items?.length || 0)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-700">
-                        {mto.__itemsRemaining ??
-                          (mto.items?.filter(
-                            (it) =>
-                              (it.quantity_ordered_po || 0) <
-                              (it.quantity || 0),
-                          ).length ||
-                            0)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`px-2 py-1 text-xs font-medium rounded ${
-                            mto.status === "DRAFT"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : mto.status === "PARTIALLY_ORDERED"
-                                ? "bg-blue-100 text-blue-800"
-                                : mto.status === "FULLY_ORDERED"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-slate-100 text-slate-800"
-                          }`}
-                        >
-                          {mto.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <ChevronDown
-                          className={`w-4 h-4 text-slate-500 inline-block transition-transform duration-200 ${
-                            openAccordionId === mto.id ? "rotate-180" : ""
-                          }`}
-                        />
-                      </td>
-                    </tr>
 
-                    {/* Accordion content */}
-                    {openAccordionId === mto.id && (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className="px-4 pb-4 border-t border-slate-200 bg-slate-50"
+      <div
+        id="mto-panel"
+        role="tabpanel"
+        aria-labelledby={`mto-tab-${mtoActiveTab}`}
+      >
+        {loadingMTO ? (
+          <div className="bg-white rounded-lg border border-slate-200 px-4 py-12 text-center">
+            <div
+              className="flex items-center justify-center gap-2 text-sm text-slate-600"
+              role="status"
+            >
+              <span
+                className="w-4 h-4 border-2 border-slate-200 border-t-primary rounded-full animate-spin"
+                aria-hidden="true"
+              />
+              Loading materials to order...
+            </div>
+          </div>
+        ) : loadError && materialsToOrder.length === 0 ? (
+          <div className="bg-white rounded-lg border border-slate-200 px-4 py-12 text-center">
+            <AlertTriangle
+              className="mx-auto mb-2 w-8 h-8 text-red-500"
+              aria-hidden="true"
+            />
+            <p className="text-sm text-red-600 mb-4" role="alert">
+              {loadError}
+            </p>
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={fetchMaterialsToOrder}
+                className={BTN_SECONDARY}
+              >
+                Try again
+              </button>
+            </div>
+          </div>
+        ) : filteredMTOs.length > 0 ? (
+          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50">
+                  <tr>
+                    <SortHeader
+                      field="project"
+                      label="Project / lots"
+                      sortField={sortField}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                    <SortHeader
+                      field="items"
+                      label="Items"
+                      sortField={sortField}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                      alignRight
+                    />
+                    <SortHeader
+                      field="remaining"
+                      label="Items remaining"
+                      sortField={sortField}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                      alignRight
+                    />
+                    <SortHeader
+                      field="status"
+                      label="Status"
+                      sortField={sortField}
+                      sortOrder={sortOrder}
+                      onSort={handleSort}
+                    />
+                    <th scope="col" className={`${TH} text-right`}>
+                      <span className="sr-only">Show items</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-200">
+                  {filteredMTOs.map((mto) => {
+                    const isOpen = openAccordionId === mto.id;
+                    const projectName = mto.project?.name || EMPTY;
+                    return (
+                      <React.Fragment key={mto.id}>
+                        <tr
+                          onClick={() =>
+                            setOpenAccordionId(isOpen ? null : mto.id)
+                          }
+                          className="cursor-pointer hover:bg-slate-50 transition-colors duration-200"
                         >
-                          <div id={`mto-${mto.id}`} className="mt-2">
-                            <div className="mb-2 p-2 bg-slate-50 rounded-lg">
-                              <div className="flex items-center gap-4 text-xs text-slate-600">
-                                <div className="flex items-center gap-1.5">
-                                  <Calendar className="w-4 h-4" />
-                                  <span>
-                                    <span className="font-medium">
-                                      Created:
-                                    </span>{" "}
-                                    {mto.createdAt
-                                      ? new Date(mto.createdAt).toLocaleString()
-                                      : "No date"}
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap items-center gap-3">
+                              <span
+                                className="text-sm font-semibold text-slate-800 truncate max-w-xs"
+                                title={projectName}
+                              >
+                                {projectName}
+                              </span>
+                              <div className="flex flex-wrap gap-1">
+                                {mto.lots?.map((lot) => (
+                                  <span
+                                    key={lot.lot_id || lot.id}
+                                    className={`${BADGE} ${BADGE_TONES.violet}`}
+                                  >
+                                    {lot.name}
                                   </span>
-                                </div>
-                                {mto.notes && (
-                                  <div className="flex items-center gap-1.5">
-                                    <FileText className="w-4 h-4" />
+                                ))}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm font-mono text-slate-700">
+                            {mto.__itemsCount}
+                          </td>
+                          <td className="px-4 py-3 text-right text-sm font-mono text-slate-700">
+                            {mto.__itemsRemaining}
+                          </td>
+                          <td className="px-4 py-3">
+                            {mto.status ? (
+                              <span
+                                className={`${BADGE} ${
+                                  STATUS_COLORS[mto.status] ||
+                                  BADGE_TONES.neutral
+                                }`}
+                              >
+                                {formatLabel(mto.status)}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-slate-500">
+                                {EMPTY}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenAccordionId(isOpen ? null : mto.id);
+                              }}
+                              aria-expanded={isOpen}
+                              aria-controls={
+                                isOpen ? `mto-${mto.id}` : undefined
+                              }
+                              aria-label={`${
+                                isOpen ? "Hide" : "Show"
+                              } items for ${projectName}`}
+                              className={ICON_BTN}
+                            >
+                              <ChevronDown
+                                className={`w-4 h-4 transition-transform duration-200 ${
+                                  isOpen ? "rotate-180" : ""
+                                }`}
+                                aria-hidden="true"
+                              />
+                            </button>
+                          </td>
+                        </tr>
+
+                        {/* Accordion content */}
+                        {isOpen && (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-4 bg-slate-50">
+                              <div id={`mto-${mto.id}`} className="space-y-4">
+                                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-600">
+                                  <div className="flex items-center gap-2">
+                                    <Calendar
+                                      className="w-4 h-4"
+                                      aria-hidden="true"
+                                    />
                                     <span>
                                       <span className="font-medium">
-                                        Notes:
+                                        Created:
                                       </span>{" "}
-                                      {mto.notes}
+                                      {formatCreated(mto.createdAt)}
                                     </span>
                                   </div>
-                                )}
-                                <div className="flex items-center gap-1.5">
-                                  <FileText className="w-4 h-4" />
+                                  {mto.notes && (
+                                    <div className="flex items-center gap-2">
+                                      <FileText
+                                        className="w-4 h-4"
+                                        aria-hidden="true"
+                                      />
+                                      <span>
+                                        <span className="font-medium">
+                                          Notes:
+                                        </span>{" "}
+                                        {mto.notes}
+                                      </span>
+                                    </div>
+                                  )}
                                   <button
+                                    type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleOpenMediaModal(mto);
                                     }}
-                                    className="cursor-pointer text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+                                    className="cursor-pointer flex items-center gap-2 text-xs font-medium text-primary rounded-sm focus:outline-none focus:ring-2 focus:ring-primary"
                                   >
-                                    <span>Media Files:</span>
-                                    <span className="px-2 py-0.5 bg-primary/10 text-primary rounded">
-                                      {(mto.media || []).length}
-                                    </span>
+                                    <Paperclip
+                                      className="w-4 h-4"
+                                      aria-hidden="true"
+                                    />
+                                    Media files ({(mto.media || []).length})
                                   </button>
                                 </div>
-                              </div>
-                            </div>
 
-                            {/* Items grouped by supplier */}
-                            {!!(mto.items && mto.items.length) && (
-                              <GroupedItemsTable
-                                items={mto.items}
-                                mtoId={mto.id}
-                                activeTab={mtoActiveTab}
-                                onOpenPO={openCreatePOForSupplier}
-                                onUpdateQuantityOrdered={
-                                  handleUpdateQuantityOrdered
-                                }
-                              />
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="text-center py-10 text-slate-500">
-          No materials to order found
-        </div>
-      )}
+                                {/* Items grouped by supplier */}
+                                {!!(mto.items && mto.items.length) && (
+                                  <GroupedItemsTable
+                                    items={mto.items}
+                                    mtoId={mto.id}
+                                    activeTab={mtoActiveTab}
+                                    onOpenPO={openCreatePOForSupplier}
+                                    onUpdateQuantityOrdered={
+                                      handleUpdateQuantityOrdered
+                                    }
+                                  />
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg border border-slate-200 px-4 py-12 text-center">
+            <Package
+              className="mx-auto mb-2 w-8 h-8 text-slate-300"
+              aria-hidden="true"
+            />
+            <p className="text-sm text-slate-600">
+              No {tabLabels[mtoActiveTab]} materials to order
+            </p>
+            {tabCounts[otherTab] > 0 && (
+              <div className="flex justify-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => setMtoActiveTab(otherTab)}
+                  className={BTN_SECONDARY}
+                >
+                  View {tabLabels[otherTab]} ({tabCounts[otherTab]})
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {showCreatePurchaseOrderModal && selectedSupplierForPO && (
         <PurchaseOrderForm
           materialsToOrder={mtosForSelectedSupplier}
@@ -1073,258 +1392,129 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
 
       {/* Media Files Modal */}
       {showMediaModal && selectedMtoForMedia && (
-        <div className="fixed inset-0 backdrop-blur-xs bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col relative z-50">
-            <div className="flex items-center justify-between p-6 border-b border-slate-200">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Media Files - {selectedMtoForMedia.project?.name || "Project"}
-              </h2>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
+          onClick={() => {
+            if (!uploadingMedia) handleCloseMediaModal();
+          }}
+        >
+          <div
+            ref={mediaModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mto-media-title"
+            className="bg-white rounded-xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+              <div>
+                <h2
+                  id="mto-media-title"
+                  className="text-lg font-semibold text-slate-800"
+                >
+                  Media files
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Project: {selectedMtoForMedia.project?.name || EMPTY}
+                </p>
+              </div>
               <button
+                type="button"
                 onClick={handleCloseMediaModal}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                disabled={uploadingMedia}
+                className={ICON_BTN}
+                aria-label="Close"
               >
-                <X className="w-5 h-5 text-slate-600" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1">
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
               {/* Display Existing Files First */}
-              {(() => {
-                // Categorize files by type
-                const categorizeFiles = () => {
-                  const images = [];
-                  const videos = [];
-                  const pdfs = [];
-                  const others = [];
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 mb-4">
+                  Uploaded files
+                </h3>
 
-                  mediaFiles.forEach((file) => {
-                    if (
-                      file.mime_type?.includes("image") ||
-                      file.file_type === "image"
-                    ) {
-                      images.push(file);
-                    } else if (
-                      file.mime_type?.includes("video") ||
-                      file.file_type === "video"
-                    ) {
-                      videos.push(file);
-                    } else if (
-                      file.mime_type?.includes("pdf") ||
-                      file.file_type === "pdf" ||
-                      file.extension === "pdf"
-                    ) {
-                      pdfs.push(file);
-                    } else {
-                      others.push(file);
-                    }
-                  });
-
-                  return { images, videos, pdfs, others };
-                };
-
-                const { images, videos, pdfs, others } = categorizeFiles();
-
-                // File Category Section Component
-                const FileCategorySection = ({
-                  title,
-                  files,
-                  isSmall = false,
-                  sectionKey,
-                }) => {
-                  if (files.length === 0) return null;
-
-                  const isExpanded = expandedSections[sectionKey];
-
-                  return (
-                    <div className="mb-4">
-                      {/* Category Header with Toggle */}
-                      <button
-                        onClick={() => toggleSection(sectionKey)}
-                        className="w-full flex items-center justify-between text-sm font-semibold text-slate-700 mb-3 hover:text-slate-900 transition-colors"
-                      >
-                        <span>
-                          {title} ({files.length})
-                        </span>
-                        <div
-                          className={`transform transition-transform duration-200 ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </div>
-                      </button>
-
-                      {/* Collapsible Content */}
-                      {isExpanded && (
-                        <div className="flex flex-wrap gap-3">
-                          {files.map((file) => (
-                            <div
-                              key={file.id}
-                              onClick={() => handleViewExistingFile(file)}
-                              title="Click to view file"
-                              className={`cursor-pointer relative bg-white border border-slate-200 rounded-lg p-3 hover:shadow-md transition-all group ${
-                                isSmall ? "w-32" : "w-40"
-                              }`}
-                            >
-                              {/* File Preview */}
-                              <div
-                                className={`w-full ${
-                                  isSmall ? "aspect-4/3" : "aspect-square"
-                                } rounded-lg flex items-center justify-center mb-2 overflow-hidden bg-slate-50`}
-                              >
-                                {file.mime_type?.includes("image") ||
-                                file.file_type === "image" ? (
-                                  <Image
-                                    height={100}
-                                    width={100}
-                                    src={`/${file.url}`}
-                                    alt={file.filename || "Media file"}
-                                    className="w-full h-full object-cover rounded-lg"
-                                  />
-                                ) : file.mime_type?.includes("video") ||
-                                  file.file_type === "video" ? (
-                                  <video
-                                    src={`/${file.url}`}
-                                    className="w-full h-full object-cover rounded-lg"
-                                    muted
-                                    playsInline
-                                  />
-                                ) : (
-                                  <div
-                                    className={`w-full h-full flex items-center justify-center rounded-lg ${
-                                      file.mime_type?.includes("pdf") ||
-                                      file.file_type === "pdf" ||
-                                      file.extension === "pdf"
-                                        ? "bg-red-50"
-                                        : "bg-green-50"
-                                    }`}
-                                  >
-                                    {file.mime_type?.includes("pdf") ||
-                                    file.file_type === "pdf" ||
-                                    file.extension === "pdf" ? (
-                                      <FileText
-                                        className={`${
-                                          isSmall ? "w-6 h-6" : "w-8 h-8"
-                                        } text-red-600`}
-                                      />
-                                    ) : (
-                                      <File
-                                        className={`${
-                                          isSmall ? "w-6 h-6" : "w-8 h-8"
-                                        } text-green-600`}
-                                      />
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* File Info */}
-                              <div className="space-y-1">
-                                <p
-                                  className="text-xs font-medium text-slate-700 truncate"
-                                  title={file.filename}
-                                >
-                                  {file.filename}
-                                </p>
-                                <p className="text-xs text-slate-500">
-                                  {formatFileSize(file.size || 0)}
-                                </p>
-                              </div>
-
-                              {/* Delete Button */}
-                              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteMedia(file.id);
-                                  }}
-                                  disabled={deletingMediaId === file.id}
-                                  className="p-1.5 cursor-pointer bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm disabled:opacity-50"
-                                  title="Delete file"
-                                >
-                                  {deletingMediaId === file.id ? (
-                                    <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
-                                  ) : (
-                                    <Trash className="w-3.5 h-3.5" />
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                };
-
-                return (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold text-slate-700 mb-4">
-                      Uploaded Files
-                    </h3>
-
-                    {mediaFiles.length > 0 ? (
-                      <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                        {/* Images Section */}
-                        <FileCategorySection
-                          title="Images"
-                          files={images}
-                          isSmall={false}
-                          sectionKey="images"
-                        />
-
-                        {/* Videos Section */}
-                        <FileCategorySection
-                          title="Videos"
-                          files={videos}
-                          isSmall={false}
-                          sectionKey="videos"
-                        />
-
-                        {/* PDFs Section - Smaller cards */}
-                        <FileCategorySection
-                          title="PDFs"
-                          files={pdfs}
-                          isSmall={true}
-                          sectionKey="pdfs"
-                        />
-
-                        {/* Other Files Section - Smaller cards */}
-                        <FileCategorySection
-                          title="Other Files"
-                          files={others}
-                          isSmall={true}
-                          sectionKey="others"
-                        />
-                      </div>
-                    ) : (
-                      <div className="bg-slate-50 rounded-lg p-8 border border-slate-200 text-center">
-                        <FileText className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-                        <p className="text-slate-600">No files uploaded yet</p>
-                      </div>
-                    )}
+                {mediaFiles.length > 0 ? (
+                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                    <FileCategorySection
+                      title="Images"
+                      files={categorizedMedia.images}
+                      sectionKey="images"
+                      isExpanded={expandedSections.images}
+                      onToggle={toggleSection}
+                      onView={handleViewExistingFile}
+                      onDelete={handleDeleteMedia}
+                      deletingMediaId={deletingMediaId}
+                    />
+                    <FileCategorySection
+                      title="Videos"
+                      files={categorizedMedia.videos}
+                      sectionKey="videos"
+                      isExpanded={expandedSections.videos}
+                      onToggle={toggleSection}
+                      onView={handleViewExistingFile}
+                      onDelete={handleDeleteMedia}
+                      deletingMediaId={deletingMediaId}
+                    />
+                    <FileCategorySection
+                      title="PDFs"
+                      files={categorizedMedia.pdfs}
+                      isSmall
+                      sectionKey="pdfs"
+                      isExpanded={expandedSections.pdfs}
+                      onToggle={toggleSection}
+                      onView={handleViewExistingFile}
+                      onDelete={handleDeleteMedia}
+                      deletingMediaId={deletingMediaId}
+                    />
+                    <FileCategorySection
+                      title="Other files"
+                      files={categorizedMedia.others}
+                      isSmall
+                      sectionKey="others"
+                      isExpanded={expandedSections.others}
+                      onToggle={toggleSection}
+                      onView={handleViewExistingFile}
+                      onDelete={handleDeleteMedia}
+                      deletingMediaId={deletingMediaId}
+                    />
                   </div>
-                );
-              })()}
+                ) : (
+                  <div className="bg-slate-50 rounded-lg px-4 py-12 border border-slate-200 text-center">
+                    <FileText
+                      className="w-8 h-8 text-slate-300 mx-auto mb-2"
+                      aria-hidden="true"
+                    />
+                    <p className="text-sm text-slate-600">
+                      No files uploaded yet
+                    </p>
+                  </div>
+                )}
+              </div>
 
               {/* Upload New Files Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-slate-700">
-                  Upload New Files
+                <h3 className="text-sm font-semibold text-slate-700">
+                  Upload new files
                 </h3>
 
                 {/* File Upload Area */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-slate-600 mb-2">
-                    Select Files {uploadingMedia && "(Uploading...)"}
+                  <label
+                    htmlFor={fileFieldId}
+                    className="block text-sm font-medium text-slate-700 mb-1.5"
+                  >
+                    Select files
                   </label>
                   <div
-                    className={`border-2 border-dashed border-slate-300 hover:border-secondary rounded-lg transition-all duration-200 bg-slate-50 hover:bg-slate-100 ${
+                    className={`border-2 border-dashed border-slate-300 hover:border-primary focus-within:ring-2 focus-within:ring-primary rounded-lg transition-colors duration-200 bg-slate-50 hover:bg-slate-100 ${
                       uploadingMedia ? "opacity-50 cursor-not-allowed" : ""
                     }`}
                   >
                     <input
+                      id={fileFieldId}
                       ref={fileInputRef}
                       type="file"
                       multiple
@@ -1335,16 +1525,25 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
                     />
                     <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
                       {uploadingMedia ? (
-                        <>
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-secondary mx-auto mb-3"></div>
-                          <p className="text-sm font-medium text-slate-700 mb-1">
+                        <div
+                          role="status"
+                          className="flex flex-col items-center"
+                        >
+                          <span
+                            className="w-8 h-8 border-2 border-slate-200 border-t-primary rounded-full animate-spin mb-3"
+                            aria-hidden="true"
+                          />
+                          <p className="text-sm font-medium text-slate-700">
                             Uploading files...
                           </p>
-                        </>
+                        </div>
                       ) : (
                         <>
-                          <div className="w-12 h-12 bg-secondary/10 rounded-full flex items-center justify-center mb-3">
-                            <FileUp className="w-6 h-6 text-secondary" />
+                          <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-3">
+                            <FileUp
+                              className="w-5 h-5 text-primary"
+                              aria-hidden="true"
+                            />
                           </div>
                           <p className="text-sm font-medium text-slate-700 mb-1">
                             Click to upload or drag and drop
@@ -1379,8 +1578,13 @@ export default function MaterialsToOrder({ supplierId, onCountChange }) {
         onClose={handleDeleteMediaCancel}
         onConfirm={handleDeleteMediaConfirm}
         deleteWithInput={false}
-        heading="Media File"
-        message="This will permanently delete the media file. This action cannot be undone."
+        heading="media file"
+        title={`Delete ${pendingDeleteName}?`}
+        warningHeading="This removes the file from the list"
+        message={`${pendingDeleteName} will be deleted from ${
+          selectedMtoForMedia?.project?.name || "this"
+        } materials to order.`}
+        confirmButtonText="Delete file"
         isDeleting={deletingMediaId !== null}
         entityType="media"
       />

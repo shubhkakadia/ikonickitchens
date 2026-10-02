@@ -17,6 +17,7 @@ import {
 } from "@/lib/fileHandler";
 import { withLogging } from "@/lib/withLogging";
 import { serveMediaFile } from "@/lib/serveMedia";
+import { publishUpdate, lotUrl, TAB_KIND_LABELS } from "@/lib/updates";
 
 function ensureArray(value) {
   if (!value) return [];
@@ -275,6 +276,18 @@ export async function POST(request, { params }) {
         `Failed to log some file uploads for lot tab: ${lotTab.id}`,
       );
     }
+
+    // One feed update per upload request, however many files it carried
+    await publishUpdate({
+      actorId: auth.user.id,
+      type: "LOT_FILE_UPLOADED",
+      title: "Lot file uploaded",
+      message: `${saved.length} file${saved.length === 1 ? "" : "s"} added to ${
+        TAB_KIND_LABELS[tabKindEnum]
+      } (${lot.name}, ${lot.project.name})`,
+      url: lotUrl(folderProjectId, folderLotId, tabKindEnum),
+    });
+
     return NextResponse.json(
       {
         status: true,

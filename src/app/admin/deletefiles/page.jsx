@@ -1,5 +1,6 @@
 "use client";
 
+import { BUTTON_COUNT_BADGE } from "@/app/admin/dashboard/lib/format";
 import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import AdminShell from "@/components/AdminShell";
@@ -762,7 +763,7 @@ export default function DeleteFilesPage() {
                               <span>Filter by Type</span>
                               {mediaTypes.length - selectedMediaTypes.length >
                                 0 && (
-                                <span className="bg-primary text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                                <span className={BUTTON_COUNT_BADGE}>
                                   {mediaTypes.length -
                                     selectedMediaTypes.length}
                                 </span>

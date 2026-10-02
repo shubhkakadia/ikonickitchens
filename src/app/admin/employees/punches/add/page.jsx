@@ -6,9 +6,7 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
-  CircleCheck,
   Clock,
-  Info,
   ListChecks,
   Plus,
   Save,
@@ -23,15 +21,39 @@ import AdminShell from "@/components/AdminShell";
 import CustomDropdown from "@/components/CustomDropdown";
 import TabsController from "@/components/tabscontroller";
 import { useAuth } from "@/contexts/AuthContext";
+import { BADGE_TONES } from "@/app/admin/dashboard/lib/format";
 import {
   findSequenceViolation,
   formatClockPunchAction,
   getAllowedNextActions,
   summarizeClockPunchDay,
 } from "@/lib/clockPunchSequence";
-import { BADGE, actionStyles, reviewStyles } from "../lib/punchStyles";
+import {
+  BADGE,
+  actionStyles,
+  formatLabel,
+  reviewStyles,
+} from "../lib/punchStyles";
 
 const CLOCK_PUNCH_TIME_ZONE = "Australia/Adelaide";
+
+// DESIGN.md 9.2 form field recipe. `hasError` flips the border/ring to red.
+const INPUT_BASE =
+  "w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent";
+const inputClass = (hasError) =>
+  `${INPUT_BASE} ${
+    hasError
+      ? "border-red-500 focus:ring-red-500"
+      : "border-slate-300 focus:ring-primary"
+  }`;
+
+// DESIGN.md 9.1 button recipes.
+const BTN_PRIMARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY_COMPACT =
+  "cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
 
 const dayFormatter = new Intl.DateTimeFormat("en-AU", {
   timeZone: CLOCK_PUNCH_TIME_ZONE,
@@ -56,6 +78,7 @@ const displayTimeFormatter = new Intl.DateTimeFormat("en-AU", {
 
 // The whole feature works in Adelaide time, so "today" and the times shown next
 // to existing punches are always resolved in that zone rather than the browser's.
+// (That is why the shared formatTime, which uses the browser zone, isn't used.)
 function getTodayInTimeZone() {
   const parts = dayFormatter.formatToParts(new Date());
   const lookup = Object.fromEntries(
@@ -72,7 +95,7 @@ function toWallClock(value) {
 
 function toDisplayTime(value) {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
+  if (Number.isNaN(date.getTime())) return "—";
   return displayTimeFormatter.format(date);
 }
 
@@ -83,7 +106,7 @@ function toReferenceInstant(wallClock) {
 }
 
 function formatLongDate(date) {
-  if (!date) return "";
+  if (!date) return "—";
   const [year, month, day] = date.split("-").map(Number);
   return new Intl.DateTimeFormat("en-AU", {
     weekday: "long",
@@ -112,6 +135,80 @@ function createDraft(action = "", time = "") {
   };
 }
 
+// Module-level so inputs keep focus between renders.
+function Section({ icon: Icon, title, children }) {
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Icon className="w-5 h-5 text-primary" aria-hidden="true" />
+        <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function RequiredMark() {
+  return (
+    <>
+      {" "}
+      <span className="text-red-600" aria-hidden="true">
+        *
+      </span>
+    </>
+  );
+}
+
+function FieldError({ id, children }) {
+  if (!children) return null;
+  return (
+    <p id={id} className="text-xs text-red-600 mt-1">
+      {children}
+    </p>
+  );
+}
+
+function Spinner({ tone = "light" }) {
+  return (
+    <span
+      className={`w-4 h-4 border-2 rounded-full animate-spin ${
+        tone === "light"
+          ? "border-white/30 border-t-white"
+          : "border-slate-300 border-t-slate-700"
+      }`}
+      aria-hidden="true"
+    />
+  );
+}
+
+// Banner colours come from the shared badge tones (DESIGN.md 9.6) so a warning
+// is the same amber here as everywhere else.
+function Banner({ tone, icon: Icon, title, role, children }) {
+  return (
+    <div
+      role={role}
+      className={`flex items-start gap-2 rounded-lg border p-4 ${BADGE_TONES[tone]}`}
+    >
+      <Icon className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+      <div className="min-w-0 text-sm">
+        {title && <p className="font-semibold">{title}</p>}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, className = "py-8", children }) {
+  return (
+    <div
+      className={`flex flex-col items-center justify-center gap-2 text-center ${className}`}
+    >
+      <Icon className="w-8 h-8 text-slate-300" aria-hidden="true" />
+      <p className="text-sm text-slate-600">{children}</p>
+    </div>
+  );
+}
+
 export default function AddClockPunchPage() {
   const router = useRouter();
   const { userData, isAdmin } = useAuth();
@@ -122,6 +219,7 @@ export default function AddClockPunchPage() {
   const [employeeId, setEmployeeId] = useState("");
   const [employees, setEmployees] = useState([]);
   const [employeesLoading, setEmployeesLoading] = useState(true);
+  const [employeesError, setEmployeesError] = useState("");
 
   const [dayPunches, setDayPunches] = useState([]);
   const [dayLoading, setDayLoading] = useState(false);
@@ -129,6 +227,9 @@ export default function AddClockPunchPage() {
 
   const [drafts, setDrafts] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [savingMode, setSavingMode] = useState(null);
+  // Validate on submit, then live on change (DESIGN.md 15.3).
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -136,6 +237,7 @@ export default function AddClockPunchPage() {
     const fetchEmployees = async () => {
       try {
         setEmployeesLoading(true);
+        setEmployeesError("");
         if (!token) return;
 
         const response = await axios.get("/api/v1/employee/all", {
@@ -144,7 +246,11 @@ export default function AddClockPunchPage() {
         });
 
         if (!response.data.status) {
-          toast.error(response.data.message || "Failed to load employees");
+          const message =
+            response.data.message ||
+            "Couldn't load employees. Check your connection and try again.";
+          setEmployeesError(message);
+          toast.error(message);
           return;
         }
 
@@ -155,9 +261,11 @@ export default function AddClockPunchPage() {
       } catch (requestError) {
         if (requestError.code === "ERR_CANCELED") return;
         console.error("Error fetching employees:", requestError);
-        toast.error(
-          requestError.response?.data?.message || "Failed to load employees",
-        );
+        const message =
+          requestError.response?.data?.message ||
+          "Couldn't load employees. Check your connection and try again.";
+        setEmployeesError(message);
+        toast.error(message);
       } finally {
         if (!controller.signal.aborted) setEmployeesLoading(false);
       }
@@ -191,7 +299,9 @@ export default function AddClockPunchPage() {
         });
 
         if (!response.data.status) {
-          setDayError(response.data.message || "Failed to load the day");
+          setDayError(
+            response.data.message || "Couldn't load the punches for this day.",
+          );
           setDayPunches([]);
           return;
         }
@@ -206,7 +316,7 @@ export default function AddClockPunchPage() {
         console.error("Error fetching day punches:", requestError);
         setDayError(
           requestError.response?.data?.message ||
-            "Unable to load punches for this day.",
+            "Couldn't load the punches for this day. Check your connection and try again.",
         );
         setDayPunches([]);
       } finally {
@@ -260,25 +370,30 @@ export default function AddClockPunchPage() {
 
     return drafts.map((draft) => {
       const allowedActions = getAllowedNextActions(lastAction);
-      const errors = [];
+      let actionError = "";
+      let timeError = "";
 
       if (!draft.action) {
-        errors.push("Select an action");
+        actionError = "Select an action";
       } else if (!allowedActions.includes(draft.action)) {
-        errors.push(
-          `${formatClockPunchAction(draft.action)} cannot follow ${
-            lastAction ? formatClockPunchAction(lastAction) : "an empty day"
-          }`,
-        );
+        actionError = `${formatClockPunchAction(draft.action)} cannot follow ${
+          lastAction ? formatClockPunchAction(lastAction) : "an empty day"
+        }`;
       }
 
       if (!draft.time) {
-        errors.push("Enter a time");
+        timeError = "Enter a time";
       } else if (lastTime && draft.time <= lastTime) {
-        errors.push(`Time must be after ${lastTime}`);
+        timeError = `Time must be after ${lastTime}`;
       }
 
-      const row = { ...draft, allowedActions, errors };
+      const row = {
+        ...draft,
+        allowedActions,
+        actionError,
+        timeError,
+        hasError: Boolean(actionError || timeError),
+      };
 
       if (draft.action) lastAction = draft.action;
       if (draft.time) lastTime = draft.time;
@@ -289,13 +404,41 @@ export default function AddClockPunchPage() {
 
   const lastDraftRow = draftRows.at(-1);
   const nextAllowedActions =
-    lastDraftRow?.action && lastDraftRow.errors.length === 0
+    lastDraftRow?.action && !lastDraftRow.hasError
       ? getAllowedNextActions(lastDraftRow.action)
       : [];
 
-  const hasDraftErrors = draftRows.some((row) => row.errors.length > 0);
-  const isFormValid =
-    hasSelection && drafts.length > 0 && !hasDraftErrors && !dayLoading;
+  const hasDraftErrors = draftRows.some((row) => row.hasError);
+
+  // Field-level validation. Messages only show once a save has been attempted.
+  const today = getTodayInTimeZone();
+  const dateError = !date
+    ? "Select a date"
+    : date > today
+      ? "Date can't be in the future"
+      : "";
+  const employeeValidationError = employeeId ? "" : "Select an employee";
+  const queueError =
+    hasSelection && drafts.length === 0
+      ? "Add at least one punch before saving"
+      : "";
+
+  const shownDateError = submitAttempted ? dateError : "";
+  const shownEmployeeError =
+    employeesError || (submitAttempted ? employeeValidationError : "");
+  const shownQueueError = submitAttempted ? queueError : "";
+
+  const dateDescribedBy =
+    [shownDateError && "punch-date-error", "punch-date-hint"]
+      .filter(Boolean)
+      .join(" ") || undefined;
+  const employeeDescribedBy =
+    [
+      shownEmployeeError && "punch-employee-error",
+      selectedEmployee && "punch-employee-hint",
+    ]
+      .filter(Boolean)
+      .join(" ") || undefined;
 
   // Warn (without blocking) when the combined day breaks the 30 minute rule or
   // still has gaps once the drafts are applied. Existing punches are reduced to
@@ -338,26 +481,52 @@ export default function AddClockPunchPage() {
     setDrafts((previous) => previous.filter((draft) => draft.key !== key));
   };
 
+  // id of the first field that fails validation, in page order.
+  const getFirstInvalidId = () => {
+    if (dateError) return "punch-date";
+    if (employeeValidationError) return "punch-employee";
+    if (queueError) return "add-punch-button";
+
+    const invalidRow = draftRows.find((row) => row.hasError);
+    if (invalidRow) {
+      return invalidRow.actionError
+        ? `punch-${invalidRow.key}-action`
+        : `punch-${invalidRow.key}-time`;
+    }
+
+    return null;
+  };
+
   const handleSave = async (approve) => {
-    if (!token) {
-      toast.error("No valid session found. Please login again.");
+    setSubmitAttempted(true);
+
+    const firstInvalidId = getFirstInvalidId();
+    if (firstInvalidId) {
+      document.getElementById(firstInvalidId)?.focus();
       return;
     }
 
+    if (!token) {
+      toast.error("No valid session found. Please log in again.");
+      return;
+    }
+
+    // Safety net: draftRows already reports an out-of-sequence action inline.
     const violation = findSequenceViolation(
       drafts.map((draft) => draft.action),
       summary.lastAction,
     );
 
     if (violation) {
-      toast.error(
-        `Punch ${violation.index + 1} is not a valid next action for this day.`,
-      );
+      document
+        .getElementById(`punch-${drafts[violation.index].key}-action`)
+        ?.focus();
       return;
     }
 
     try {
       setIsSubmitting(true);
+      setSavingMode(approve ? "approve" : "save");
 
       const response = await axios.post(
         "/api/v1/clock_punch/manual",
@@ -374,7 +543,10 @@ export default function AddClockPunchPage() {
       );
 
       if (!response.data.status) {
-        toast.error(response.data.message || "Failed to save clock punches");
+        toast.error(
+          response.data.message ||
+            "Couldn't save the clock punches. Check the details and try again.",
+        );
         return;
       }
 
@@ -389,89 +561,90 @@ export default function AddClockPunchPage() {
       console.error("Error saving clock punches:", requestError);
       toast.error(
         requestError.response?.data?.message ||
-          "Failed to save clock punches. Please try again.",
+          "Couldn't save the clock punches. Check your connection and try again.",
       );
     } finally {
       setIsSubmitting(false);
+      setSavingMode(null);
     }
   };
 
-  const saveButtonClasses = (primary) => {
-    if (!isFormValid || isSubmitting) {
-      return "bg-slate-200 text-slate-500 cursor-not-allowed";
-    }
-
-    return primary
-      ? "bg-primary hover:bg-primary/90 text-white cursor-pointer"
-      : "border border-slate-300 text-slate-700 hover:bg-slate-100 cursor-pointer";
-  };
+  const saveDisabled = isSubmitting || dayLoading;
+  const saveDisabledTitle = dayLoading
+    ? "Wait for this day's punches to load"
+    : undefined;
 
   return (
     <AdminShell>
-      <div className="h-full w-full overflow-y-auto">
-        <div className="px-4 py-2">
+      <main className="h-full w-full overflow-y-auto">
+        <div className="p-4">
           {/* Header */}
           <div className="flex items-center gap-2 mb-4">
             <TabsController back={true}>
-              <div
-                className="cursor-pointer p-1.5 hover:bg-slate-100 rounded-lg transition-colors duration-200"
-                aria-label="Back"
-              >
-                <ChevronLeft
-                  aria-hidden="true"
-                  className="w-5 h-5 text-slate-600"
-                />
-              </div>
+              <span className="cursor-pointer inline-flex p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200">
+                <ChevronLeft className="w-5 h-5" aria-hidden="true" />
+                <span className="sr-only">Back</span>
+              </span>
             </TabsController>
             <h1 className="text-xl font-semibold text-slate-800">
-              Add Clock Punch
+              Add clock punch
             </h1>
           </div>
 
           {/* Form */}
           <div className="bg-white rounded-lg border border-slate-200 p-6">
             <form
+              noValidate
               onSubmit={(event) => {
                 event.preventDefault();
-                if (isFormValid && !isSubmitting) handleSave(false);
+                if (!isSubmitting && !dayLoading) handleSave(false);
               }}
-              className="space-y-8"
+              className="space-y-6"
             >
-              {/* Punch Details Section */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <CalendarDays
-                    aria-hidden="true"
-                    className="w-5 h-5 text-primary"
-                  />
-                  <h2 className="text-lg font-semibold text-slate-800">
-                    Punch Details
-                  </h2>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Punch details */}
+              <Section icon={CalendarDays} title="Punch details">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                      Date <span className="text-red-500">*</span>
+                    <label
+                      htmlFor="punch-date"
+                      className="block text-sm font-medium text-slate-700 mb-1.5"
+                    >
+                      Date
+                      <RequiredMark />
                     </label>
                     <input
+                      id="punch-date"
+                      name="punch-date"
                       type="date"
                       value={date}
-                      max={getTodayInTimeZone()}
+                      max={today}
                       onChange={(event) => setDate(event.target.value)}
-                      className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200"
+                      className={inputClass(Boolean(shownDateError))}
                       required
+                      aria-invalid={Boolean(shownDateError)}
+                      aria-describedby={dateDescribedBy}
                     />
-                    <p className="text-xs text-slate-500 mt-1">
-                      Punches are recorded in Adelaide time
+                    <FieldError id="punch-date-error">
+                      {shownDateError}
+                    </FieldError>
+                    <p
+                      id="punch-date-hint"
+                      className="text-xs text-slate-500 mt-1"
+                    >
+                      Punches are recorded in Adelaide time.
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                      Employee <span className="text-red-500">*</span>
+                    <label
+                      htmlFor="punch-employee"
+                      className="block text-sm font-medium text-slate-700 mb-1.5"
+                    >
+                      Employee
+                      <RequiredMark />
                     </label>
                     <CustomDropdown
+                      id="punch-employee"
                       options={employeeOptions}
                       value={employeeId}
                       onChange={setEmployeeId}
@@ -482,12 +655,20 @@ export default function AddClockPunchPage() {
                       placeholder={
                         employeesLoading
                           ? "Loading employees..."
-                          : "Search or select an employee"
+                          : "e.g. Jane Smith"
                       }
                       disabled={employeesLoading}
+                      invalid={Boolean(shownEmployeeError)}
+                      describedBy={employeeDescribedBy}
                     />
+                    <FieldError id="punch-employee-error">
+                      {shownEmployeeError}
+                    </FieldError>
                     {selectedEmployee && (
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p
+                        id="punch-employee-hint"
+                        className="text-xs text-slate-500 mt-1"
+                      >
                         {selectedEmployee.employee_id}
                         {selectedEmployee.role
                           ? ` • ${selectedEmployee.role}`
@@ -496,32 +677,34 @@ export default function AddClockPunchPage() {
                     )}
                   </div>
                 </div>
-              </div>
+              </Section>
 
-              {/* Day Status Section */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <ListChecks
-                    aria-hidden="true"
-                    className="w-5 h-5 text-primary"
-                  />
-                  <h2 className="text-lg font-semibold text-slate-800">
-                    Day Status
-                  </h2>
-                </div>
-
+              {/* Day status */}
+              <Section icon={ListChecks} title="Day status">
                 {!hasSelection ? (
                   <p className="text-sm text-slate-500">
                     Select a date and employee to see what has already been
                     recorded.
                   </p>
                 ) : dayLoading ? (
-                  <p className="text-sm text-slate-500">Loading this day...</p>
-                ) : dayError ? (
-                  <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
-                    <p className="text-sm text-red-800">{dayError}</p>
+                  <div
+                    role="status"
+                    className="flex items-center gap-2 text-sm text-slate-600"
+                  >
+                    <Spinner tone="dark" />
+                    Loading this day...
                   </div>
+                ) : dayError ? (
+                  <Banner tone="danger" icon={AlertTriangle} role="alert">
+                    <p>{dayError}</p>
+                    <button
+                      type="button"
+                      onClick={() => fetchDay()}
+                      className={`${BTN_SECONDARY_COMPACT} mt-3`}
+                    >
+                      Try again
+                    </button>
+                  </Banner>
                 ) : (
                   <div className="space-y-4">
                     <p className="text-sm text-slate-600">
@@ -529,38 +712,37 @@ export default function AddClockPunchPage() {
                     </p>
 
                     {summary.missing.length > 0 ? (
-                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                        <div className="flex items-center gap-2">
-                          <AlertTriangle className="h-4 w-4 text-amber-600" />
-                          <p className="text-sm font-semibold text-amber-800">
-                            {summary.isEmpty
-                              ? "No punches recorded for this day"
-                              : "This day is incomplete"}
-                          </p>
-                        </div>
-                        <ul className="mt-2 list-inside list-disc text-sm text-amber-800">
+                      <Banner
+                        tone="warning"
+                        icon={AlertTriangle}
+                        title={
+                          summary.isEmpty
+                            ? "No punches recorded for this day"
+                            : "This day is incomplete"
+                        }
+                      >
+                        <ul className="mt-2 list-inside list-disc">
                           {summary.missing.map((item) => (
                             <li key={item.code}>{item.label} is missing</li>
                           ))}
                         </ul>
-                      </div>
+                      </Banner>
                     ) : (
-                      <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 p-4">
-                        <CircleCheck className="h-4 w-4 text-green-600" />
-                        <p className="text-sm font-semibold text-green-800">
-                          The shift is complete for this day
-                        </p>
-                      </div>
+                      <Banner
+                        tone="success"
+                        icon={CheckCircle2}
+                        title="The shift is complete for this day"
+                      />
                     )}
 
                     {summary.warnings.map((warning) => (
-                      <div
+                      <Banner
                         key={warning.code + warning.label}
-                        className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-4"
+                        tone="warning"
+                        icon={AlertTriangle}
                       >
-                        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-                        <p className="text-sm text-blue-800">{warning.label}</p>
-                      </div>
+                        <p>{warning.label}</p>
+                      </Banner>
                     ))}
 
                     <div>
@@ -579,16 +761,15 @@ export default function AddClockPunchPage() {
                               type="button"
                               onClick={() => addDraft(action)}
                               disabled={drafts.length > 0}
-                              className={`${BADGE} transition-colors ${
-                                actionStyles[action]
-                              } ${
+                              title={
                                 drafts.length > 0
-                                  ? "cursor-not-allowed opacity-50"
-                                  : "cursor-pointer hover:opacity-80"
-                              }`}
+                                  ? "Use the queued punches below"
+                                  : undefined
+                              }
+                              className={BTN_SECONDARY_COMPACT}
                             >
-                              <Plus className="w-4 h-4" />
-                              {formatClockPunchAction(action)}
+                              <Plus className="w-4 h-4" aria-hidden="true" />
+                              Add {formatClockPunchAction(action).toLowerCase()}
                             </button>
                           ))}
                         </div>
@@ -610,18 +791,17 @@ export default function AddClockPunchPage() {
                                 Source
                               </th>
                               <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-slate-500">
-                                Review Status
+                                Review status
                               </th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-200 bg-white">
                             {dayPunches.length === 0 ? (
                               <tr>
-                                <td
-                                  colSpan={4}
-                                  className="px-4 py-6 text-center text-sm text-slate-500"
-                                >
-                                  No punches recorded for this day yet.
+                                <td colSpan={4}>
+                                  <EmptyState icon={Clock} className="py-12">
+                                    No punches recorded for this day yet.
+                                  </EmptyState>
                                 </td>
                               </tr>
                             ) : (
@@ -634,9 +814,9 @@ export default function AddClockPunchPage() {
                                 .map((punch) => (
                                   <tr
                                     key={punch.id}
-                                    className="hover:bg-slate-50"
+                                    className="hover:bg-slate-50 transition-colors"
                                   >
-                                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-slate-700">
+                                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium tabular-nums text-slate-700">
                                       {toDisplayTime(punch.punched_at)}
                                     </td>
                                     <td className="whitespace-nowrap px-4 py-3">
@@ -646,7 +826,8 @@ export default function AddClockPunchPage() {
                                           actionStyles.CLOCK_OUT
                                         }`}
                                       >
-                                        {formatClockPunchAction(punch.action)}
+                                        {formatClockPunchAction(punch.action) ||
+                                          "—"}
                                       </span>
                                     </td>
                                     <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-600">
@@ -663,7 +844,8 @@ export default function AddClockPunchPage() {
                                           reviewStyles.PENDING
                                         }`}
                                       >
-                                        {punch.review_status}
+                                        {formatLabel(punch.review_status) ||
+                                          "—"}
                                       </span>
                                     </td>
                                   </tr>
@@ -675,40 +857,43 @@ export default function AddClockPunchPage() {
                     </div>
                   </div>
                 )}
-              </div>
+              </Section>
 
-              {/* New Punches Section */}
-              <div className="space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Clock
-                      aria-hidden="true"
-                      className="w-5 h-5 text-primary"
-                    />
-                    <h2 className="text-lg font-semibold text-slate-800">
-                      New Punches
-                    </h2>
-                  </div>
+              {/* New punches */}
+              <Section icon={Clock} title="New punches">
+                <div className="flex justify-end">
                   <button
+                    id="add-punch-button"
                     type="button"
                     onClick={() => addDraft()}
                     disabled={!hasSelection || dayLoading || Boolean(dayError)}
-                    className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    title={
+                      !hasSelection
+                        ? "Select a date and employee first"
+                        : undefined
+                    }
+                    aria-describedby={
+                      shownQueueError ? "punch-queue-error" : undefined
+                    }
+                    className={BTN_SECONDARY}
                   >
-                    <Plus className="w-4 h-4" />
-                    Add Punch
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                    Add punch
                   </button>
                 </div>
+                <FieldError id="punch-queue-error">
+                  {shownQueueError}
+                </FieldError>
 
                 {!hasSelection ? (
                   <p className="text-sm text-slate-500">
                     Select a date and employee to start adding punches.
                   </p>
                 ) : draftRows.length === 0 ? (
-                  <p className="text-sm text-slate-500">
-                    No punches queued yet. Use the available actions above or
-                    &quot;Add Punch&quot; to start.
-                  </p>
+                  <EmptyState icon={ListChecks}>
+                    No punches queued yet. Use the add buttons above or
+                    &quot;Add punch&quot; to start.
+                  </EmptyState>
                 ) : (
                   <div className="space-y-4">
                     {draftRows.map((row, index) => {
@@ -731,36 +916,75 @@ export default function AddClockPunchPage() {
                         });
                       }
 
+                      const actionId = `punch-${row.key}-action`;
+                      const timeId = `punch-${row.key}-time`;
+                      const shownActionError = submitAttempted
+                        ? row.actionError
+                        : "";
+                      const shownTimeError = submitAttempted
+                        ? row.timeError
+                        : "";
+
                       return (
                         <div
                           key={row.key}
-                          className="border border-slate-200 rounded-lg p-4"
+                          className="bg-slate-50 border border-slate-200 rounded-lg p-4"
                         >
-                          <div className="flex flex-wrap items-end gap-4">
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600">
-                              {index + 1}
-                            </div>
+                          <div className="flex items-center justify-between gap-2 mb-3">
+                            <h3 className="text-sm font-semibold text-slate-700">
+                              Punch {index + 1}
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => removeDraft(row.key)}
+                              className="cursor-pointer p-2 text-slate-500 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors duration-200"
+                              aria-label={`Remove punch ${index + 1}`}
+                            >
+                              <Trash2 className="w-4 h-4" aria-hidden="true" />
+                            </button>
+                          </div>
 
-                            <div className="flex-1 min-w-56">
-                              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                Action <span className="text-red-500">*</span>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label
+                                htmlFor={actionId}
+                                className="block text-sm font-medium text-slate-700 mb-1.5"
+                              >
+                                Action
+                                <RequiredMark />
                               </label>
                               <CustomDropdown
+                                id={actionId}
                                 options={actionOptions}
                                 value={row.action}
                                 onChange={(action) =>
                                   updateDraft(row.key, { action })
                                 }
-                                placeholder="Select an action"
+                                placeholder="e.g. Clock in"
                                 emptyText="No actions available"
+                                invalid={Boolean(shownActionError)}
+                                describedBy={
+                                  shownActionError
+                                    ? `${actionId}-error`
+                                    : undefined
+                                }
                               />
+                              <FieldError id={`${actionId}-error`}>
+                                {shownActionError}
+                              </FieldError>
                             </div>
 
-                            <div className="flex-1 min-w-48">
-                              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                Time <span className="text-red-500">*</span>
+                            <div>
+                              <label
+                                htmlFor={timeId}
+                                className="block text-sm font-medium text-slate-700 mb-1.5"
+                              >
+                                Time
+                                <RequiredMark />
                               </label>
                               <input
+                                id={timeId}
+                                name={timeId}
                                 type="time"
                                 value={row.time}
                                 onChange={(event) =>
@@ -768,28 +992,18 @@ export default function AddClockPunchPage() {
                                     time: event.target.value,
                                   })
                                 }
-                                className="w-full text-sm text-slate-800 px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors duration-200"
+                                className={inputClass(Boolean(shownTimeError))}
                                 required
+                                aria-invalid={Boolean(shownTimeError)}
+                                aria-describedby={
+                                  shownTimeError ? `${timeId}-error` : undefined
+                                }
                               />
+                              <FieldError id={`${timeId}-error`}>
+                                {shownTimeError}
+                              </FieldError>
                             </div>
-
-                            <button
-                              type="button"
-                              onClick={() => removeDraft(row.key)}
-                              className="cursor-pointer flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors"
-                              aria-label={`Remove punch ${index + 1}`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
                           </div>
-
-                          {row.errors.length > 0 && (
-                            <ul className="mt-3 list-inside list-disc text-xs font-medium text-red-600">
-                              {row.errors.map((error) => (
-                                <li key={error}>{error}</li>
-                              ))}
-                            </ul>
-                          )}
                         </div>
                       );
                     })}
@@ -804,10 +1018,10 @@ export default function AddClockPunchPage() {
                             key={action}
                             type="button"
                             onClick={() => addDraft(action)}
-                            className={`cursor-pointer ${BADGE} transition-opacity hover:opacity-80 ${actionStyles[action]}`}
+                            className={BTN_SECONDARY_COMPACT}
                           >
-                            <Plus className="w-4 h-4" />
-                            {formatClockPunchAction(action)}
+                            <Plus className="w-4 h-4" aria-hidden="true" />
+                            Add {formatClockPunchAction(action).toLowerCase()}
                           </button>
                         ))}
                       </div>
@@ -815,62 +1029,80 @@ export default function AddClockPunchPage() {
 
                     {projectedSummary &&
                       projectedSummary.missing.length > 0 && (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                          <p className="text-sm font-semibold text-amber-800">
-                            After saving, this day will still be missing:
-                          </p>
-                          <ul className="mt-1 list-inside list-disc text-sm text-amber-800">
+                        <Banner
+                          tone="warning"
+                          icon={AlertTriangle}
+                          title="After saving, this day will still be missing:"
+                        >
+                          <ul className="mt-1 list-inside list-disc">
                             {projectedSummary.missing.map((item) => (
                               <li key={item.code}>{item.label}</li>
                             ))}
                           </ul>
-                        </div>
+                        </Banner>
                       )}
 
                     {projectedSummary?.warnings.map((warning) => (
-                      <div
+                      <Banner
                         key={warning.code + warning.label}
-                        className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 p-4"
+                        tone="warning"
+                        icon={AlertTriangle}
                       >
-                        <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-                        <p className="text-sm text-blue-800">{warning.label}</p>
-                      </div>
+                        <p>{warning.label}</p>
+                      </Banner>
                     ))}
                   </div>
                 )}
-              </div>
+              </Section>
 
-              {/* Submit Buttons */}
-              <div className="flex flex-wrap justify-end gap-3 pt-6 border-t border-slate-200">
+              {/* Actions */}
+              <div className="flex flex-wrap items-center justify-end gap-3 pt-6 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  disabled={isSubmitting}
+                  className={BTN_SECONDARY}
+                >
+                  Cancel
+                </button>
+
+                {/* One primary action per view: the approver's primary is
+                    "Save and approve"; plain "Save punches" drops to secondary. */}
                 <button
                   type="submit"
-                  disabled={!isFormValid || isSubmitting}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-200 ${saveButtonClasses(
-                    !canApprove,
-                  )}`}
+                  disabled={saveDisabled}
+                  title={saveDisabledTitle}
+                  className={canApprove ? BTN_SECONDARY : BTN_PRIMARY}
                 >
-                  <Save aria-hidden="true" className="w-4 h-4" />
-                  {isSubmitting ? "Saving..." : "Save"}
+                  {isSubmitting && savingMode === "save" ? (
+                    <Spinner tone={canApprove ? "dark" : "light"} />
+                  ) : (
+                    <Save className="w-4 h-4" aria-hidden="true" />
+                  )}
+                  Save punches
                 </button>
 
                 {canApprove && (
                   <button
                     type="button"
                     onClick={() => handleSave(true)}
-                    disabled={!isFormValid || isSubmitting}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-200 ${saveButtonClasses(
-                      true,
-                    )}`}
+                    disabled={saveDisabled}
+                    title={saveDisabledTitle}
+                    className={BTN_PRIMARY}
                   >
-                    <CheckCircle2 aria-hidden="true" className="w-4 h-4" />
-                    {isSubmitting ? "Saving..." : "Save & Approve"}
+                    {isSubmitting && savingMode === "approve" ? (
+                      <Spinner />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+                    )}
+                    Save and approve
                   </button>
                 )}
               </div>
             </form>
           </div>
         </div>
-      </div>
+      </main>
     </AdminShell>
   );
 }

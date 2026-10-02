@@ -1,37 +1,122 @@
 "use client";
 import React, { useEffect, useState, useRef } from "react";
 import {
-  Edit,
-  Trash2,
-  Plus,
-  Eye,
-  Receipt,
+  AlertTriangle,
+  Check,
   ChevronDown,
   ChevronUp,
-  X,
+  Edit,
+  Eye,
   FileText,
+  Plus,
+  Receipt,
+  Trash2,
+  Upload,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import axios from "axios";
 import { toast } from "react-toastify";
 import DeleteConfirmation from "@/components/DeleteConfirmation";
+import CustomDropdown from "@/components/CustomDropdown";
 import ViewMedia from "@/app/admin/projects/components/ViewMedia";
 import { useUploadProgress } from "@/hooks/useUploadProgress";
+import useModalFocus from "@/hooks/useModalFocus";
+import { BADGE, BADGE_TONES } from "@/app/admin/dashboard/lib/format";
+import { formatLabel } from "@/app/admin/employees/punches/lib/punchStyles";
 
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
+const EMPTY = "—";
+const TOAST_OPTIONS = { position: "top-right", autoClose: 3000 };
+
+const FIELD =
+  "w-full text-sm text-slate-800 px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-colors duration-200";
+const fieldTone = (hasError) =>
+  hasError
+    ? "border-red-500 focus:ring-red-500"
+    : "border-slate-300 focus:ring-primary";
+const LABEL = "block text-sm font-medium text-slate-700 mb-1.5";
+
+const BTN_PRIMARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_SECONDARY =
+  "cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const BTN_ICON =
+  "cursor-pointer p-1.5 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200";
+const TH =
+  "px-4 py-2 text-xs font-medium text-slate-500 uppercase tracking-wider";
+
+const DUE_IN_OPTIONS = [
+  { value: "1 week", label: "1 week" },
+  { value: "2 weeks", label: "2 weeks" },
+  { value: "3 weeks", label: "3 weeks" },
+  { value: "4 weeks", label: "4 weeks" },
+  { value: "custom", label: "Custom" },
+];
+
+const PAYMENT_STATUS_OPTIONS = ["PENDING", "PAID"].map((value) => ({
+  value,
+  label: formatLabel(value),
+}));
+
+const EMPTY_FORM = {
+  month_year: "",
+  due_date: "",
+  amount: "",
+  payment_status: "PENDING",
+  notes: "",
+  file: null,
+};
+
+// Statements are charged to the cent, so this keeps two decimals rather than
+// using the whole-dollar shared formatCurrency.
+const AUD_AMOUNT = new Intl.NumberFormat("en-AU", {
+  style: "currency",
+  currency: "AUD",
 });
 
-const formatCurrency = (value) => {
-  if (value === null || value === undefined || value === "") return "-";
+const formatAmount = (value) => {
+  if (value === null || value === undefined || value === "") return EMPTY;
   const num =
     typeof value === "number"
       ? value
       : parseFloat(String(value).replace(/,/g, ""));
-  if (!Number.isFinite(num)) return "-";
-  return `$${currencyFormatter.format(num)}`;
+  if (!Number.isFinite(num)) return EMPTY;
+  return AUD_AMOUNT.format(num);
 };
+
+// Due dates need the year to be unambiguous, so this stays local rather than
+// using the compact shared formatDate.
+const formatDate = (value) => {
+  if (!value) return EMPTY;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return EMPTY;
+  return date.toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const toDateInputValue = (value) =>
+  value ? new Date(value).toISOString().split("T")[0] : "";
+
+function FieldError({ id, message }) {
+  if (!message) return null;
+  return (
+    <p id={id} className="text-xs text-red-600 mt-1">
+      {message}
+    </p>
+  );
+}
+
+function Spinner() {
+  return (
+    <span
+      className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+      aria-hidden="true"
+    />
+  );
+}
 
 export default function Statement({ supplierId }) {
   const { getToken } = useAuth();
@@ -43,17 +128,13 @@ export default function Statement({ supplierId }) {
   } = useUploadProgress();
   const [statements, setStatements] = useState([]);
   const [loadingStatements, setLoadingStatements] = useState(false);
+  const [fetchError, setFetchError] = useState("");
   const [showUploadStatementModal, setShowUploadStatementModal] =
     useState(false);
   const [isUploadingStatement, setIsUploadingStatement] = useState(false);
-  const [statementForm, setStatementForm] = useState({
-    month_year: "",
-    due_date: "",
-    amount: "",
-    payment_status: "PENDING",
-    notes: "",
-    file: null,
-  });
+  const [statementForm, setStatementForm] = useState(EMPTY_FORM);
+  // Inline validation messages (DESIGN.md 11, 15.3).
+  const [errors, setErrors] = useState({});
   const [editingStatement, setEditingStatement] = useState(null);
   const [isEditingStatement, setIsEditingStatement] = useState(false);
   const [isUpdatingStatement, setIsUpdatingStatement] = useState(false);
@@ -72,9 +153,14 @@ export default function Statement({ supplierId }) {
   const [showFilePreview, setShowFilePreview] = useState(false);
   const [fileObjectURL, setFileObjectURL] = useState(null);
   const fileObjectURLRef = useRef(null);
+  const statementModalRef = useRef(null);
 
   // Due In dropdown state
   const [dueIn, setDueIn] = useState("custom");
+
+  const isSaving = isUploadingStatement || isUpdatingStatement;
+
+  useModalFocus(statementModalRef, showUploadStatementModal);
 
   useEffect(() => {
     fetchStatements();
@@ -110,12 +196,27 @@ export default function Statement({ supplierId }) {
     };
   }, [showFilePreview, statementForm.file]);
 
+  // The statement modal closes on Escape (DESIGN.md 9.4). While the file
+  // preview is open, ViewMedia owns Escape; the delete confirmation is
+  // destructive and needs an explicit button.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== "Escape") return;
+      if (showDeleteStatementModal || showFilePreview) return;
+      if (showUploadStatementModal && !isSaving) resetForm();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  });
+
   const fetchStatements = async () => {
     try {
       setLoadingStatements(true);
+      setFetchError("");
       const sessionToken = getToken();
 
       if (!sessionToken) {
+        setFetchError("Your session has expired. Sign in again to continue.");
         return;
       }
 
@@ -130,14 +231,18 @@ export default function Statement({ supplierId }) {
 
       if (response.data.status) {
         setStatements(response.data.data || []);
+      } else {
+        setFetchError(
+          response.data.message ||
+            "Couldn't load statements. Check your connection and try again.",
+        );
       }
     } catch (err) {
       console.error("Error fetching statements:", err);
-      toast.error(err.response?.data?.message || "Failed to fetch statements", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
+      setFetchError(
+        err.response?.data?.message ||
+          "Couldn't load statements. Check your connection and try again.",
+      );
     } finally {
       setLoadingStatements(false);
     }
@@ -180,6 +285,40 @@ export default function Statement({ supplierId }) {
     return "custom";
   };
 
+  const clearError = (field) => {
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: null } : prev));
+  };
+
+  const updateForm = (field, value) => {
+    setStatementForm((prev) => ({ ...prev, [field]: value }));
+    clearError(field);
+  };
+
+  // True when the open modal holds input the user would lose on close
+  // (DESIGN.md 15.1). In edit mode, "dirty" means changed from the record.
+  const isFormDirty = () => {
+    if (statementForm.file) return true;
+    if (isEditingStatement && editingStatement) {
+      return (
+        statementForm.month_year !== (editingStatement.month_year || "") ||
+        statementForm.due_date !==
+          toDateInputValue(editingStatement.due_date) ||
+        statementForm.amount !==
+          (editingStatement.amount ? editingStatement.amount.toString() : "") ||
+        statementForm.payment_status !==
+          (editingStatement.payment_status || "PENDING") ||
+        statementForm.notes !== (editingStatement.notes || "")
+      );
+    }
+    return Boolean(
+      statementForm.month_year ||
+      statementForm.due_date ||
+      statementForm.amount ||
+      statementForm.notes ||
+      statementForm.payment_status !== "PENDING",
+    );
+  };
+
   // File handling functions
   const validateAndSetFile = (file) => {
     const allowedTypes = [
@@ -189,22 +328,23 @@ export default function Statement({ supplierId }) {
       "image/png",
     ];
     if (!allowedTypes.includes(file.type)) {
-      toast.error("Only PDF and image files are allowed", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      setErrors((prev) => ({
+        ...prev,
+        file: "Choose a PDF, JPG or PNG file.",
+      }));
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("File size must be less than 10MB", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      setErrors((prev) => ({
+        ...prev,
+        file: "Choose a file smaller than 10 MB.",
+      }));
       return;
     }
 
     setStatementForm((prev) => ({ ...prev, file }));
+    clearError("file");
     setFilePreview(null);
 
     if (file.type.startsWith("image/")) {
@@ -241,6 +381,23 @@ export default function Statement({ supplierId }) {
     const file = e.target.files?.[0];
     if (!file) return;
     validateAndSetFile(file);
+    // Let the same file be chosen again after a validation error.
+    e.target.value = "";
+  };
+
+  const removeSelectedFile = () => {
+    setStatementForm((prev) => ({
+      ...prev,
+      file: null,
+    }));
+    setFilePreview(null);
+    setShowFilePreview(false);
+    // Cleanup object URL
+    if (fileObjectURLRef.current) {
+      URL.revokeObjectURL(fileObjectURLRef.current);
+      fileObjectURLRef.current = null;
+      setFileObjectURL(null);
+    }
   };
 
   // Handle Due In dropdown change
@@ -257,48 +414,60 @@ export default function Statement({ supplierId }) {
     if (!isNaN(weeks) && weeks > 0) {
       const calculatedDate = getDateWeeksFromToday(weeks);
       setStatementForm((prev) => ({ ...prev, due_date: calculatedDate }));
+      clearError("due_date");
     }
   };
 
   // Handle manual due date change
   const handleDueDateChange = (e) => {
     const newDate = e.target.value;
-    setStatementForm((prev) => ({ ...prev, due_date: newDate }));
+    updateForm("due_date", newDate);
 
     // Check if the new date matches any preset option
     const matchingOption = checkDueInOption(newDate);
     setDueIn(matchingOption);
   };
 
-  const handleUploadStatement = async () => {
-    try {
-      if (!statementForm.file) {
-        toast.error("Please select a file to upload", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
-        return;
-      }
+  // Shows the messages and moves focus to the first invalid field, in the
+  // order the fields appear (DESIGN.md 15.3). Returns true when valid.
+  const applyValidation = (nextErrors) => {
+    setErrors(nextErrors);
+    const order = [
+      ["month_year", "statement-month"],
+      ["due_date", "statement-due-date"],
+      ["file", "statement-file-upload"],
+    ];
+    const firstInvalid = order.find(([field]) => nextErrors[field]);
+    if (!firstInvalid) return true;
+    setTimeout(() => {
+      document.getElementById(firstInvalid[1])?.focus();
+    }, 0);
+    return false;
+  };
 
-      if (!statementForm.month_year || !statementForm.due_date) {
-        toast.error("Please fill in all required fields", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
-        return;
+  const handleUploadStatement = async () => {
+    if (isSaving) return;
+    try {
+      const nextErrors = {};
+      if (!statementForm.month_year) {
+        nextErrors.month_year = "Select the statement month.";
       }
+      if (!statementForm.due_date) {
+        nextErrors.due_date = "Enter a due date.";
+      }
+      if (!statementForm.file) {
+        nextErrors.file = "Choose a statement file to upload.";
+      }
+      if (!applyValidation(nextErrors)) return;
 
       setIsUploadingStatement(true);
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error(
+          "Your session has expired. Sign in again to continue.",
+          TOAST_OPTIONS,
+        );
         return;
       }
 
@@ -326,41 +495,35 @@ export default function Statement({ supplierId }) {
       );
 
       if (response.data.status) {
-        toast.success("Statement uploaded successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.success("Statement uploaded.", TOAST_OPTIONS);
         completeUpload(1);
         resetForm();
         fetchStatements();
       } else {
         dismissProgressToast();
-        toast.error(response.data.message || "Failed to upload statement", {
-          position: "top-right",
-          autoClose: 3000,
-        });
+        toast.error(
+          response.data.message ||
+            "Couldn't upload the statement. Check the details and try again.",
+          TOAST_OPTIONS,
+        );
       }
     } catch (err) {
       console.error("Error uploading statement:", err);
       dismissProgressToast();
-      toast.error(err.response?.data?.message || "Failed to upload statement", {
-        position: "top-right",
-        autoClose: 3000,
-      });
+      toast.error(
+        err.response?.data?.message ||
+          "Couldn't upload the statement. Check your connection and try again.",
+        TOAST_OPTIONS,
+      );
     } finally {
       setIsUploadingStatement(false);
     }
   };
 
   const handleEditStatement = (statement) => {
-    // Convert month_year (e.g., "2025-01") to date format for month input
-    const monthYearDate = statement.month_year
-      ? `${statement.month_year}-01`
-      : "";
-    const dueDate = statement.due_date
-      ? new Date(statement.due_date).toISOString().split("T")[0]
-      : "";
+    // A type="month" input takes "YYYY-MM", which is how month_year is stored.
+    const monthYearDate = statement.month_year || "";
+    const dueDate = toDateInputValue(statement.due_date);
 
     setEditingStatement(statement);
     setStatementForm({
@@ -371,6 +534,7 @@ export default function Statement({ supplierId }) {
       notes: statement.notes || "",
       file: null,
     });
+    setErrors({});
     setFilePreview(null);
     // Set dueIn based on the statement's due date
     setDueIn(checkDueInOption(dueDate));
@@ -379,25 +543,22 @@ export default function Statement({ supplierId }) {
   };
 
   const handleUpdateStatement = async () => {
+    if (isSaving) return;
     try {
+      const nextErrors = {};
       if (!statementForm.due_date) {
-        toast.error("Please fill in all required fields", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
-        return;
+        nextErrors.due_date = "Enter a due date.";
       }
+      if (!applyValidation(nextErrors)) return;
 
       setIsUpdatingStatement(true);
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error(
+          "Your session has expired. Sign in again to continue.",
+          TOAST_OPTIONS,
+        );
         return;
       }
 
@@ -432,35 +593,26 @@ export default function Statement({ supplierId }) {
       );
 
       if (response.data.status) {
-        toast.success("Statement updated successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.success("Statement updated.", TOAST_OPTIONS);
         if (hasFile) {
           completeUpload(1);
-        } else {
-          toast.success("Statement updated successfully!", {
-            position: "top-right",
-            autoClose: 3000,
-          });
         }
         resetForm();
         fetchStatements();
       } else {
-        toast.error(response.data.message || "Failed to update statement", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error(
+          response.data.message ||
+            "Couldn't update the statement. Check the details and try again.",
+          TOAST_OPTIONS,
+        );
       }
     } catch (err) {
       console.error("Error updating statement:", err);
-      toast.error(err.response?.data?.message || "Failed to update statement", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
+      toast.error(
+        err.response?.data?.message ||
+          "Couldn't update the statement. Check your connection and try again.",
+        TOAST_OPTIONS,
+      );
     } finally {
       setIsUpdatingStatement(false);
     }
@@ -479,11 +631,10 @@ export default function Statement({ supplierId }) {
       const sessionToken = getToken();
 
       if (!sessionToken) {
-        toast.error("No valid session found. Please login again.", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error(
+          "Your session has expired. Sign in again to continue.",
+          TOAST_OPTIONS,
+        );
         return;
       }
 
@@ -497,28 +648,23 @@ export default function Statement({ supplierId }) {
       );
 
       if (response.data.status) {
-        toast.success("Statement deleted successfully!", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.success("Statement deleted.", TOAST_OPTIONS);
         setShowDeleteStatementModal(false);
         setStatementToDelete(null);
         fetchStatements();
       } else {
-        toast.error(response.data.message || "Failed to delete statement", {
-          position: "top-right",
-          autoClose: 3000,
-          hideProgressBar: false,
-        });
+        toast.error(
+          response.data.message || "Couldn't delete the statement. Try again.",
+          TOAST_OPTIONS,
+        );
       }
     } catch (err) {
       console.error("Error deleting statement:", err);
-      toast.error(err.response?.data?.message || "Failed to delete statement", {
-        position: "top-right",
-        autoClose: 3000,
-        hideProgressBar: false,
-      });
+      toast.error(
+        err.response?.data?.message ||
+          "Couldn't delete the statement. Check your connection and try again.",
+        TOAST_OPTIONS,
+      );
     } finally {
       setIsDeletingStatement(false);
     }
@@ -554,14 +700,8 @@ export default function Statement({ supplierId }) {
     setShowUploadStatementModal(false);
     setIsEditingStatement(false);
     setEditingStatement(null);
-    setStatementForm({
-      month_year: "",
-      due_date: "",
-      amount: "",
-      payment_status: "PENDING",
-      notes: "",
-      file: null,
-    });
+    setStatementForm(EMPTY_FORM);
+    setErrors({});
     setFilePreview(null);
     setDueIn("custom");
     setIsDragging(false);
@@ -574,154 +714,203 @@ export default function Statement({ supplierId }) {
     }
   };
 
+  const submitLabel = isEditingStatement ? "Save changes" : "Upload statement";
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-          Statements
-        </h3>
+      <div className="flex justify-between items-center gap-3 mb-4">
+        <h2 className="text-lg font-semibold text-slate-800">Statements</h2>
         <button
+          type="button"
           onClick={() => setShowUploadStatementModal(true)}
-          className="cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/80 hover:bg-primary text-white rounded-lg transition-all duration-200 text-sm font-medium"
+          className={BTN_PRIMARY}
         >
-          <Plus className="w-4 h-4" />
-          Upload Statement
+          <Plus className="w-4 h-4" aria-hidden="true" />
+          Upload statement
         </button>
       </div>
 
       {loadingStatements ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-secondary"></div>
+        <div
+          className="flex flex-col items-center justify-center gap-2 py-12"
+          role="status"
+        >
+          <span
+            className="animate-spin rounded-full w-8 h-8 border-2 border-primary border-t-transparent"
+            aria-hidden="true"
+          />
+          <p className="text-sm text-slate-600">Loading statements...</p>
+        </div>
+      ) : fetchError ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+          <AlertTriangle className="w-8 h-8 text-red-500" aria-hidden="true" />
+          <p className="text-sm text-red-600" role="alert">
+            {fetchError}
+          </p>
+          <button
+            type="button"
+            onClick={fetchStatements}
+            className={`${BTN_SECONDARY} mt-2`}
+          >
+            Try again
+          </button>
         </div>
       ) : statements.length === 0 ? (
-        <div className="text-center py-8 text-slate-500">
-          <Receipt className="w-8 h-8 mx-auto mb-2 text-slate-400" />
-          <p className="text-sm">No statements found for this supplier</p>
+        <div className="flex flex-col items-center gap-2 py-12 text-center">
+          <Receipt className="w-8 h-8 text-slate-300" aria-hidden="true" />
+          <p className="text-sm text-slate-600">
+            No statements for this supplier yet.
+          </p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="bg-white rounded-lg border border-slate-200 overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-8"></th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Month/Year
+                <th scope="col" className={`${TH} text-left w-8`}>
+                  <span className="sr-only">Notes</span>
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Due Date
+                <th scope="col" className={`${TH} text-left`}>
+                  Month
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th scope="col" className={`${TH} text-left`}>
+                  Due date
+                </th>
+                <th scope="col" className={`${TH} text-right`}>
                   Amount
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th scope="col" className={`${TH} text-left`}>
                   Status
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th scope="col" className={`${TH} text-left`}>
                   File
                 </th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th scope="col" className={`${TH} text-right`}>
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-slate-200">
-              {statements.map((statement) => (
-                <React.Fragment key={statement.id}>
-                  <tr
-                    className={`hover:bg-slate-50 transition-colors ${
-                      statement.notes ? "cursor-pointer" : ""
-                    }`}
-                    onClick={() => statement.notes && toggleNotes(statement.id)}
-                  >
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      {statement.notes && (
-                        <div className="flex items-center">
-                          {expandedNotes.has(statement.id) ? (
-                            <ChevronUp className="w-3.5 h-3.5 text-slate-500" />
-                          ) : (
-                            <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <span className="text-xs text-slate-900">
-                        {statement.month_year}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <span className="text-xs text-slate-600">
-                        {new Date(statement.due_date).toLocaleDateString()}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <span className="text-xs text-slate-900">
-                        {formatCurrency(statement.amount)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          statement.payment_status === "PAID"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {statement.payment_status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <span className="text-xs text-slate-600">
-                        {statement.supplier_file?.filename || "-"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 whitespace-nowrap">
-                      <div
-                        className="flex items-center gap-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {statement.supplier_file && (
+            <tbody className="divide-y divide-slate-200">
+              {statements.map((statement) => {
+                const notesOpen = expandedNotes.has(statement.id);
+                return (
+                  <React.Fragment key={statement.id}>
+                    <tr
+                      className={`hover:bg-slate-50 transition-colors ${
+                        statement.notes ? "cursor-pointer" : ""
+                      }`}
+                      onClick={() =>
+                        statement.notes && toggleNotes(statement.id)
+                      }
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {statement.notes && (
                           <button
-                            onClick={() => handleViewStatement(statement)}
-                            className="cursor-pointer p-2 rounded hover:bg-slate-100"
-                            title="View"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleNotes(statement.id);
+                            }}
+                            className={BTN_ICON}
+                            aria-expanded={notesOpen}
+                            aria-label={`${notesOpen ? "Hide" : "Show"} notes for ${statement.month_year}`}
                           >
-                            <Eye className="w-3.5 h-3.5 text-slate-600" />
+                            {notesOpen ? (
+                              <ChevronUp
+                                className="w-4 h-4"
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <ChevronDown
+                                className="w-4 h-4"
+                                aria-hidden="true"
+                              />
+                            )}
                           </button>
                         )}
-                        <button
-                          onClick={() => handleEditStatement(statement)}
-                          className="cursor-pointer p-2 rounded hover:bg-slate-100"
-                          title="Edit"
-                        >
-                          <Edit className="w-3.5 h-3.5 text-slate-600" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteStatement(statement)}
-                          className="cursor-pointer p-2 rounded hover:bg-slate-100"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-red-600" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  {statement.notes && expandedNotes.has(statement.id) && (
-                    <tr className="bg-slate-50">
-                      <td colSpan="7" className="px-4 py-4">
-                        <div className="text-xs text-slate-700">
-                          <span className="font-medium text-slate-800 mb-2 block">
-                            Notes:
+                      </td>
+                      <td className="px-4 py-3 text-sm font-mono text-slate-700 whitespace-nowrap">
+                        {statement.month_year || EMPTY}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700 whitespace-nowrap">
+                        {formatDate(statement.due_date)}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-mono text-slate-700 text-right whitespace-nowrap">
+                        {formatAmount(statement.amount)}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {statement.payment_status ? (
+                          <span
+                            className={`${BADGE} ${
+                              statement.payment_status === "PAID"
+                                ? BADGE_TONES.success
+                                : BADGE_TONES.warning
+                            }`}
+                          >
+                            {formatLabel(statement.payment_status)}
                           </span>
-                          <div className="text-slate-600 whitespace-pre-wrap pl-4 border-l-2 border-slate-300">
-                            {statement.notes}
-                          </div>
+                        ) : (
+                          EMPTY
+                        )}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-sm text-slate-700 max-w-xs truncate"
+                        title={statement.supplier_file?.filename || undefined}
+                      >
+                        {statement.supplier_file?.filename || EMPTY}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div
+                          className="flex items-center justify-end gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {statement.supplier_file && (
+                            <button
+                              type="button"
+                              onClick={() => handleViewStatement(statement)}
+                              className={BTN_ICON}
+                              aria-label={`View file for ${statement.month_year}`}
+                              title="View file"
+                            >
+                              <Eye className="w-4 h-4" aria-hidden="true" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleEditStatement(statement)}
+                            className={BTN_ICON}
+                            aria-label={`Edit statement for ${statement.month_year}`}
+                            title="Edit statement"
+                          >
+                            <Edit className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteStatement(statement)}
+                            className="cursor-pointer p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                            aria-label={`Delete statement for ${statement.month_year}`}
+                            title="Delete statement"
+                          >
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
+                          </button>
                         </div>
                       </td>
                     </tr>
-                  )}
-                </React.Fragment>
-              ))}
+                    {statement.notes && notesOpen && (
+                      <tr className="bg-slate-50">
+                        <td colSpan={7} className="px-4 py-3">
+                          <p className="text-xs font-medium text-slate-500 mb-1">
+                            Notes
+                          </p>
+                          <div className="text-sm text-slate-700 whitespace-pre-wrap pl-4 border-l border-slate-300">
+                            {statement.notes}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -747,310 +936,364 @@ export default function Statement({ supplierId }) {
         onConfirm={handleDeleteStatementConfirm}
         deleteWithInput={true}
         heading="Statement"
-        message={`This will permanently delete the statement for ${
-          statementToDelete?.month_year || ""
-        }. This action cannot be undone.`}
+        title={
+          statementToDelete
+            ? `Delete statement for ${statementToDelete.month_year}?`
+            : "Delete statement?"
+        }
+        warningHeading="This removes the statement record"
+        message={`The statement for ${
+          statementToDelete?.month_year || EMPTY
+        } (${formatAmount(statementToDelete?.amount)}) will be permanently deleted. This can't be undone.`}
+        confirmButtonText="Delete statement"
         comparingName={statementToDelete?.month_year || ""}
         isDeleting={isDeletingStatement}
         entityType="supplier_statement"
       />
 
-      {/* Upload Statement Modal */}
+      {/* Upload / edit statement modal */}
       {showUploadStatementModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/50 p-4"
+          onClick={() => {
+            // Keep typed-in work on a stray backdrop click (DESIGN.md 15.1).
+            if (!isFormDirty() && !isSaving) resetForm();
+          }}
+        >
           <div
-            className="absolute inset-0 bg-slate-900/40"
-            onClick={resetForm}
-          />
-          <div className="relative bg-white w-full max-w-2xl mx-4 rounded-xl shadow-xl border border-slate-200 max-h-[90vh] flex flex-col">
+            ref={statementModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="statement-modal-title"
+            className="bg-white w-full max-w-2xl rounded-xl border border-slate-200 max-h-[90vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
-              <h2 className="text-xl font-semibold text-slate-800">
-                {isEditingStatement ? "Edit Statement" : "Upload Statement"}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
+              <h2
+                id="statement-modal-title"
+                className="text-lg font-semibold text-slate-800"
+              >
+                {isEditingStatement ? "Edit statement" : "Upload statement"}
               </h2>
               <button
+                type="button"
                 onClick={resetForm}
-                className="cursor-pointer p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                disabled={isSaving}
+                className="cursor-pointer p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Close"
               >
-                <X className="w-5 h-5 text-slate-600" />
+                <X className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Top Section: Details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                    Month/Year <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="month"
-                    value={statementForm.month_year}
-                    onChange={(e) =>
-                      setStatementForm({
-                        ...statementForm,
-                        month_year: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                    Due In
-                  </label>
-                  <select
-                    value={dueIn}
-                    onChange={(e) => handleDueInChange(e.target.value)}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                  >
-                    <option value="1 week">1 Week</option>
-                    <option value="2 weeks">2 Weeks</option>
-                    <option value="3 weeks">3 Weeks</option>
-                    <option value="4 weeks">4 Weeks</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                    Due Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={statementForm.due_date}
-                    onChange={handleDueDateChange}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                    Amount
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-slate-500">
-                      $
-                    </span>
+            <form
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (isEditingStatement) handleUpdateStatement();
+                else handleUploadStatement();
+              }}
+              className="flex flex-col min-h-0"
+            >
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="statement-month" className={LABEL}>
+                      Statement month <span className="text-red-600">*</span>
+                    </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={statementForm.amount}
-                      onChange={(e) =>
-                        setStatementForm({
-                          ...statementForm,
-                          amount: e.target.value,
-                        })
+                      id="statement-month"
+                      type="month"
+                      data-autofocus
+                      value={statementForm.month_year}
+                      onChange={(e) => updateForm("month_year", e.target.value)}
+                      aria-invalid={!!errors.month_year}
+                      aria-describedby={
+                        errors.month_year ? "statement-month-error" : undefined
                       }
-                      placeholder="0.00"
-                      className="w-full px-4 py-3 pl-7 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      className={`${FIELD} ${fieldTone(errors.month_year)}`}
+                    />
+                    <FieldError
+                      id="statement-month-error"
+                      message={errors.month_year}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="statement-due-in" className={LABEL}>
+                      Due in
+                    </label>
+                    <CustomDropdown
+                      id="statement-due-in"
+                      options={DUE_IN_OPTIONS}
+                      value={dueIn}
+                      onChange={handleDueInChange}
+                      placeholder="Select a period"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="statement-due-date" className={LABEL}>
+                      Due date <span className="text-red-600">*</span>
+                    </label>
+                    <input
+                      id="statement-due-date"
+                      type="date"
+                      value={statementForm.due_date}
+                      onChange={handleDueDateChange}
+                      aria-invalid={!!errors.due_date}
+                      aria-describedby={
+                        errors.due_date ? "statement-due-date-error" : undefined
+                      }
+                      className={`${FIELD} ${fieldTone(errors.due_date)}`}
+                    />
+                    <FieldError
+                      id="statement-due-date-error"
+                      message={errors.due_date}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="statement-amount" className={LABEL}>
+                      Amount
+                    </label>
+                    <div className="relative">
+                      <span
+                        className="absolute inset-y-0 left-4 flex items-center text-sm text-slate-500"
+                        aria-hidden="true"
+                      >
+                        $
+                      </span>
+                      <input
+                        id="statement-amount"
+                        type="number"
+                        step="0.01"
+                        value={statementForm.amount}
+                        onChange={(e) => updateForm("amount", e.target.value)}
+                        placeholder="0.00"
+                        className={`${FIELD} ${fieldTone(false)} pl-8 font-mono`}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="statement-payment-status" className={LABEL}>
+                      Payment status <span className="text-red-600">*</span>
+                    </label>
+                    <CustomDropdown
+                      id="statement-payment-status"
+                      options={PAYMENT_STATUS_OPTIONS}
+                      value={statementForm.payment_status}
+                      onChange={(value) => updateForm("payment_status", value)}
+                      placeholder="Select a status"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                    Payment Status <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={statementForm.payment_status}
-                    onChange={(e) =>
-                      setStatementForm({
-                        ...statementForm,
-                        payment_status: e.target.value,
-                      })
-                    }
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                  >
-                    <option value="PENDING">Pending</option>
-                    <option value="PAID">Paid</option>
-                  </select>
-                </div>
-              </div>
-
-              <hr className="border-slate-100" />
-
-              {/* File Upload & Notes */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* File Upload */}
-                <div>
-                  <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                    Statement File{" "}
-                    {!isEditingStatement && (
-                      <span className="text-red-500">*</span>
-                    )}
-                  </label>
-                  {!statementForm.file ? (
-                    <div
-                      className={`border-2 border-dashed rounded-lg py-8 transition-all ${
-                        isDragging
-                          ? "border-primary bg-blue-50"
-                          : "border-slate-300 hover:border-primary hover:bg-slate-50"
-                      }`}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
+                {/* File Upload & Notes */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-200 pt-6">
+                  {/* File Upload */}
+                  <div>
+                    <label
+                      htmlFor={
+                        statementForm.file ? undefined : "statement-file-upload"
+                      }
+                      className={LABEL}
                     >
-                      <input
-                        type="file"
-                        id="statement-file-upload"
-                        accept="application/pdf,image/jpeg,image/jpg,image/png"
-                        onChange={handleFileChange}
-                        className="hidden"
-                      />
-                      <label
-                        htmlFor="statement-file-upload"
-                        className="cursor-pointer flex flex-col items-center text-center w-full h-full"
-                      >
-                        <FileText
-                          className={`w-8 h-8 mb-2 ${
-                            isDragging ? "text-primary" : "text-slate-400"
-                          }`}
+                      Statement file{" "}
+                      {!isEditingStatement && (
+                        <span className="text-red-600">*</span>
+                      )}
+                    </label>
+                    {!statementForm.file ? (
+                      <div className="relative">
+                        <input
+                          type="file"
+                          id="statement-file-upload"
+                          accept="application/pdf,image/jpeg,image/jpg,image/png"
+                          onChange={handleFileChange}
+                          aria-invalid={!!errors.file}
+                          aria-describedby={
+                            errors.file
+                              ? "statement-file-error"
+                              : "statement-file-hint"
+                          }
+                          className="sr-only peer"
                         />
-                        <p
-                          className={`text-sm font-medium ${
-                            isDragging ? "text-primary" : "text-slate-700"
+                        <label
+                          htmlFor="statement-file-upload"
+                          onDragOver={handleDragOver}
+                          onDragLeave={handleDragLeave}
+                          onDrop={handleDrop}
+                          className={`cursor-pointer flex flex-col items-center text-center w-full py-8 rounded-lg border-2 border-dashed transition-colors duration-200 peer-focus-visible:ring-2 peer-focus-visible:ring-primary ${
+                            errors.file
+                              ? "border-red-500"
+                              : isDragging
+                                ? "border-primary"
+                                : "border-slate-300 hover:border-primary"
                           }`}
                         >
-                          {isDragging
-                            ? "Drop file here"
-                            : "Click to upload or drag and drop"}
-                        </p>
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="border border-slate-200 rounded-lg p-3 flex items-center justify-between bg-slate-50">
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        {filePreview ? (
-                          <img
-                            src={filePreview}
-                            alt="Preview"
-                            className="w-10 h-10 rounded object-cover border border-slate-200"
+                          <FileText
+                            className={`w-8 h-8 mb-2 ${
+                              isDragging ? "text-primary" : "text-slate-400"
+                            }`}
+                            aria-hidden="true"
                           />
-                        ) : (
-                          <div className="w-10 h-10 bg-white rounded border border-slate-200 flex items-center justify-center">
-                            <FileText className="w-5 h-5 text-slate-400" />
+                          <span
+                            className={`text-sm font-medium ${
+                              isDragging ? "text-primary" : "text-slate-700"
+                            }`}
+                          >
+                            {isDragging
+                              ? "Drop file here"
+                              : "Click to upload or drag and drop"}
+                          </span>
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="border border-slate-200 rounded-lg p-3 flex items-center justify-between gap-3 bg-slate-50">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          {filePreview ? (
+                            <img
+                              src={filePreview}
+                              alt=""
+                              className="w-10 h-10 rounded-md object-cover border border-slate-200"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-white rounded-md border border-slate-200 flex items-center justify-center">
+                              <FileText
+                                className="w-5 h-5 text-slate-400"
+                                aria-hidden="true"
+                              />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p
+                              className="text-sm font-medium text-slate-800 truncate"
+                              title={statementForm.file.name}
+                            >
+                              {statementForm.file.name}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {(statementForm.file.size / 1024 / 1024).toFixed(
+                                2,
+                              )}{" "}
+                              MB
+                            </p>
                           </div>
-                        )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">
-                            {statementForm.file.name}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {(statementForm.file.size / 1024 / 1024).toFixed(2)}{" "}
-                            MB
-                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowFilePreview(true)}
+                            className={BTN_ICON}
+                            aria-label="Preview file"
+                            title="Preview file"
+                          >
+                            <Eye className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={removeSelectedFile}
+                            className="cursor-pointer p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                            aria-label="Remove file"
+                            title="Remove file"
+                          >
+                            <Trash2 className="w-4 h-4" aria-hidden="true" />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setShowFilePreview(true)}
-                          className="cursor-pointer p-1.5 hover:bg-white rounded border border-transparent hover:border-slate-200 transition-colors"
-                        >
-                          <Eye className="w-4 h-4 text-slate-600" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setStatementForm((prev) => ({
-                              ...prev,
-                              file: null,
-                            }));
-                            setFilePreview(null);
-                            setShowFilePreview(false);
-                            // Cleanup object URL
-                            if (fileObjectURLRef.current) {
-                              URL.revokeObjectURL(fileObjectURLRef.current);
-                              fileObjectURLRef.current = null;
-                              setFileObjectURL(null);
-                            }
-                          }}
-                          className="cursor-pointer p-1.5 hover:bg-red-50 rounded border border-transparent hover:border-red-100 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {isEditingStatement && editingStatement?.supplier_file && (
-                    <p className="mt-2 text-xs text-slate-500">
-                      Current file: {editingStatement.supplier_file.filename}{" "}
-                      (Leave empty to keep current file)
-                    </p>
-                  )}
-                </div>
+                    )}
+                    {errors.file ? (
+                      <FieldError
+                        id="statement-file-error"
+                        message={errors.file}
+                      />
+                    ) : (
+                      <p
+                        id="statement-file-hint"
+                        className="text-xs text-slate-500 mt-1"
+                      >
+                        PDF, JPG or PNG, up to 10 MB.
+                      </p>
+                    )}
+                    {isEditingStatement && editingStatement?.supplier_file && (
+                      <p className="mt-1 text-xs text-slate-500">
+                        Current file: {editingStatement.supplier_file.filename}.
+                        Leave empty to keep it.
+                      </p>
+                    )}
+                  </div>
 
-                {/* Notes */}
-                <div>
-                  <label className="block text-xs uppercase tracking-wide text-slate-500 mb-1.5 font-medium">
-                    Notes
-                  </label>
-                  <textarea
-                    rows={5}
-                    value={statementForm.notes}
-                    onChange={(e) =>
-                      setStatementForm({
-                        ...statementForm,
-                        notes: e.target.value,
-                      })
-                    }
-                    className="w-full p-3 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary outline-none resize-none"
-                    placeholder="Add any additional notes..."
-                  />
+                  {/* Notes */}
+                  <div>
+                    <label htmlFor="statement-notes" className={LABEL}>
+                      Notes
+                    </label>
+                    <textarea
+                      id="statement-notes"
+                      rows={5}
+                      value={statementForm.notes}
+                      onChange={(e) => updateForm("notes", e.target.value)}
+                      className={`${FIELD} ${fieldTone(false)} resize-none`}
+                      placeholder="e.g. Includes the October freight surcharge"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Footer */}
-            <div className="p-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
-              <button
-                onClick={resetForm}
-                disabled={isUploadingStatement || isUpdatingStatement}
-                className="cursor-pointer px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-white transition-colors text-sm font-medium disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={
-                  isEditingStatement
-                    ? handleUpdateStatement
-                    : handleUploadStatement
-                }
-                disabled={isUploadingStatement || isUpdatingStatement}
-                className="cursor-pointer px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
-              >
-                {isUploadingStatement || isUpdatingStatement ? (
-                  <>
-                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
-                    {isEditingStatement ? "Updating..." : "Uploading..."}
-                  </>
-                ) : isEditingStatement ? (
-                  "Update Statement"
-                ) : (
-                  "Upload Statement"
-                )}
-              </button>
-            </div>
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  disabled={isSaving}
+                  className={BTN_SECONDARY}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className={BTN_PRIMARY}
+                >
+                  {isSaving ? (
+                    <Spinner />
+                  ) : isEditingStatement ? (
+                    <Check className="w-4 h-4" aria-hidden="true" />
+                  ) : (
+                    <Upload className="w-4 h-4" aria-hidden="true" />
+                  )}
+                  {submitLabel}
+                </button>
+              </div>
+            </form>
           </div>
-
-          {/* File Preview Modal */}
-          {showFilePreview && statementForm.file && fileObjectURL && (
-            <ViewMedia
-              selectedFile={{
-                name: statementForm.file.name,
-                url: fileObjectURL,
-                type: statementForm.file.type,
-                size: statementForm.file.size,
-                isExisting: false,
-              }}
-              setSelectedFile={() => {}}
-              setViewFileModal={setShowFilePreview}
-              setPageNumber={setPageNumber}
-            />
-          )}
         </div>
       )}
+
+      {/* File preview. Rendered outside the modal backdrop so clicks inside it
+          cannot reach the modal's backdrop-click handler. */}
+      {showUploadStatementModal &&
+        showFilePreview &&
+        statementForm.file &&
+        fileObjectURL && (
+          <ViewMedia
+            selectedFile={{
+              name: statementForm.file.name,
+              url: fileObjectURL,
+              type: statementForm.file.type,
+              size: statementForm.file.size,
+              isExisting: false,
+            }}
+            setSelectedFile={() => {}}
+            setViewFileModal={setShowFilePreview}
+            setPageNumber={setPageNumber}
+          />
+        )}
     </div>
   );
 }

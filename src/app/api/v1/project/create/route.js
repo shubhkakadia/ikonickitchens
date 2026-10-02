@@ -6,6 +6,7 @@ import {
 } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { formatProjectId, getNextProjectSequence } from "@/lib/projectId";
+import { publishUpdate } from "@/lib/updates";
 export async function POST(request) {
   try {
     const authError = await requireAuth(request, {
@@ -149,6 +150,19 @@ export async function POST(request) {
         `Lot created successfully: ${lot.name} for project: ${project.name}`,
       );
     }
+
+    // One update per request, not one per lot
+    await publishUpdate({
+      req: request,
+      type: "PROJECT_CREATED",
+      title: "Project created",
+      message: `${project.name}${
+        createdLots.length
+          ? ` with ${createdLots.length} lot${createdLots.length === 1 ? "" : "s"}`
+          : ""
+      }`,
+      url: `/admin/projects/${project.project_id}`,
+    });
 
     // Prepare response
     const responseData = {

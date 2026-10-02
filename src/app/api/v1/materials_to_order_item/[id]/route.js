@@ -4,6 +4,7 @@ import { requireAuth, getUserFromToken } from "@/lib/validators/authFromToken";
 import { withLogging } from "@/lib/withLogging";
 import { sendNotification } from "@/lib/notification";
 import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
+import { publishMtoOrdered } from "@/lib/updates";
 
 // Suppliers live on item_suppliers (item.supplier was dropped); keep the
 // select in one place so every include stays consistent.
@@ -158,6 +159,15 @@ export async function PATCH(request, { params }) {
 
       // Only send notification if we transitioned from "not all ordered" to "all ordered"
       if (allOrderedNow && !allOrderedBefore && supplierItems.length > 0) {
+        // Rapid re-saves of the same lines within an hour announce only once
+        await publishMtoOrdered({
+          req: request,
+          mtoId: updated.mto_id,
+          supplierId,
+          key: `mto:${updated.mto_id}:${supplierId}`,
+          windowMinutes: 60,
+        });
+
         // Send notification for ordered status
         try {
           const supplierName = supplier.name || "Unknown Supplier";

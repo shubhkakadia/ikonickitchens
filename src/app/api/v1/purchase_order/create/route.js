@@ -13,6 +13,7 @@ import {
 import { withLogging } from "@/lib/withLogging";
 import { checkAndUpdateMTOStatus } from "@/lib/mtoStatusHelper";
 import { Decimal, parseMoney, toCents } from "@/lib/money";
+import { publishMtoOrdered } from "@/lib/updates";
 
 // A new purchase order is either a draft or already ordered (that is what both
 // create forms send). Received and cancelled states are only reached through
@@ -345,6 +346,16 @@ export async function POST(request) {
     const firstMtoItemId = orderedByMtoItem.keys().next().value;
     if (firstMtoItemId) {
       await checkAndUpdateMTOStatus(firstMtoItemId);
+    }
+
+    if (result.status === "ORDERED") {
+      await publishMtoOrdered({
+        req: request,
+        mtoId: result.mto_id,
+        supplierId: result.supplier_id,
+        orderNo: result.order_no,
+        key: `po:${result.id}`,
+      });
     }
 
     const logged = await withLogging(

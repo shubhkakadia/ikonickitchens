@@ -25,12 +25,14 @@ export async function getSyncTargets(tx, lotId) {
 }
 
 // Same rule the stage routes apply to the lot being edited: scheduling a stage
-// needs both lot dates and the stage must sit inside them.
+// needs the lot start date, and the stage must sit inside the lot's dates. The
+// installation due date only limits the stage once it has been set.
 function datesFitLot(lot, startDate, endDate) {
   if (!startDate && !endDate) return true;
-  if (!lot.startDate || !lot.installationDueDate) return false;
+  if (!lot.startDate) return false;
   if (startDate && startDate < lot.startDate) return false;
-  if (endDate && endDate > lot.installationDueDate) return false;
+  if (endDate && lot.installationDueDate && endDate > lot.installationDueDate)
+    return false;
   return true;
 }
 

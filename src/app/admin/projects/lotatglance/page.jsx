@@ -464,11 +464,10 @@ function SchedulerView({
 
     const lotStartDate = getCalendarDate(scheduleData.lotStartDate);
     const lotEndDate = getCalendarDate(scheduleData.lotEndDate);
-    if (!lotStartDate || !lotEndDate) {
+    if (!lotStartDate) {
       return {
         field: "form",
-        message:
-          "Set the lot's start and installation due dates before scheduling a stage.",
+        message: "Set the lot's start date before scheduling a stage.",
       };
     }
     if (startDate < lotStartDate) {
@@ -477,7 +476,7 @@ function SchedulerView({
         message: `Stage dates must stay within the lot's dates. The lot starts ${formatScheduleDate(lotStartDate)}.`,
       };
     }
-    if (endDate > lotEndDate) {
+    if (lotEndDate && endDate > lotEndDate) {
       return {
         field: "endDate",
         message: `Stage dates must stay within the lot's dates. The lot ends ${formatScheduleDate(lotEndDate)}.`,

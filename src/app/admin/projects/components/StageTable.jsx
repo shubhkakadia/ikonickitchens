@@ -289,7 +289,10 @@ export default function StageTable({
       }
     } catch (error) {
       console.error("Error creating stage:", error);
-      toast.error("Failed to create stage. Please try again.");
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to create stage. Please try again.",
+      );
       return null;
     }
   };
@@ -335,7 +338,10 @@ export default function StageTable({
       }
     } catch (error) {
       console.error("Error updating stage:", error);
-      toast.error("Failed to update stage. Please try again.");
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to update stage. Please try again.",
+      );
       // Revert local state
       updateStageInLocalState(stageIdentifier, previousStageState);
       return null;
@@ -553,7 +559,10 @@ export default function StageTable({
       }
     } catch (error) {
       console.error("Error deleting stage:", error);
-      toast.error("Failed to delete stage. Please try again.");
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to delete stage. Please try again.",
+      );
     } finally {
       setIsDeletingStage(false);
     }

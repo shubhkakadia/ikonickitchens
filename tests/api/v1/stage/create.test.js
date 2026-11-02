@@ -206,10 +206,6 @@ describe("POST /api/v1/stage/create", () => {
           "the lot has no start date",
           { startDate: null, installationDueDate: LOT_DUE },
         ],
-        [
-          "the lot has no installation due date",
-          { startDate: LOT_START, installationDueDate: null },
-        ],
       ])("returns 400 when %s", async (_, lot) => {
         mockCreate({ lot });
 
@@ -218,10 +214,20 @@ describe("POST /api/v1/stage/create", () => {
         expect(res.status).toBe(400);
         expect(await res.json()).toEqual({
           status: false,
-          message:
-            "Set the parent lot start and installation due dates before scheduling a stage",
+          message: "Set the parent lot start date before scheduling a stage",
         });
         expect(prismaMock.stage.create).not.toHaveBeenCalled();
+      });
+
+      it("schedules the stage when the lot has no installation due date", async () => {
+        mockCreate({ lot: { startDate: LOT_START, installationDueDate: null } });
+
+        const res = await post(
+          validBody({ startDate: "2026-03-05", endDate: "2026-12-20" }),
+        );
+
+        expect(res.status).toBe(201);
+        expect(createData().endDate).toEqual(new Date("2026-12-20"));
       });
 
       it.each([

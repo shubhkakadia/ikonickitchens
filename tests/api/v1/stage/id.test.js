@@ -225,27 +225,36 @@ describe("PATCH /api/v1/stage/[id]", () => {
         expect(updateData().startDate).toEqual(new Date("2026-03-05"));
       });
 
-      it.each([
-        [
-          "the lot has no start date",
-          { startDate: null, installationDueDate: LOT_DUE },
-        ],
-        [
-          "the lot has no installation due date",
-          { startDate: LOT_START, installationDueDate: null },
-        ],
-      ])("returns 400 when %s", async (_, lot) => {
-        mockUpdate({ existing: storedStage(lot) });
+      it("returns 400 when the lot has no start date", async () => {
+        mockUpdate({
+          existing: storedStage({
+            startDate: null,
+            installationDueDate: LOT_DUE,
+          }),
+        });
 
         const res = await patch({ startDate: "2026-03-05" });
 
         expect(res.status).toBe(400);
         expect(await res.json()).toEqual({
           status: false,
-          message:
-            "Set the parent lot start and installation due dates before scheduling a stage",
+          message: "Set the parent lot start date before scheduling a stage",
         });
         expect(prismaMock.stage.update).not.toHaveBeenCalled();
+      });
+
+      it("schedules the stage when the lot has no installation due date", async () => {
+        mockUpdate({
+          existing: storedStage({
+            startDate: LOT_START,
+            installationDueDate: null,
+          }),
+        });
+
+        const res = await patch({ endDate: "2026-12-20" });
+
+        expect(res.status).toBe(200);
+        expect(updateData().endDate).toEqual(new Date("2026-12-20"));
       });
 
       it("does not require the lot to have dates when no dates are sent", async () => {
@@ -393,7 +402,7 @@ describe("PATCH /api/v1/stage/[id]", () => {
       it("skips lots whose date range cannot hold the stage dates", async () => {
         mockSync({
           siblings: [
-            sibling("btto-001-l2", { installationDueDate: null }),
+            sibling("btto-001-l2", { startDate: null }),
             sibling("btto-001-l3", {
               installationDueDate: new Date("2026-03-10T00:00:00.000Z"),
             }),
@@ -408,6 +417,20 @@ describe("PATCH /api/v1/stage/[id]", () => {
           skippedLots: ["btto-001-l2", "btto-001-l3"],
         });
         expect(prismaMock.stage.create).not.toHaveBeenCalled();
+      });
+
+      it("syncs dates to lots that have no installation due date", async () => {
+        mockSync({
+          siblings: [sibling("btto-001-l2", { installationDueDate: null })],
+        });
+
+        const res = await patch({ endDate: "2026-03-20" });
+
+        expect(res.status).toBe(200);
+        expect((await res.json()).sync).toEqual({
+          syncedLots: ["btto-001-l2"],
+          skippedLots: [],
+        });
       });
 
       it("returns 500 and writes no log when a sibling write fails", async () => {

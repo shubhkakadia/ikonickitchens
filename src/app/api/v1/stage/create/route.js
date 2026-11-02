@@ -25,19 +25,22 @@ export async function POST(request) {
       const stageStartDate = startDate ? new Date(startDate) : null;
       const stageEndDate = endDate ? new Date(endDate) : null;
 
-      if (!lot?.startDate || !lot?.installationDueDate) {
+      if (!lot?.startDate) {
         return NextResponse.json(
           {
             status: false,
-            message:
-              "Set the parent lot start and installation due dates before scheduling a stage",
+            message: "Set the parent lot start date before scheduling a stage",
           },
           { status: 400 },
         );
       }
+      // The installation due date is often not fixed yet, so it only limits
+      // the stage once it has been set
       if (
         (stageStartDate && stageStartDate < lot.startDate) ||
-        (stageEndDate && stageEndDate > lot.installationDueDate)
+        (stageEndDate &&
+          lot.installationDueDate &&
+          stageEndDate > lot.installationDueDate)
       ) {
         return NextResponse.json(
           {
